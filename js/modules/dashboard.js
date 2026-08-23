@@ -633,7 +633,7 @@
 
     function terapkanFilterLokal() {
       if (!isFullDataLoaded) return;
-      const kw = (document.getElementById('searchGlobal').value || '').trim().toLowerCase();
+      const kw = ((document.getElementById("searchGlobal") ? document.getElementById("searchGlobal").value : "") || '').trim().toLowerCase();
       const kataKunci = kw.split(/\s+/).filter(Boolean);
 
       const filtered = ALL_PRODUK_DATA.filter(function (d) {
@@ -655,7 +655,7 @@
 
     // ============ RENDER DATA (CARD VIEW & TABLE VIEW) ============
     function renderProdukList(filtered) {
-      const container = document.getElementById('tableContainer');
+      const container = document.getElementById("tableContainer"); if (!container) return;
       if (!filtered || filtered.length === 0) {
         container.innerHTML = '<div style="text-align:center; padding:50px 20px; color:var(--text-muted); font-style:italic;">TIDAK ADA PRODUK YANG SESUAI FILTER</div>';
         return;
