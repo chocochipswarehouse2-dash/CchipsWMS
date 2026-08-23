@@ -303,8 +303,7 @@
       // 5. Update browser history URL tanpa reload
       if (!skipHistory) {
         try {
-          const newUrl = EXEC_URL + '?token=' + encodeURIComponent(TOKEN) + '&page=' + encodeURIComponent(pageCode);
-          window.history.pushState({ page: pageCode }, '', newUrl);
+          const newUrl = window.location.pathname + "?page=" + encodeURIComponent(pageCode); window.history.pushState({ page: pageCode }, "", newUrl);
         } catch(e) {}
       }
 
