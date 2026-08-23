@@ -348,7 +348,11 @@
           const userBadge = document.getElementById('userBadge');
           if (userBadge) userBadge.textContent = '👤 ' + (window.USERNAME || 'USER');
           if (typeof initPeminjamanView === 'function') initPeminjamanView();
-          if (typeof muatDataProduk === 'function') muatDataProduk(false);
+          if (typeof fetchMasterDataFromSupabase === 'function') {
+            fetchMasterDataFromSupabase().then(function() {
+              if (typeof syncPeminjamanWithMasterStore === 'function') syncPeminjamanWithMasterStore();
+            });
+          }
           if (typeof initSupabaseRealtimeSync === 'function') initSupabaseRealtimeSync();
         } else {
           if (loginScreen) loginScreen.style.display = 'flex';
