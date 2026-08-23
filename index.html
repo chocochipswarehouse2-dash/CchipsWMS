@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WMS Chocochips - Warehouse Management System</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- External Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Login Overlay State */
+    #loginScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 99999;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #appWrapper {
+      display: none;
+      min-height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <!-- ==================== LOGIN VIEW SCREEN ==================== -->
+  <div id="loginScreen">
+    <div class="login-wrap">
+    <div class="brand-header">
+      <div class="brand-title">WMS CHOCOCHIPS</div>
+      <p class="brand-subtitle">Warehouse Management System</p>
+    </div>
+
+    <form onsubmit="event.preventDefault(); doLogin();">
+      <div class="field">
+        <label for="username">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          Username
+        </label>
+        <input type="text" id="username" placeholder="Masukkan username..." autocomplete="username" autofocus required>
+      </div>
+
+      <div class="field">
+        <label for="password">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Password
+        </label>
+        <div class="password-wrap">
+          <input type="password" id="password" placeholder="Masukkan password..." autocomplete="current-password" required>
+          <button type="button" class="btn-toggle-pwd" id="btnTogglePwd" onclick="togglePasswordVisibility()" title="Lihat password">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="btnLogin">
+        <span id="loginLabel">Masuk</span>
+      </button>
+
+      <div class="toast" id="toast"></div>
+
+      <div class="theme-bar">
+        <button type="button" class="btn-theme" id="btnToggleTheme" onclick="toggleTheme()"></button>
+      </div>
+    </form>
+  </div>
+  </div>
+
+  <!-- ==================== MAIN DASHBOARD APPLICATION ==================== -->
+  <div id="appWrapper">
+    <!-- MOBILE SIDEBAR BACKDROP OVERLAY -->
+  <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+  <!-- 1. LEFT SIDEBAR NAVIGATION (COLLAPSIBLE / DRAWER) -->
+  <aside id="appSidebar" class="app-sidebar">
+    <div class="sidebar-header">
+      <div class="brand-logo-icon">W</div>
+      <div class="brand-text">
+        <span class="brand-name">WMS CHOCOCHIPS</span>
+        <span class="brand-tag">INVENTORY SYSTEM</span>
+      </div>
+    </div>
+
+    <div class="sidebar-menu">
+      <div class="menu-category-title">MENU UTAMA</div>
+      <div id="navMenuItems"></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-profile-badge">
+        <div class="user-avatar"></div>
+        <div class="user-info">
+          <div class="user-name"></div>
+          <div class="user-role">Role: </div>
+        </div>
+      </div>
+      <div class="sidebar-actions">
+        <button id="btnSidebarTheme" class="btn btn-secondary" onclick="toggleTheme()">☀️ TEMA</button>
+        <button class="btn btn-danger" onclick="logoutSession()">🚪 KELUAR</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 2. MAIN WORKSPACE -->
+  <div class="app-main">
+    <!-- TOPBAR HEADER -->
+    <header class="app-topbar">
+      <div class="topbar-left">
+        <button id="btnToggleSidebar" class="btn-toggle-sidebar" onclick="toggleSidebar()" title="Buka/Tutup Menu Sidebar">
+          ☰
+        </button>
+        <!-- CONTEXTUAL TITLE UNTUK TAB NON-INVENTORY -->
+        <div id="topbarPageTitle" class="topbar-page-title" style="display: none;">
+          <span id="topbarPageIcon" class="topbar-page-icon">📦</span>
+          <span id="topbarPageText" class="topbar-page-text">Inventory</span>
+        </div>
+        <!-- INVENTORY SEARCH BOX (HANYA MUNCUL DI TAB INVENTORY) -->
+        <div id="topbarSearchWrap" class="search-box-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchGlobal" class="search-input" placeholder="Cari Nama Produk / SKU..." oninput="handleSearchInput(event)" onkeydown="if(event.key==='Enter') terapkanFilterLokal()">
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <!-- MULTISELECT FILTER AREA (KOLOM DATA TAMPILAN) -->
+        <div id="filterAreaWrap" class="multiselect-wrap">
+          <button id="btnFilterArea" class="multiselect-btn" onclick="toggleFilterAreaDropdown(event)" title="Pilih area kolom data yang ingin ditampilkan">
+            <span id="filterAreaLabel">SEMUA AREA</span>
+            <span style="font-size: 10px; opacity: 0.7;">▾</span>
+          </button>
+          <div id="filterAreaDropdown" class="multiselect-dropdown" style="display: none;" onclick="event.stopPropagation()">
+            <label class="multiselect-item">
+              <input type="checkbox" id="chkAreaAll" onchange="handleAreaCheckboxChange('ALL')">
+              <span>SEMUA AREA</span>
+            </label>
+            <div class="multiselect-divider"></div>
+            <label class="multiselect-item">
+              <input type="checkbox" id="chkAreaGudang" onchange="handleAreaCheckboxChange('GUDANG')">
+              <span>GUDANG UTAMA (5 KOMPARASI)</span>
+            </label>
+            <label class="multiselect-item">
+              <input type="checkbox" id="chkAreaStore" onchange="handleAreaCheckboxChange('STORE')">
+              <span>STORE (15 CABANG)</span>
+            </label>
+            <label class="multiselect-item">
+              <input type="checkbox" id="chkAreaOnline" onchange="handleAreaCheckboxChange('ONLINE')">
+              <span>ONLINE (MARKETPLACE)</span>
+            </label>
+            <label class="multiselect-item">
+              <input type="checkbox" id="chkAreaOffline" onchange="handleAreaCheckboxChange('OFFLINE')">
+              <span>OFFLINE (DEPT WH/QC/GA/LOG)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- REALTIME AUTO-SYNC INDICATOR -->
+        <span id="realtimeStatusBadge" class="realtime-status-badge" title="Realtime Auto-Sync Aktif">
+          <span class="realtime-dot"></span>
+          <span id="realtimeStatusText" class="realtime-text">⚡ REALTIME SYNC</span>
+        </span>
+
+        <button id="btnToggleView" class="btn btn-secondary topbar-action-btn" onclick="toggleViewMode()" title="Ganti mode kartu / tabel">
+          <span id="btnToggleViewIcon">📱</span>
+          <span id="btnToggleViewText" class="btn-text-responsive">MODE KARTU</span>
+        </button>
+        <button id="btnUpdateStok" class="btn btn-primary topbar-action-btn" onclick="muatDataProduk(true)" title="Tarik data terbaru dari server">
+          <span>🔄</span>
+          <span class="btn-text-responsive">REFRESH</span>
+        </button>
+        <button id="btnExportCsv" class="btn btn-success topbar-action-btn" onclick="exportDataCsv()" title="Unduh CSV">
+          <span>📥</span>
+          <span class="btn-text-responsive">CSV</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT BODY WITH MODULAR SPA VIEWS -->
+    <main class="app-content">
+      
+      <!-- VIEW 1: INVENTORY DASHBOARD -->
+      <section id="view-produk" class="spa-view active">
+        <!-- KPI STAT CARDS GRID -->
+        <div class="kpi-grid">
+          <div class="kpi-card c-primary" onclick="showKpiDetails('total_sku')" title="Klik untuk lihat diagram kategori">
+            <div class="kpi-info">
+              <span class="kpi-title">TOTAL SKU PRODUK</span>
+              <span id="kpiTotalSku" class="kpi-value">0</span>
+              <span class="kpi-desc">Katalog terdaftar &amp; aktif</span>
+            </div>
+            <div class="kpi-icon-wrap">📦</div>
+          </div>
+
+          <div class="kpi-card c-success" onclick="showKpiDetails('MAP')" title="Klik untuk lihat detail stok">
+            <div class="kpi-info">
+              <span class="kpi-title">STOK FISIK MAP</span>
+              <span id="kpiStokMap" class="kpi-value">0</span>
+              <span class="kpi-desc">Gudang Utama Warehouse</span>
+            </div>
+            <div class="kpi-icon-wrap">🏢</div>
+          </div>
+
+          <div class="kpi-card c-info" onclick="showKpiDetails('BLOK_F')" title="Klik untuk lihat detail stok">
+            <div class="kpi-info">
+              <span class="kpi-title">STOK BLOK F</span>
+              <span id="kpiStokBlokF" class="kpi-value">0</span>
+              <span class="kpi-desc">Sample Live &amp; Studio</span>
+            </div>
+            <div class="kpi-icon-wrap">🎥</div>
+          </div>
+
+          <div class="kpi-card c-warning" onclick="showKpiDetails('PERBAIKAN')" title="Klik untuk lihat detail stok">
+            <div class="kpi-info">
+              <span class="kpi-title">STOK PERBAIKAN</span>
+              <span id="kpiStokPerbaikan" class="kpi-value">0</span>
+              <span class="kpi-desc">Permak &amp; Barang Defect</span>
+            </div>
+            <div class="kpi-icon-wrap">🛠️</div>
+          </div>
+        </div>
+
+        <!-- DATA SECTION -->
+        <div class="data-section-card">
+          <div class="data-section-header">
+            <div class="section-title-wrap">
+              <span class="section-heading">DAFTAR INVENTORY</span>
+            </div>
+            <div id="tableInfo" class="section-badge-info">
+              Memuat data...
+            </div>
+          </div>
+
+          <!-- CONTAINER TABEL / KARTU -->
+          <div id="tableContainer">
+            <div style="text-align: center; padding: 50px 20px; color: var(--text-muted); font-style: italic;">
+              <div style="font-size: 28px; margin-bottom: 10px;">⏳</div>
+              MEMUAT INVENTORY DARI SERVER...
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: MONITORING & KLASIFIKASI -->
+      
+
+      <!-- VIEW 3: FULFILLMENT REFILL -->
+      
+
+      <!-- VIEW 4: PEMINJAMAN SEMENTARA (SPS) -->
+      
+
+      <!-- VIEW 5: LOG PRODUK -->
+      
+
+      <!-- VIEW 6: LOG MUTASI -->
+      
+
+      <!-- VIEW 7: UPDATE DATABASE -->
+      
+
+      <!-- VIEW 8: STOCK OPNAME -->
+      
+
+      <!-- VIEW 9: PENGATURAN & USER -->
+      
+
+      <!-- VIEW 10: PENERIMAAN PRODUKSI & KEDATANGAN BARANG -->
+      
+
+    </main>
+  </div>
+
+  
+
+  <!-- MODAL UNTUK KPI DASHBOARD -->
+  
+
+  <div id="wmsKpiModal" class="kpi-modal-overlay" onclick="if(event.target===this) closeKpiModal()">
+    <div class="kpi-modal-content">
+      <div class="kpi-modal-header">
+        <div class="kpi-modal-title" id="kpiModalTitle">Detail KPI</div>
+        <button class="kpi-modal-close" onclick="closeKpiModal()">✕</button>
+      </div>
+      <div class="kpi-modal-body" id="kpiModalBody">
+        <!-- Content will be injected here -->
+      </div>
+    </div>
+  </div>
+
+  
+
+
+  <!-- CONTAINER FLOATING TOAST NOTIFIKASI SPA -->
+  <div id="wmsGlobalToastContainer" class="toast-container"></div>
+    
+    <!-- INJECTED SPA VIEWS -->
+    <div id="injectedSpaViews">
+      <!-- ========================================================
+     MODUL VIEW: PEMINJAMAN SEMENTARA SPS (SPA)
+     RESPONSIVE WEB SELULER / MOBILE & DESKTOP
+     DENGAN OPSI PILIHAN STOK STUDIO, SHOPEE & TIKTOK (DIVISI LIVE)
+     ======================================================== -->
+<section id="view-peminjaman" class="spa-view" style="display: none;">
+
+  <!-- RESPONSIVE MOBILE TAB SWITCHER (<= 900px) -->
+  <div class="peminjaman-mobile-switcher wms-segmented-tabs" style="margin-bottom: 12px;">
+    <button type="button" id="mobileTabForm" class="wms-segmented-tab-btn active" onclick="switchPeminjamanMobileTab('form')">
+      📝 FORM PENGAJUAN
+    </button>
+    <button type="button" id="mobileTabStok" class="wms-segmented-tab-btn" onclick="switchPeminjamanMobileTab('stok')">
+      📍 STOK TERSEDIA (LIVE)
+    </button>
+  </div>
+
+  <!-- SPLIT 2-PANEL CONTAINER -->
+  <div class="peminjaman-split-container tab-form-active">
+    
+    <!-- KIRI: FORM PENGAJUAN PEMINJAMAN (SPS) -->
+    <div class="data-section-card" id="peminjamanPanelForm">
+      <div class="data-section-header" style="padding: 10px 16px;">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 12.5px;">📝 FORM PENGAJUAN PEMINJAMAN SEMENTARA (SPS)</span>
+        </div>
+        <button type="button" class="btn btn-primary" id="btnOpenPeminjamanScanner" onclick="bukaScannerPeminjamanModal()" style="display: none; font-size: 11.5px; height: 32px; padding: 0 12px; gap: 6px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+          📷 SCAN IN / OUT
+        </button>
+      </div>
+
+      <div class="peminjaman-card-body">
+        <form id="formPeminjaman" onsubmit="event.preventDefault(); submitFormPeminjamanSpa();">
+          <div style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">
+            1. INFORMASI PEMINJAM (DIVISI LIVE / STUDIO)
+          </div>
+
+          <div class="peminjaman-grid-2" style="margin-bottom: 12px;">
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">
+                NAMA / PIC PEMINJAM <span style="color: var(--danger);">*</span>
+              </label>
+              <input type="text" id="namaPeminjam" class="search-input" placeholder="Contoh: Sarah / Host Live" style="width: 100%; height: 36px; font-size: 12px;" required>
+            </div>
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">
+                KEPERLUAN PEMINJAMAN <span style="color: var(--danger);">*</span>
+              </label>
+              <input type="text" id="keperluan" class="search-input" placeholder="Contoh: Live TikTok / Live Shopee / Studio" style="width: 100%; height: 36px; font-size: 12px;" required>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">
+              TANGGAL PINJAM <span style="color: var(--danger);">*</span>
+            </label>
+            <input type="date" id="tglPinjam" class="search-input" style="width: 100%; max-width: 220px; height: 36px; font-size: 12px;" required>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-top: 1px dashed var(--border); padding-top: 12px;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px;">
+              2. DAFTAR BARANG YANG DIPINJAM
+            </span>
+            <button type="button" id="btnTambahItemAtas" class="btn btn-secondary" style="height: 28px; font-size: 11px; padding: 0 10px;">+ TAMBAH ITEM</button>
+          </div>
+
+          <div id="itemContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
+
+          <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+            <button type="button" id="btnTambahItemBawah" class="btn btn-secondary" style="flex: 1; min-width: 130px; height: 38px; font-size: 11.5px;">+ TAMBAH ITEM LAIN</button>
+            <button type="submit" id="btnSubmitPeminjaman" class="btn btn-primary" style="flex: 2; min-width: 160px; height: 38px; font-size: 12.5px; font-weight: 800;">
+              <span id="submitPeminjamanLabel">📨 AJUKAN PEMINJAMAN</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- KANAN: STOK TERSEDIA (STUDIO, SHOPEE & TIKTOK) -->
+    <div class="data-section-card" id="peminjamanPanelStok">
+      <div class="data-section-header" style="padding: 10px 16px;">
+        <div>
+          <span class="section-heading" id="stokChannelHeading" style="font-size: 12px;">📍 STOK TERSEDIA (BLOK F)</span>
+          <div id="studioSummary" style="font-size: 10.5px; color: var(--text-muted); font-weight: 500;">Memuat data...</div>
+        </div>
+        <button type="button" class="btn btn-secondary" id="btnRefreshStokChannel" style="height: 28px; font-size: 10.5px; padding: 0 8px;" onclick="refreshStockPeminjaman(this)">🔄 REFRESH</button>
+      </div>
+
+      <div class="peminjaman-card-body">
+        
+        <!-- OPSI FILTER CHANNEL STOK TERSEDIA (LIVE DIVISI) DENGAN SEGMENTED TABS -->
+        <div class="stock-ch-bar wms-segmented-tabs" style="margin-bottom: 10px; width: 100%;">
+          <button type="button" class="wms-segmented-tab-btn stock-ch-btn active" data-channel="STUDIO" onclick="switchStockChannel('STUDIO', this)">
+            📍 STUDIO
+          </button>
+          <button type="button" class="wms-segmented-tab-btn stock-ch-btn" data-channel="SHOPEE" onclick="switchStockChannel('SHOPEE', this)">
+            🧡 SHOPEE
+          </button>
+          <button type="button" class="wms-segmented-tab-btn stock-ch-btn" data-channel="TIKTOK" onclick="switchStockChannel('TIKTOK', this)">
+            🖤 TIKTOK
+          </button>
+          <button type="button" class="wms-segmented-tab-btn stock-ch-btn" data-channel="ALL" onclick="switchStockChannel('ALL', this)">
+            🌐 SEMUA
+          </button>
+        </div>
+
+        <div style="background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px 12px; margin-bottom: 12px; font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+          💡 <b>Acuan Peminjam Divisi Live:</b> Daftar barang yang sudah tersedia di channel/lokasi terpilih. Anda dapat meminjam langsung atau menghindari pengajuan ganda.
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+          <input type="text" id="searchStudio" class="search-input" placeholder="🔍 Cari Nama Produk / SKU / Lokasi..." oninput="filterStudioStockSpa()" style="flex: 1; height: 36px; font-size: 12px;">
+          <button type="button" class="btn btn-secondary compact-btn" onclick="exportPeminjamanStockData()" style="padding: 0 12px; height: 36px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; white-space: nowrap;">
+            <i class="fa-solid fa-file-csv" style="color:#10b981;"></i> Export CSV
+          </button>
+        </div>
+
+        <div class="table-scroll-wrap" style="max-height: 480px;">
+          <table class="unified-table" id="peminjamanStockTable" style="min-width: 480px; table-layout: fixed;">
+            <colgroup id="peminjamanColgroup"></colgroup>
+            <thead id="peminjamanThead"></thead>
+            <tbody id="studioTableBody">
+              <tr><td colspan="4" style="text-align: center; padding: 30px 0; color: var(--text-muted); font-style: italic;">MEMUAT DAFTAR STOK...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SCOPED RESPONSIVE STYLES FOR PEMINJAMAN -->
+
+
+
+
+<!-- ========================================================
+     MODAL SCANNER KAMERA HP MULTI-SCAN (IN / OUT) 
+     (DIADAPTASI DARI QC BARCODE SCANNER EXPRESS)
+     ======================================================== -->
+<div id="peminjamanScannerModal" onclick="if(event.target === this) tutupScannerPeminjamanModal()" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: flex-start; padding: 16px; overflow-y: auto; font-family: 'Inter', sans-serif;">
+  <div class="data-section-card" style="width: 100%; max-width: 580px; margin: auto; background: #0f172a; border: 1px solid #1e293b; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border-radius: 16px; overflow: hidden;" onclick="event.stopPropagation()">
+    
+    <!-- MODAL HEADER -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #1e293b; background: #1e293b;">
+      <div style="font-size: 14px; font-weight: 800; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-barcode text-emerald-400"></i>
+        <span id="scanModalTitleText">📤 SCAN OUT - PEMINJAMAN</span>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <button type="button" onclick="togglePeminjamanAudio()" style="background: none; border: none; font-size: 16px; color: #cbd5e1; cursor: pointer;">
+          <i id="soundIconPeminjaman" class="fa-solid fa-volume-high text-emerald-400"></i>
+        </button>
+        <button type="button" onclick="tutupScannerPeminjamanModal()" style="border: none; background: #334155; color: #f8fafc; font-size: 14px; cursor: pointer; font-weight: bold; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%;" title="Tutup Modal (Esc)">✕</button>
+      </div>
+    </div>
+
+    <div style="padding: 16px;">
+      
+      <!-- MODE PILL SWITCHER -->
+      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <button type="button" id="btnScanModeOut" class="scanner-mode-pill active out" onclick="switchScanMode('OUT')">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> SCAN OUT (PINJAM)
+        </button>
+        <button type="button" id="btnScanModeIn" class="scanner-mode-pill" onclick="switchScanMode('IN')">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> SCAN IN (KEMBALI)
+        </button>
+      </div>
+
+      <!-- CAMERA VIEWPORT (MODERN) -->
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+        <div style="position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #020617; border: 2px dashed #334155; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; min-height: 220px;">
+          <!-- Placeholder when off -->
+          <div id="cameraPlaceholderPeminjaman" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; background: rgba(2,6,23,0.92); z-index: 10;">
+            <div style="width: 52px; height: 52px; border-radius: 14px; background: #0f172a; border: 1px solid #334155; display: flex; align-items: center; justify-content: center; color: #f59e0b; margin-bottom: 10px; font-size: 22px;">
+              <i class="fa-solid fa-barcode"></i>
+            </div>
+            <p style="font-size: 12px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px;">Kamera Siaga / Nonaktif</p>
+            <p style="font-size: 11px; color: #64748b; max-width: 240px; margin: 0;">Klik tombol <b>"Nyalakan Kamera"</b> di bawah untuk mengaktifkan pemindai barcode otomatis.</p>
+          </div>
+          
+          <div id="peminjamanQrReader" style="width: 100%;"></div>
+          
+          <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; z-index: 20;">
+            <button type="button" onclick="toggleTorch()" title="Lampu Flash" style="background: rgba(15,23,42,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 7px 11px; font-size: 13px; cursor: pointer; backdrop-filter: blur(4px);"><i class="fa-solid fa-bolt text-amber-400"></i></button>
+            <button type="button" onclick="toggleCameraFlip()" title="Putar Kamera Depan/Belakang" style="background: rgba(15,23,42,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 7px 11px; font-size: 13px; cursor: pointer; backdrop-filter: blur(4px);"><i class="fa-solid fa-camera-rotate text-blue-400"></i></button>
+          </div>
+          <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #10b981, transparent); box-shadow: 0 0 8px #10b981; animation: scanLaserAnim 2s infinite linear; pointer-events: none; display: none; z-index: 15;" id="peminjamanLaserLine"></div>
+        </div>
+
+        <div>
+          <button type="button" id="toggleCamBtnPeminjaman" onclick="toggleCameraScanner()" style="width: 100%; height: 42px; font-size: 13px; font-weight: 700; background: #2563eb; color: #fff; border: none; border-radius: 10px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(37,99,235,0.3); transition: all 0.2s;">
+            <i class="fa-solid fa-video"></i> <span>Nyalakan Kamera</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- NATIVE CAMERA FALLBACK (BUTTON RESMI CEPAT) -->
+      <div style="text-align: center; margin-bottom: 16px;">
+        <input type="file" id="scanNativeCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleNativeCameraCapture(this)">
+        <button type="button" onclick="document.getElementById('scanNativeCameraInput').click()" style="width: 100%; height: 38px; background: rgba(30, 41, 59, 0.8); border: 1px dashed #475569; color: #94a3b8; font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+          <i class="fa-solid fa-camera text-blue-400"></i> Alternatif: Buka Aplikasi Kamera HP (Scan Instan)
+        </button>
+      </div>
+
+      <!-- DETECTION NOTIFICATION BANNER -->
+      <div id="scanDetectedBanner" style="display: none; padding: 12px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; margin-bottom: 16px; text-align: center; background: #1e293b; border: 1px solid #334155;"></div>
+
+      <!-- MANUAL SKU INPUT BAR -->
+      <div style="display: flex; gap: 6px; margin-bottom: 16px;">
+        <input type="text" id="inputManualScanSku" placeholder="Ketik barcode / SKU (Gunakan Barcode Scanner Hardware)..." style="flex: 1; height: 42px; font-size: 13px; background: #0f172a; border: 1px solid #3b82f6; border-radius: 8px; color: #f8fafc; padding: 0 12px; box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);" onkeydown="handleManualScanInput(event)" autocomplete="off">
+        <button type="button" onclick="submitManualScanInput()" style="height: 42px; font-size: 12px; font-weight: 700; padding: 0 16px; background: #334155; color: #f8fafc; border: none; border-radius: 8px; cursor: pointer;">+ INPUT</button>
+      </div>
+
+      <!-- BASKET SUMMARY HEADER -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-top: 1px solid #334155; padding-top: 16px;">
+        <div style="font-size: 12px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">
+          📦 HASIL SCAN: <span id="scanBasketCountBadge" style="color: #34d399; font-weight: 800;">0 Item</span>
+        </div>
+        <button type="button" onclick="resetScanBasket()" style="border: none; background: transparent; color: #ef4444; font-size: 11px; font-weight: 700; cursor: pointer;"><i class="fa-solid fa-trash"></i> KOSONGKAN</button>
+      </div>
+
+      <!-- BASKET LIST CONTAINER -->
+      <div id="scanBasketEmpty" style="text-align: center; padding: 24px 12px; color: #64748b; font-size: 12px; background: #1e293b; border-radius: 12px; border: 1px dashed #334155; margin-bottom: 16px;">
+        Belum ada item di-scan. Mulai scan menggunakan kamera atau alat barcode.
+      </div>
+      <div id="scanBasketList" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; margin-bottom: 16px; padding-right: 4px;"></div>
+
+      <!-- PIC & NOTES FORM -->
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+        <div class="peminjaman-grid-2" style="margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 4px;">NAMA / PIC <span style="color: #ef4444;">*</span></label>
+            <input type="text" id="scanPicName" placeholder="Nama PIC..." style="width: 100%; height: 36px; font-size: 12px; background: #0f172a; border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 0 10px;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 4px;">LOKASI STOK</label>
+            <select id="scanLokasiAsal" style="width: 100%; height: 36px; font-size: 12px; background: #0f172a; border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 0 10px;">
+              <option value="STUDIO">📍 STUDIO (BLOK F)</option>
+              <option value="SHOPEE">🧡 SHOPEE (SHP)</option>
+              <option value="TIKTOK">🖤 TIKTOK (TTK)</option>
+              <option value="MAP">🏢 GUDANG UTAMA (MAP)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label id="scanCatatanLabel" style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 4px;">KEPERLUAN PINJAM</label>
+          <input type="text" id="scanCatatanText" placeholder="Contoh: Host Live TikTok Pagi..." style="width: 100%; height: 36px; font-size: 12px; background: #0f172a; border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 0 10px;">
+        </div>
+      </div>
+
+      <!-- EXECUTE BUTTON -->
+      <div>
+        <button type="button" id="btnSubmitScanPeminjaman" onclick="handleExecuteScanSubmit(this)" style="width: 100%; height: 48px; font-size: 14px; font-weight: 800; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);" disabled>
+          <span id="labelSubmitScanPeminjaman"><i class="fa-solid fa-rocket"></i> EKSEKUSI SCAN OUT (0 PCS)</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================
+     MODUL VIEW: PENERIMAAN PRODUKSI & KEDATANGAN BARANG (SPA)
+     FITUR: COMPACT BATCH INPUT (1 PENERIMAAN BISA BANYAK KODE)
+     1 KODE PRODUKSI = 1 FOTO PRODUK + MULTI-VARIANT (SIZE & QTY) + CATATAN
+     ======================================================== -->
+<section id="view-penerimaanproduksi" class="spa-view" style="display: none;">
+
+  <!-- SUB-NAV / VIEW MODE TOGGLE (STANDARDIZED COMPACT SEGMENTED PILL) -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+    <div class="wms-segmented-tabs">
+      <button type="button" id="tabBtnRiwayat" class="wms-segmented-tab-btn active" onclick="switchPenerimaanTab('riwayat')">
+        📊 RIWAYAT PENERIMAAN
+      </button>
+      <button type="button" id="tabBtnForm" class="wms-segmented-tab-btn" onclick="switchPenerimaanTab('form')">
+        📝 INPUT KEDATANGAN
+      </button>
+    </div>
+
+    <div style="display: flex; gap: 6px; align-items: center;">
+      <button class="btn btn-secondary" onclick="muatDataPenerimaan(true)" style="height: 32px; padding: 0 10px; font-size: 11px;" title="Perbarui data dari Supabase">
+        🔄 REFRESH
+      </button>
+      <button class="btn btn-success" onclick="exportPenerimaanCsv()" style="height: 32px; padding: 0 10px; font-size: 11px;" title="Unduh Data CSV">
+        📥 CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       TAB 1: COMPACT FORM INPUT KEDATANGAN BARANG
+       ======================================================== -->
+  <div id="penerimaanFormContainer" style="display: none; max-width: 1050px; margin: 0 auto 24px;">
+    
+    <!-- 1. DATA INFORMASI PENERIMAAN (HEADER COMPACT) -->
+    <div class="data-section-card" style="margin-bottom: 14px;">
+      <div class="data-section-header" style="padding: 10px 16px; background: var(--card-alt);">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 12.5px;">📋 1. DATA INFORMASI PENERIMAAN</span>
+        </div>
+        <div class="section-badge-info" style="font-size: 11px;">
+          Header Surat Jalan
+        </div>
+      </div>
+
+      <div style="padding: 14px 16px;">
+        <div class="penerimaan-header-grid">
+          
+          <!-- Kategori Selector Compact -->
+          <div>
+            <label class="form-compact-label">KATEGORI PRODUKSI <span style="color: var(--danger);">*</span></label>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" id="btnKatLokal" class="btn-kat-pill active" onclick="pilihKategoriCompact('Lokal CMT')">
+                🏭 LOKAL CMT
+              </button>
+              <button type="button" id="btnKatKargo" class="btn-kat-pill" onclick="pilihKategoriCompact('Kargo')">
+                🚚 KARGO
+              </button>
+            </div>
+            <input type="hidden" id="inPenerimaanKategori" value="Lokal CMT">
+          </div>
+
+          <!-- Tanggal Penerimaan -->
+          <div>
+            <label class="form-compact-label">TANGGAL TERIMA <span style="color: var(--danger);">*</span></label>
+            <input type="date" id="inPenerimaanTanggal" class="search-input compact-input" style="width: 100%;">
+          </div>
+
+          <!-- No Surat Jalan -->
+          <div>
+            <label class="form-compact-label">NO SURAT JALAN <span style="color: var(--danger);">*</span></label>
+            <input type="text" id="inPenerimaanSuratJalan" class="search-input compact-input" placeholder="Contoh: SJ-2026/08/001" style="width: 100%; font-weight: 700; text-transform: uppercase;">
+          </div>
+
+          <!-- Catatan Penerimaan Global -->
+          <div>
+            <label class="form-compact-label">CATATAN PENERIMAAN</label>
+            <input type="text" id="inPenerimaanCatatanGlobal" class="search-input compact-input" placeholder="Catatan umum (opsional)..." style="width: 100%;">
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. DATA PRODUK (1 KODE = 1 FOTO PRODUK + MULTI VARIANT) -->
+    <div class="data-section-card" style="margin-bottom: 14px;">
+      <div class="data-section-header" style="padding: 10px 16px; background: var(--card-alt);">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 12.5px;">📦 2. DATA PRODUK (1 KODE = 1 FOTO + VARIAN UKURAN)</span>
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="tambahBlokProduk()" style="height: 28px; padding: 0 10px; font-size: 11px; font-weight: 700;">
+          ➕ TAMBAH KODE LAIN
+        </button>
+      </div>
+
+      <!-- CONTAINER DAFTAR BLOK KODE PRODUK -->
+      <div id="daftarBlokProdukContainer" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 14px;">
+        <!-- Dihasilkan secara dinamis oleh JavaScript renderProductBlocks() -->
+      </div>
+
+      <!-- FOOTER ACTION BAR -->
+      <div style="padding: 12px 16px; background: var(--bg-surface); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="tambahBlokProduk()" style="height: 36px; padding: 0 14px; font-size: 11.5px; font-weight: 700;">
+          ➕ TAMBAH KODE PRODUKSI LAIN
+        </button>
+
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div id="formSummaryBadge" style="font-size: 12px; font-weight: 700; color: var(--text-muted);">
+            Total: 1 Kode &bull; 0 Pcs
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="resetFormPenerimaan()" style="height: 38px; padding: 0 16px; font-size: 12px;">
+            🔄 RESET FORM
+          </button>
+          <button type="button" id="btnSubmitPenerimaan" class="btn btn-primary" onclick="submitBatchPenerimaan(this)" style="height: 38px; padding: 0 24px; font-size: 12.5px; font-weight: 800;">
+            💾 SIMPAN SEMUA DATA
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ========================================================
+       TAB 2: DATA KHUSUS RIWAYAT PENERIMAAN PRODUKSI (TABEL)
+       ======================================================== -->
+  <div id="penerimaanRiwayatContainer">
+    
+    <!-- KPI SUMMARY CARDS -->
+    <div class="kpi-grid" style="margin-bottom: 16px;">
+      <div class="kpi-card c-primary" style="padding: 12px 16px;">
+        <div class="kpi-info">
+          <span class="kpi-title">TOTAL DATA</span>
+          <span id="kpiPenerimaanTotal" class="kpi-value" style="font-size: 20px;">0</span>
+          <span class="kpi-desc">Baris penerimaan tercatat</span>
+        </div>
+        <div class="kpi-icon-wrap" style="width: 38px; height: 38px; font-size: 18px;">📥</div>
+      </div>
+
+      <div class="kpi-card c-success" style="padding: 12px 16px;">
+        <div class="kpi-info">
+          <span class="kpi-title">TOTAL QTY (PCS)</span>
+          <span id="kpiPenerimaanQty" class="kpi-value" style="font-size: 20px;">0</span>
+          <span class="kpi-desc">Fisik barang masuk</span>
+        </div>
+        <div class="kpi-icon-wrap" style="width: 38px; height: 38px; font-size: 18px;">📦</div>
+      </div>
+
+      <div class="kpi-card c-info" style="padding: 12px 16px;">
+        <div class="kpi-info">
+          <span class="kpi-title">LOKAL CMT</span>
+          <span id="kpiPenerimaanLokal" class="kpi-value" style="font-size: 20px;">0</span>
+          <span class="kpi-desc">Produksi penjahit lokal</span>
+        </div>
+        <div class="kpi-icon-wrap" style="width: 38px; height: 38px; font-size: 18px;">🏭</div>
+      </div>
+
+      <div class="kpi-card c-warning" style="padding: 12px 16px;">
+        <div class="kpi-info">
+          <span class="kpi-title">KARGO</span>
+          <span id="kpiPenerimaanKargo" class="kpi-value" style="font-size: 20px;">0</span>
+          <span class="kpi-desc">Penerimaan ekspedisi</span>
+        </div>
+        <div class="kpi-icon-wrap" style="width: 38px; height: 38px; font-size: 18px;">🚚</div>
+      </div>
+    </div>
+
+    <!-- DATA TABLE & FILTER SECTION -->
+    <div class="data-section-card">
+      <div class="data-section-header" style="padding: 12px 18px;">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 13px;">📋 DATA PENERIMAAN PRODUKSI (1 KODE + FOTO PRODUK)</span>
+        </div>
+        <div id="penerimaanTotalCount" class="section-badge-info">
+          Memuat data...
+        </div>
+      </div>
+
+      <!-- FILTER TOOLBAR -->
+      <div style="padding: 10px 16px; background: var(--card-alt); border-bottom: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <!-- Search Input -->
+        <input type="text" id="searchPenerimaan" class="search-input compact-input" placeholder="🔍 Cari Kode / No SJ / Warna / Catatan..." style="width: 240px;" oninput="filterDataPenerimaanLokal()">
+
+        <!-- Kategori Filter -->
+        <select id="filterPenerimaanKategori" class="search-input compact-input" style="width: 150px; cursor: pointer;" onchange="muatDataPenerimaan(true)">
+          <option value="ALL">SEMUA KATEGORI</option>
+          <option value="Lokal CMT">🏭 LOKAL CMT</option>
+          <option value="Kargo">🚚 KARGO</option>
+        </select>
+
+        <!-- Date Range Filter -->
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <input type="date" id="filterPenerimaanStart" class="search-input compact-input" style="width: 125px;" onchange="muatDataPenerimaan(true)" title="Tanggal Mulai">
+          <span style="color: var(--text-muted); font-size: 10.5px;">-</span>
+          <input type="date" id="filterPenerimaanEnd" class="search-input compact-input" style="width: 125px;" onchange="muatDataPenerimaan(true)" title="Tanggal Selesai">
+        </div>
+
+        <button class="btn btn-secondary" onclick="resetFilterPenerimaan()" style="height: 32px; padding: 0 10px; font-size: 11px;">
+          RESET
+        </button>
+      </div>
+
+      <!-- TABLE WRAPPER -->
+      <div class="table-scroll-wrap">
+        <table class="unified-table" style="min-width: 1050px; width: 100%; table-layout: fixed;">
+          <thead>
+            <tr>
+              <th style="width: 9.5%; min-width: 95px; text-align: left; padding-left: 10px;">TANGGAL</th>
+              <th style="width: 10%; min-width: 100px; text-align: center;">KATEGORI</th>
+              <th style="width: 13%; min-width: 125px; text-align: left; padding-left: 8px;">NO SURAT JALAN</th>
+              <th style="width: 5.5%; min-width: 55px; text-align: center;">FOTO</th>
+              <th style="width: 12%; min-width: 115px; text-align: left; padding-left: 8px;">KODE PRODUKSI</th>
+              <th style="width: 11%; min-width: 105px; text-align: left; padding-left: 8px;">WARNA</th>
+              <th style="width: 6%; min-width: 55px; text-align: center;">SIZE</th>
+              <th style="width: 6%; min-width: 55px; text-align: center;">QTY</th>
+              <th style="width: 14%; min-width: 130px; text-align: left; padding-left: 8px;">CATATAN / KET</th>
+              <th style="width: 6.5%; min-width: 75px; text-align: left; padding-left: 8px;">OPERATOR</th>
+              <th style="width: 6.5%; min-width: 75px; text-align: center;">AKSI</th>
+            </tr>
+          </thead>
+          <tbody id="penerimaanTableBody">
+            <tr>
+              <td colspan="11" style="text-align: center; padding: 35px; color: var(--text-muted); font-style: italic;">
+                ⏳ Memuat riwayat penerimaan barang dari Supabase...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PAGINATION FOOTER -->
+      <div style="padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); font-size: 11.5px; background: var(--bg-surface);">
+        <div id="penerimaanPaginationInfo" style="color: var(--text-muted); font-weight: 600;">
+          Menampilkan 0 data
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button id="btnPenerimaanPrev" class="btn btn-secondary" style="height: 28px; padding: 0 10px; font-size: 11px;" onclick="changePenerimaanPage(-1)">◀ PREV</button>
+          <span id="penerimaanPageIndicator" style="font-weight: 700; color: var(--text); padding: 0 6px;">1 / 1</span>
+          <button id="btnPenerimaanNext" class="btn btn-secondary" style="height: 28px; padding: 0 10px; font-size: 11px;" onclick="changePenerimaanPage(1)">NEXT ▶</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</section>
+
+<!-- ========================================================
+     MODAL EDIT DATA PENERIMAAN (PER SURAT JALAN / BATCH)
+     ======================================================== -->
+<div id="modalEditPenerimaan" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 14px;">
+  <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); max-width: 960px; width: 96%; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow); display: flex; flex-direction: column;">
+    
+    <!-- MODAL HEADER -->
+    <div style="padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); position: sticky; top: 0; z-index: 10;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 16px;">✏️</span>
+        <div>
+          <div style="font-size: 13.5px; font-weight: 800; color: var(--text);">EDIT PENERIMAAN (PER SURAT JALAN)</div>
+          <div style="font-size: 11px; color: var(--text-muted);">Edit seluruh informasi kedatangan barang dan semua item dalam surat jalan ini</div>
+        </div>
+      </div>
+      <button type="button" onclick="closeEditPenerimaanModal()" style="background: transparent; border: none; font-size: 18px; color: var(--text-muted); cursor: pointer; padding: 4px 8px;">✕</button>
+    </div>
+
+    <!-- MODAL BODY -->
+    <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 14px;">
+      <input type="hidden" id="editPenerimaanOrigSJ">
+
+      <!-- 1. HEADER PENERIMAAN -->
+      <div style="background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px;">
+        <div style="font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+          📋 Informasi Header Penerimaan
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+          <div>
+            <label class="form-compact-label">KATEGORI PRODUKSI <span style="color: var(--danger);">*</span></label>
+            <select id="editInKategori" class="search-input compact-input" style="width: 100%; cursor: pointer; font-weight: 700;">
+              <option value="Lokal CMT">🏭 Lokal CMT</option>
+              <option value="Kargo">🚚 Kargo</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-compact-label">TANGGAL TERIMA <span style="color: var(--danger);">*</span></label>
+            <input type="date" id="editInTanggal" class="search-input compact-input" style="width: 100%;">
+          </div>
+          <div>
+            <label class="form-compact-label">NO SURAT JALAN / RESI <span style="color: var(--danger);">*</span></label>
+            <input type="text" id="editInSuratJalan" class="search-input compact-input" style="width: 100%; font-weight: 800; text-transform: uppercase;">
+          </div>
+          <div>
+            <label class="form-compact-label">CATATAN UMUM PENERIMAAN</label>
+            <input type="text" id="editInCatatanGlobal" class="search-input compact-input" placeholder="Catatan penerimaan..." style="width: 100%;">
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. DAFTAR ITEM PRODUK (BATCH) -->
+      <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
+        <div style="padding: 10px 14px; background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div style="font-size: 11.5px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 6px;">
+            <span>📦</span> DAFTAR ITEM PRODUK (<span id="editBatchCountBadge">0 Item</span>)
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="tambahItemEditBatch()" style="height: 28px; padding: 0 10px; font-size: 11px; font-weight: 700;">
+            ➕ TAMBAH ITEM PRODUK
+          </button>
+        </div>
+
+        <div style="overflow-x: auto; max-height: 48vh;">
+          <table class="unified-table" style="min-width: 780px; width: 100%; table-layout: fixed;">
+            <thead>
+              <tr>
+                <th style="width: 65px; text-align: center;">FOTO</th>
+                <th style="width: 150px; text-align: left; padding-left: 8px;">KODE PRODUKSI <span style="color:var(--danger)">*</span></th>
+                <th style="width: 130px; text-align: left; padding-left: 8px;">WARNA</th>
+                <th style="width: 90px; text-align: center;">SIZE</th>
+                <th style="width: 80px; text-align: center;">QTY (PCS)</th>
+                <th style="text-align: left; padding-left: 8px;">CATATAN ITEM</th>
+                <th style="width: 48px; text-align: center;">AKSI</th>
+              </tr>
+            </thead>
+            <tbody id="editBatchTableBody">
+              <!-- Dihasilkan secara dinamis oleh renderEditBatchItemsTable() -->
+            </tbody>
+          </table>
+        </div>
+
+        <div style="padding: 8px 14px; background: var(--card-alt); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" class="btn btn-secondary" onclick="tambahItemEditBatch()" style="height: 28px; font-size: 10.5px; padding: 0 10px;">
+            ➕ Tambah Baris
+          </button>
+          <div id="editBatchLiveSummary" style="font-size: 11.5px; font-weight: 800; color: var(--text);">
+            Total: 0 Item &bull; 0 Pcs
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MODAL FOOTER -->
+    <div style="padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; background: var(--card-alt); border-top: 1px solid var(--border); position: sticky; bottom: 0; z-index: 10;">
+      <button type="button" class="btn btn-secondary" onclick="hapusSeluruhPenerimaanDariEditModal()" style="height: 34px; font-size: 11px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+        🗑️ HAPUS SURAT JALAN INI
+      </button>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-secondary" onclick="closeEditPenerimaanModal()" style="height: 34px; font-size: 11.5px;">BATAL</button>
+        <button type="button" id="btnSimpanEditPenerimaan" class="btn btn-primary" onclick="saveEditPenerimaan(this)" style="height: 34px; font-size: 11.5px; font-weight: 800;">
+          💾 SIMPAN SELURUH PENERIMAAN
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ========================================================
+     MODAL KONFIRMASI HAPUS PENERIMAAN
+     ======================================================== -->
+<div id="modalHapusPenerimaan" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
+  <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); max-width: 440px; width: 100%; box-shadow: var(--shadow); overflow: hidden;">
+    
+    <div style="padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(239, 68, 68, 0.08);">
+      <div style="font-size: 13px; font-weight: 800; color: var(--danger); display: flex; align-items: center; gap: 8px;">
+        <span>🗑️</span> KONFIRMASI HAPUS DATA
+      </div>
+      <button type="button" onclick="closeHapusPenerimaanModal()" style="background: transparent; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer;">✕</button>
+    </div>
+
+    <div style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-size: 12px; color: var(--text); line-height: 1.4;">
+        Apakah Anda yakin ingin menghapus data kedatangan barang berikut secara permanen?
+      </div>
+
+      <div id="hapusPenerimaanSummaryCard" style="background: var(--bg-surface); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 11.5px; line-height: 1.5;">
+        <!-- Dihasilkan dinamis -->
+      </div>
+
+      <div style="font-size: 11px; color: var(--text-muted); font-style: italic;">
+        ⚠️ Data yang dihapus tidak dapat dipulihkan kembali.
+      </div>
+    </div>
+
+    <div style="padding: 12px 18px; display: flex; justify-content: flex-end; gap: 8px; background: var(--card-alt); border-top: 1px solid var(--border);">
+      <button type="button" class="btn btn-secondary" onclick="closeHapusPenerimaanModal()" style="height: 34px; font-size: 11.5px;">BATAL</button>
+      <button type="button" id="btnKonfirmHapusPenerimaan" class="btn" onclick="eksekusiHapusPenerimaan(this)" style="height: 34px; font-size: 11.5px; font-weight: 800; background: var(--danger); color: #fff; border: none;">🗑️ YA, HAPUS PERMANEN</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ========================================================
+     MODAL LIGHTBOX PREVIEW FOTO LENGKAP
+     ======================================================== -->
+<div id="penerimaanLightboxModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;" onclick="closePhotoLightbox()">
+  <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); max-width: 600px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow);" onclick="event.stopPropagation()">
+    <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
+      <div style="font-size: 12.5px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px;">
+        <span>📸</span> <span id="lightboxTitle">Foto Produk</span>
+      </div>
+      <button onclick="closePhotoLightbox()" style="background: transparent; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer; padding: 0 4px;">✕</button>
+    </div>
+    <div style="padding: 14px; text-align: center; background: #0b0f17; flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center;">
+      <img id="lightboxImg" src="" alt="Foto Produk" style="max-width: 100%; max-height: 55vh; object-fit: contain; border-radius: var(--radius-sm);">
+    </div>
+    <div id="lightboxFooterInfo" style="padding: 10px 16px; background: var(--card-alt); border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+      <div id="lightboxDetails"></div>
+      <a id="lightboxDownloadBtn" href="#" download="foto_produksi.jpg" class="btn btn-secondary" style="height: 28px; font-size: 10.5px; padding: 0 10px;">💾 UNDUH</a>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================
+     MODAL WEBCAM LIVE CAPTURE (DESKTOP)
+     ======================================================== -->
+<div id="webcamCaptureModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+  <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); max-width: 480px; width: 100%; overflow: hidden; box-shadow: var(--shadow);">
+    <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
+      <div style="font-size: 12.5px; font-weight: 800; color: var(--text);">📷 KAMERA LIVE WEBCAM</div>
+      <button onclick="closeWebcamModal()" style="background: transparent; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer;">✕</button>
+    </div>
+    <div style="padding: 12px; background: #000; text-align: center;">
+      <video id="webcamVideoEl" autoplay playsinline style="width: 100%; max-height: 280px; object-fit: cover; border-radius: var(--radius-sm);"></video>
+    </div>
+    <div style="padding: 10px 16px; display: flex; justify-content: space-between; background: var(--card-alt); border-top: 1px solid var(--border);">
+      <button class="btn btn-secondary" onclick="closeWebcamModal()" style="height: 32px; font-size: 11px;">BATAL</button>
+      <button class="btn btn-primary" onclick="capturePhotoFromWebcam()" style="height: 32px; font-size: 11.5px; font-weight: 800;">📸 JEPRET FOTO</button>
+    </div>
+  </div>
+</div>
+
+<!-- STYLES KHUSUS MODUL PENERIMAAN (COMPACT & MODERN DESIGN) -->
+
+
+<!-- JAVASCRIPT LOGIC MODUL PENERIMAAN PRODUKSI -->
+
+
+<!-- HIDDEN INPUTS & DATALIST -->
+<input type="file" id="globalCameraFileInput" accept="image/*" capture="environment" style="display: none;" onchange="handleGlobalPhotoSelected(this)">
+<input type="file" id="globalGalleryFileInput" accept="image/*" style="display: none;" onchange="handleGlobalPhotoSelected(this)">
+
+<datalist id="sizeOptionsList">
+  <option value="XS"></option>
+  <option value="S"></option>
+  <option value="M"></option>
+  <option value="L"></option>
+  <option value="XL"></option>
+  <option value="XXL"></option>
+  <option value="3XL"></option>
+  <option value="ALL SIZE"></option>
+  <option value="FREE SIZE"></option>
+  <option value="Default"></option>
+</datalist>
+
+<!-- ========================================================
+     MODUL VIEW: FULFILLMENT REFILL & PICKING LIST (SPA)
+     FITUR: PERSISTENT PICKING LIST (2 TAB: ON-PROSES & SELESAI)
+     1 BUBBLE 1 CSV, INTERACTIVE CHECKLIST PICKING & ALOKASI RAK
+     ======================================================== -->
+<section id="view-fulfillment" class="spa-view" style="display: none;">
+  
+  <!-- SUB-NAV / SEGMENTED TABS & TOP TOOLBAR -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+    <div class="wms-segmented-tabs">
+      <button type="button" id="tabBtnFulfillmentProses" class="wms-segmented-tab-btn active" onclick="switchFulfillmentTab('proses')">
+        🟡 PICKING ON PROSES <span id="badgeCountProses" class="tab-count-badge">0</span>
+      </button>
+      <button type="button" id="tabBtnFulfillmentSelesai" class="wms-segmented-tab-btn" onclick="switchFulfillmentTab('selesai')">
+        🟢 SELESAI PICKING <span id="badgeCountSelesai" class="tab-count-badge">0</span>
+      </button>
+    </div>
+
+    <div style="display: flex; gap: 6px; align-items: center;">
+      <button class="btn btn-secondary" onclick="muatDataFulfillment(true)" style="height: 32px; padding: 0 10px; font-size: 11px;" title="Perbarui data Picking List dari database">
+        🔄 REFRESH
+      </button>
+      <button id="btnTopCetakSemua" class="btn btn-primary" onclick="cetakSemuaSuratJalanAktif()" style="display: none; height: 32px; padding: 0 12px; font-size: 11px; font-weight: 700;" title="Cetak seluruh Surat Jalan aktif ke PDF">
+        🖨️ CETAK SEMUA SJ
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       TAB 1: PICKING ON PROSES
+       ======================================================== -->
+  <div id="fulfillmentTabProses">
+    
+    <!-- 1. COMPACT UPLOAD SECTION CARD -->
+    <div class="data-section-card" style="margin-bottom: 14px;">
+      <div class="data-section-header" style="padding: 10px 16px; background: var(--card-alt);">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 12.5px;">🚚 UPLOAD CSV TRANSFER ORDER (REFILL TOKO)</span>
+        </div>
+        <div class="section-badge-info" style="font-size: 11px;">
+          1 CSV = 1 Kartu Picking List
+        </div>
+      </div>
+
+      <div style="padding: 12px 16px;">
+        <!-- Compact Upload Toolbar -->
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          
+          <!-- File Input -->
+          <div style="flex: 1; min-width: 240px;">
+            <input type="file" id="csvFileInput" multiple accept=".csv" class="search-input compact-input" style="width: 100%; cursor: pointer;" onchange="handleCsvFileSelected(this)">
+          </div>
+
+          <!-- Checkbox Opsi Cetak Langsung -->
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text); cursor: pointer; user-select: none;">
+              <input type="checkbox" id="chkDirectPrint" checked style="width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer;">
+              <span>Langsung cetak PDF Surat Jalan</span>
+            </label>
+          </div>
+
+          <!-- Tombol Proses Compact -->
+          <div style="display: flex; gap: 6px;">
+            <button id="btnProcessFulfillment" type="button" onclick="handleProcessFulfillment()" class="btn btn-primary" style="height: 32px; font-size: 11.5px; font-weight: 700; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px;" title="Proses CSV dan buat Picking List">
+              <span id="processIcon">⚡</span>
+              <span id="processLabel">PROSES CSV</span>
+            </button>
+            
+            <button type="button" onclick="resetFulfillmentUpload()" class="btn btn-secondary" style="height: 32px; font-size: 11px; padding: 0 10px;" title="Kosongkan input file">
+              RESET
+            </button>
+          </div>
+
+        </div>
+
+        <div id="fulfillmentToast" style="display: none; margin-top: 10px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 11.5px; font-weight: 600;"></div>
+      </div>
+    </div>
+
+    <!-- 2. DAFTAR BUBBLE PICKING ON PROSES -->
+    <div class="data-section-card">
+      <div class="data-section-header" style="padding: 10px 16px;">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 13px;">📋 DAFTAR PICKING LIST AKTIF (ON PROSES)</span>
+        </div>
+        <div id="fulfillmentProsesSummaryBadge" class="section-badge-info" style="font-size: 11px;">
+          Memuat data...
+        </div>
+      </div>
+
+      <!-- CONTAINER BUBBLE ON PROSES -->
+      <div id="fulfillmentOnProcessContainer" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="text-align: center; padding: 35px 20px; color: var(--text-muted); font-style: italic;">
+          ⏳ Mengambil data Picking List dari database WMS...
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ========================================================
+       TAB 2: SELESAI PICKING
+       ======================================================== -->
+  <div id="fulfillmentTabSelesai" style="display: none;">
+    
+    <div class="data-section-card">
+      <div class="data-section-header" style="padding: 10px 16px;">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 13px;">✅ RIWAYAT PICKING LIST SELESAI</span>
+        </div>
+        <div id="fulfillmentSelesaiSummaryBadge" class="section-badge-info" style="font-size: 11px;">
+          0 Surat Jalan Selesai
+        </div>
+      </div>
+
+      <!-- Filter Toolbar Selesai -->
+      <div style="padding: 10px 16px; background: var(--card-alt); border-bottom: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <input type="text" id="searchFulfillmentSelesai" class="search-input compact-input" placeholder="🔍 Cari No SJ / Toko Tujuan..." style="width: 240px;" oninput="renderFulfillmentCompletedBubbles()">
+        <button class="btn btn-secondary" onclick="document.getElementById('searchFulfillmentSelesai').value=''; renderFulfillmentCompletedBubbles();" style="height: 32px; padding: 0 10px; font-size: 11px;">
+          RESET
+        </button>
+      </div>
+
+      <!-- CONTAINER BUBBLE SELESAI -->
+      <div id="fulfillmentCompletedContainer" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="text-align: center; padding: 35px 20px; color: var(--text-muted); font-style: italic;">
+          Belum ada Picking List yang diselesaikan.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- CSS KHUSUS BUBBLE PICKING LIST & CHECKLIST -->
+
+
+<!-- JAVASCRIPT LOGIC FULFILLMENT REFILL -->
+
+<!-- ========================================================
+     MODUL VIEW: STOCK OPNAME & ADJUSTMENT (SPA UNIFIED MASTER DATA)
+     ======================================================== -->
+<section id="view-stockopname" class="spa-view" style="display: none;">
+  
+  <div class="data-section-card" style="margin-bottom: 20px;">
+    
+    <!-- HEADER -->
+    <div class="data-section-header" style="padding: 10px 16px;">
+      <div class="section-title-wrap">
+        <span class="section-heading" style="font-size: 12.5px;">🔍 STOCK OPNAME &amp; ADJUSTMENT</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span id="soMasterDataStatus" style="font-size: 11px; color: var(--text-muted); font-weight: 600;">⚡ Master Data Terhubung</span>
+        <button class="btn btn-primary" id="btnSoRefreshMaster" onclick="refreshStockOpnameMaster(this)" style="height: 30px; padding: 0 10px; font-size: 11px;" title="Tarik data master katalog terbaru dari server">🔄 REFRESH</button>
+      </div>
+    </div>
+
+    <div style="padding: 16px;">
+      <!-- TABS BAR (STANDARDIZED COMPACT SEGMENTED PILLS) -->
+      <div class="wms-segmented-tabs" style="margin-bottom: 16px; width: 100%;">
+        <button type="button" class="wms-segmented-tab-btn so-tab-btn active" data-tab="opname" onclick="switchSoTab('opname', this)">📝 INPUT OPNAME</button>
+        <button type="button" class="wms-segmented-tab-btn so-tab-btn" data-tab="manual" onclick="switchSoTab('manual', this)">⚙️ ADJUSTMENT</button>
+        <button type="button" class="wms-segmented-tab-btn so-tab-btn" data-tab="approval" onclick="switchSoTab('approval', this)">
+          ✅ APPROVAL <span id="badgePending" style="font-weight: 800; color: var(--danger);"></span>
+        </button>
+      </div>
+
+      <!-- ========================================================
+           TAB 1: INPUT OPNAME
+           ======================================================== -->
+      <div class="so-tab-content active" id="so-tab-opname">
+        <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 12px;" class="so-grid-3">
+          
+          <!-- SEARCH SKU AUTOCOMPLETE COMBOBOX -->
+          <div style="position: relative;" id="wrapOpnameSku">
+            <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+              SKU / NAMA PRODUK <span style="color: var(--danger);">*</span>
+            </label>
+            <input type="text" id="opnameSku" class="search-input" placeholder="Ketik SKU atau Nama Produk..." autocomplete="off" style="height: 38px;">
+            <div id="opnameSkuPanel" class="combo-panel" style="position: absolute; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow); z-index: 120; display: none;"></div>
+            <div id="opnameProductInfo" style="font-size: 11.5px; font-weight: 700; color: var(--primary); margin-top: 5px; display: none; line-height: 1.3;"></div>
+          </div>
+
+          <!-- LOKASI -->
+          <div>
+            <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+              LOKASI FISIK <span style="color: var(--danger);">*</span>
+            </label>
+            <input list="listLokasiSo" id="opnameLokasi" class="search-input" placeholder="Ketik / pilih lokasi..." style="height: 38px;">
+            <datalist id="listLokasiSo"></datalist>
+          </div>
+
+          <!-- QTY FISIK -->
+          <div>
+            <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+              QTY FISIK (HASIL HITUNG) <span style="color: var(--danger);">*</span>
+            </label>
+            <input type="number" id="opnameQty" class="search-input" placeholder="0" style="height: 38px;">
+          </div>
+        </div>
+
+        <div style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <span id="qtySistemBadge" class="summary-badge" style="font-size: 11.5px; padding: 4px 10px;">Qty sistem: -</span>
+          <button class="btn btn-success" onclick="tambahKeKeranjang()" style="height: 38px; font-size: 12px; padding: 0 16px;">
+            + TAMBAH KE SESI
+          </button>
+        </div>
+
+        <!-- DAFTAR ITEM KERANJANG OPNAME -->
+        <div style="font-size: 12px; font-weight: 700; color: var(--primary); text-transform: uppercase; margin: 18px 0 8px;">
+          📦 ITEM DALAM SESI INI
+        </div>
+        <div id="keranjangList" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 24px; font-style: italic; background: var(--card-alt); border: 1px dashed var(--border); border-radius: var(--radius-md);">
+            BELUM ADA ITEM DITAMBAHKAN KE SESI INI
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btnSubmitSesiOpname" style="margin-top: 16px; height: 42px; font-size: 13px; width: 100%;" onclick="submitSesi(this)">
+          🚀 SUBMIT SESI OPNAME
+        </button>
+
+        <!-- FITUR MASSAL CSV OPNAME -->
+        <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <div style="font-size: 12px; font-weight: 700; color: var(--text); text-transform: uppercase; margin-bottom: 4px;">
+            📁 UPLOAD MASSAL (CSV)
+          </div>
+          <p style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 14px; line-height: 1.4;">
+            Download template atau export data stok saat ini, isi kolom Qty Fisik, lalu upload ke dalam sesi ini.
+          </p>
+
+          <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
+            <button class="btn btn-secondary" style="font-size: 11.5px; height: 34px;" onclick="downloadTemplateCsv()">📥 DOWNLOAD TEMPLATE KOSONG</button>
+            <button class="btn btn-secondary" id="btnExportCsvSo" style="font-size: 11.5px; height: 34px;" onclick="exportStockCsv(this)">📊 EXPORT DATA STOK (SISTEM)</button>
+          </div>
+
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <input type="file" id="csvFileInput" accept=".csv" class="search-input" style="flex: 1; min-width: 220px; height: 38px; padding-top: 8px;">
+            <button class="btn btn-success" id="btnImportCsvSo" style="font-size: 12px; height: 38px; padding: 0 18px;" onclick="importCsv(this)">📤 UPLOAD &amp; TAMBAH</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================
+           TAB 2: ADJUSTMENT MANUAL
+           ======================================================== -->
+      <div class="so-tab-content" id="so-tab-manual" style="display: none;">
+        <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 12px;" class="so-grid-3">
+          
+          <!-- SEARCH SKU AUTOCOMPLETE COMBOBOX (MANUAL) -->
+          <div style="position: relative;" id="wrapManualSku">
+            <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+              SKU / NAMA PRODUK <span style="color: var(--danger);">*</span>
+            </label>
+            <input type="text" id="manualSku" class="search-input" placeholder="Ketik SKU atau Nama Produk..." autocomplete="off" style="height: 38px;">
+            <div id="manualSkuPanel" class="combo-panel" style="position: absolute; top: calc(100% + 2px); left: 0; right: 0; max-height: 260px; overflow-y: auto; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow); z-index: 120; display: none;"></div>
+            <div id="manualProductInfo" style="font-size: 11.5px; font-weight: 700; color: var(--primary); margin-top: 5px; display: none; line-height: 1.3;"></div>
+          </div>
+
+          <!-- LOKASI -->
+          <div>
+            <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+              LOKASI FISIK <span style="color: var(--danger);">*</span>
+            </label>
+            <input list="listLokasiSo" id="manualLokasi" class="search-input" placeholder="Ketik / pilih lokasi..." style="height: 38px;">
+          </div>
+
+          <!-- DELTA QTY -->
+          <div>
+            <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+              QTY ADJUSTMENT (+/-) <span style="color: var(--danger);">*</span>
+            </label>
+            <input type="number" id="manualDelta" class="search-input" placeholder="misal 5 atau -3" style="height: 38px;">
+          </div>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+            ALASAN ADJUSTMENT <span style="color: var(--danger);">*</span>
+          </label>
+          <input type="text" id="manualAlasan" class="search-input" placeholder="Misal: barang rusak ditemukan saat opname / salah pencatatan" style="height: 38px;">
+        </div>
+
+        <div style="text-align: right; margin-bottom: 16px;">
+          <button class="btn btn-success" onclick="tambahKeKeranjangManual()" style="height: 38px; font-size: 12px; padding: 0 16px;">
+            + TAMBAH KE SESI
+          </button>
+        </div>
+
+        <!-- DAFTAR ITEM KERANJANG ADJUSTMENT MANUAL -->
+        <div style="font-size: 12px; font-weight: 700; color: var(--primary); text-transform: uppercase; margin: 18px 0 8px;">
+          ⚙️ ITEM DALAM SESI ADJUSTMENT INI
+        </div>
+        <div id="manualKeranjangList" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 24px; font-style: italic; background: var(--card-alt); border: 1px dashed var(--border); border-radius: var(--radius-md);">
+            BELUM ADA ITEM DITAMBAHKAN
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btnSubmitManualBulk" style="margin-top: 16px; height: 42px; font-size: 13px; width: 100%;" onclick="submitManualBulk(this)">
+          🚀 SUBMIT SEMUA ADJUSTMENT MANUAL
+        </button>
+
+        <!-- FITUR MASSAL CSV ADJUSTMENT MANUAL -->
+        <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <div style="font-size: 12px; font-weight: 700; color: var(--text); text-transform: uppercase; margin-bottom: 4px;">
+            📁 UPLOAD MASSAL ADJUSTMENT MANUAL (CSV)
+          </div>
+          <p style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 14px; line-height: 1.4;">
+            Download template, isi kolom SKU / Lokasi / Delta / Alasan, lalu upload ke dalam sesi adjustment ini.
+          </p>
+
+          <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
+            <button class="btn btn-secondary" style="font-size: 11.5px; height: 34px;" onclick="downloadTemplateManualCsv()">📥 DOWNLOAD TEMPLATE KOSONG</button>
+            <button class="btn btn-secondary" id="btnExportStockManual" style="font-size: 11.5px; height: 34px;" onclick="exportStockCsvManual(this)">📊 EXPORT DATA STOK (REFERENSI)</button>
+          </div>
+
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <input type="file" id="csvFileInputManual" accept=".csv" class="search-input" style="flex: 1; min-width: 220px; height: 38px; padding-top: 8px;">
+            <button class="btn btn-success" id="btnImportManualCsv" style="font-size: 12px; height: 38px; padding: 0 18px;" onclick="importCsvManual(this)">📤 UPLOAD &amp; TAMBAH</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================
+           TAB 3: APPROVAL
+           ======================================================== -->
+      <div class="so-tab-content" id="so-tab-approval" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+          <button class="btn btn-secondary" id="btnRefreshPending" style="height: 34px; font-size: 11.5px;" onclick="muatPending(this)">🔄 REFRESH PENDING</button>
+          <div style="display: flex; gap: 8px;">
+            <button id="btnApproveMassal" class="btn btn-success" style="height: 34px; font-size: 11.5px; padding: 0 14px;" onclick="prosesAksiMassal('approve', this)">✓ APPROVE TERPILIH</button>
+            <button id="btnRejectMassal" class="btn btn-danger" style="height: 34px; font-size: 11.5px; padding: 0 14px;" onclick="prosesAksiMassal('reject', this)">✕ REJECT TERPILIH</button>
+          </div>
+        </div>
+
+        <div id="pendingList">
+          <div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 30px; font-style: italic;">
+            Memuat data pending dari sheet Stock Opname...
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================
+     MODUL VIEW: LOG PRODUK (SPA)
+     ======================================================== -->
+<section id="view-logproduk" class="spa-view" style="display: none;">
+  <div class="data-section-card" style="margin-bottom: 20px;">
+    <div class="data-section-header">
+      <div class="section-title-wrap">
+        <span class="section-heading">📜 LOG HISTORI PRODUK &amp; SCAN</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="logProdukSearchInput" class="search-input" style="width: 240px; height: 36px;" placeholder="Cari SKU / Produk / Invoice..." oninput="handleLogProdukSearch()">
+        <button class="btn btn-primary" onclick="muatDataLogProduk(true)" title="Tarik data terbaru dari server">🔄 REFRESH</button>
+      </div>
+    </div>
+
+    <!-- FILTER TOOLBAR -->
+    <div style="padding: 14px 20px; background: var(--card-alt); border-bottom: 1px solid var(--border); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+      <!-- Type Filter -->
+      <select id="filterLogType" class="tool-select" onchange="handleLogProdukFilterChange()">
+        <option value="">SEMUA TYPE (IN/OUT)</option>
+        <option value="IN">TYPE IN (MASUK)</option>
+        <option value="OUT">TYPE OUT (KELUAR)</option>
+      </select>
+
+      <!-- Area Filter -->
+      <select id="filterLogArea" class="tool-select" onchange="handleLogProdukFilterChange()">
+        <option value="">SEMUA AREA</option>
+        <option value="MAP">MAP (WAREHOUSE)</option>
+        <option value="LIVE">LIVE / STUDIO</option>
+        <option value="PERMAK">PERMAK / DEFECT</option>
+      </select>
+
+      <div style="font-size: 11.5px; color: var(--text-muted); margin-left: auto;" id="logProdukSummaryCount">
+        Memuat data log...
+      </div>
+    </div>
+
+    <!-- TABLE DATA -->
+    <div class="table-scroll-wrap">
+      <table class="unified-table" style="min-width: 1000px;">
+        <thead>
+          <tr>
+            <th style="width: 130px; text-align: left; padding-left: 12px;">TANGGAL</th>
+            <th style="width: 70px; text-align: center;">TYPE</th>
+            <th style="width: 140px; text-align: left; padding-left: 10px;">INVOICE / REF</th>
+            <th style="width: 140px; text-align: left; padding-left: 10px;">SKU</th>
+            <th style="text-align: left; padding-left: 12px;">NAMA PRODUK</th>
+            <th style="width: 60px; text-align: center;">SIZE</th>
+            <th style="width: 90px; text-align: center;">AREA</th>
+            <th style="width: 90px; text-align: center;">LOKASI</th>
+            <th style="width: 110px; text-align: left; padding-left: 10px;">OPERATOR</th>
+            <th style="text-align: left; padding-left: 10px;">KETERANGAN</th>
+          </tr>
+        </thead>
+        <tbody id="logProdukTableBody">
+          <tr><td colspan="10" style="text-align: center; padding: 30px; color: var(--text-muted);">Memuat riwayat log produk...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <div id="logProdukPaginationFooter" style="padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); font-size: 12px; background: var(--bg-surface);">
+      <div id="logProdukPaginationInfo" style="color: var(--text-muted); font-weight: 600;">SHOWING 0-0 OF 0 RECORDS</div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button id="btnLogPrev" class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 11.5px;" onclick="changeLogProdukPage(-1)">◀ PREV</button>
+        <span id="logPageIndicator" style="font-weight: 700; color: var(--text); padding: 0 8px;">1 / 1</span>
+        <button id="btnLogNext" class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 11.5px;" onclick="changeLogProdukPage(1)">NEXT ▶</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================
+     MODUL VIEW: LOG MUTASI (SPA)
+     ======================================================== -->
+<section id="view-logmutasi" class="spa-view" style="display: none;">
+  <div class="data-section-card" style="margin-bottom: 20px;">
+    <div class="data-section-header">
+      <div class="section-title-wrap">
+        <span class="section-heading">🔄 LOG MUTASI PERPINDAHAN STOK</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="logMutasiSearchInput" class="search-input" style="width: 240px; height: 36px;" placeholder="Cari SKU / Produk / User..." oninput="handleLogMutasiSearch()">
+        <button class="btn btn-primary" onclick="muatDataLogMutasi(true)" title="Tarik data terbaru dari server">🔄 REFRESH</button>
+      </div>
+    </div>
+
+    <!-- FILTER TOOLBAR -->
+    <div style="padding: 14px 20px; background: var(--card-alt); border-bottom: 1px solid var(--border); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+      <select id="filterMutasiType" class="tool-select" onchange="handleLogMutasiFilterChange()">
+        <option value="">SEMUA TIPE MUTASI</option>
+        <option value="MUTASI">MUTASI ANTAR RAK</option>
+        <option value="ADJUSTMENT">ADJUSTMENT</option>
+        <option value="OPNAME">STOCK OPNAME</option>
+      </select>
+
+      <div style="font-size: 11.5px; color: var(--text-muted); margin-left: auto;" id="logMutasiSummaryCount">
+        Memuat data mutasi...
+      </div>
+    </div>
+
+    <!-- TABLE DATA -->
+    <div class="table-scroll-wrap">
+      <table class="unified-table" style="min-width: 1000px;">
+        <thead>
+          <tr>
+            <th style="width: 130px; text-align: left; padding-left: 12px;">TANGGAL</th>
+            <th style="width: 100px; text-align: center;">TIPE</th>
+            <th style="width: 140px; text-align: left; padding-left: 10px;">SKU</th>
+            <th style="text-align: left; padding-left: 12px;">NAMA PRODUK</th>
+            <th style="width: 60px; text-align: center;">SIZE</th>
+            <th style="width: 100px; text-align: center;">DARI (ASAL)</th>
+            <th style="width: 100px; text-align: center;">KE (TUJUAN)</th>
+            <th style="width: 70px; text-align: center;">QTY</th>
+            <th style="width: 110px; text-align: left; padding-left: 10px;">OPERATOR</th>
+            <th style="text-align: left; padding-left: 10px;">KETERANGAN</th>
+          </tr>
+        </thead>
+        <tbody id="logMutasiTableBody">
+          <tr><td colspan="10" style="text-align: center; padding: 30px; color: var(--text-muted);">Memuat riwayat log mutasi...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <div id="logMutasiPaginationFooter" style="padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); font-size: 12px; background: var(--bg-surface);">
+      <div id="logMutasiPaginationInfo" style="color: var(--text-muted); font-weight: 600;">SHOWING 0-0 OF 0 RECORDS</div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button id="btnMutasiPrev" class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 11.5px;" onclick="changeLogMutasiPage(-1)">◀ PREV</button>
+        <span id="logMutasiPageIndicator" style="font-weight: 700; color: var(--text); padding: 0 8px;">1 / 1</span>
+        <button id="btnMutasiNext" class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 11.5px;" onclick="changeLogMutasiPage(1)">NEXT ▶</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================
+     MODUL VIEW: MONITORING & KLASIFIKASI (SPA)
+     ======================================================== -->
+<section id="view-klasifikasi" class="spa-view" style="display: none;">
+  <!-- HEADER & FILTER -->
+  <div class="data-section-card" style="margin-bottom: 20px;">
+    <div class="data-section-header">
+      <div class="section-title-wrap">
+        <span class="section-heading">📊 MONITORING &amp; KLASIFIKASI PRODUK</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="klasifikasiSearchInput" class="search-input" style="width: 220px; height: 36px;" placeholder="Cari SKU / Produk / Lokasi..." oninput="handleKlasifikasiSearch()">
+        <button class="btn btn-primary" onclick="muatDataKlasifikasi(true)" title="Tarik data terbaru dari server">🔄 REFRESH</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI ROW: 5 KATEGORI PRODUK UTAMA -->
+  <div class="kpi-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 20px;" id="klasifikasiKpiGrid">
+    <!-- A. DRESS -->
+    <div class="kpi-card c-primary" id="card-A" onclick="toggleCategoryFilter('A')" style="cursor: pointer;">
+      <div class="kpi-info">
+        <span class="kpi-title">A. DRESS &amp; SET</span>
+        <span class="kpi-value" id="qty-A">0</span>
+        <span class="kpi-desc"><b id="sku-A">0</b> SKU · <span id="pct-A">0%</span></span>
+      </div>
+      <div class="kpi-icon-wrap">👗</div>
+    </div>
+
+    <!-- B. BOTTOM -->
+    <div class="kpi-card c-info" id="card-B" onclick="toggleCategoryFilter('B')" style="cursor: pointer;">
+      <div class="kpi-info">
+        <span class="kpi-title">B. BOTTOM</span>
+        <span class="kpi-value" id="qty-B">0</span>
+        <span class="kpi-desc"><b id="sku-B">0</b> SKU · <span id="pct-B">0%</span></span>
+      </div>
+      <div class="kpi-icon-wrap">👖</div>
+    </div>
+
+    <!-- C. TOP -->
+    <div class="kpi-card c-success" id="card-C" onclick="toggleCategoryFilter('C')" style="cursor: pointer;">
+      <div class="kpi-info">
+        <span class="kpi-title">C. TOP &amp; OUTER</span>
+        <span class="kpi-value" id="qty-C">0</span>
+        <span class="kpi-desc"><b id="sku-C">0</b> SKU · <span id="pct-C">0%</span></span>
+      </div>
+      <div class="kpi-icon-wrap">👚</div>
+    </div>
+
+    <!-- D. SALE -->
+    <div class="kpi-card c-warning" id="card-D" onclick="toggleCategoryFilter('D')" style="cursor: pointer;">
+      <div class="kpi-info">
+        <span class="kpi-title">D. SALE &amp; SC</span>
+        <span class="kpi-value" id="qty-D">0</span>
+        <span class="kpi-desc"><b id="sku-D">0</b> SKU · <span id="pct-D">0%</span></span>
+      </div>
+      <div class="kpi-icon-wrap">🏷️</div>
+    </div>
+
+    <!-- E. PACKAGING -->
+    <div class="kpi-card" id="card-E" onclick="toggleCategoryFilter('E')" style="cursor: pointer;">
+      <div class="kpi-info">
+        <span class="kpi-title">PACKAGING &amp; ACC</span>
+        <span class="kpi-value" id="qty-E">0</span>
+        <span class="kpi-desc"><b id="sku-E">0</b> SKU · <span id="pct-E">0%</span></span>
+      </div>
+      <div class="kpi-icon-wrap">📦</div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: 2-COLUMN SPLIT (DONUT CHART & PROSES LANJUTAN) -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;" class="klasifikasi-grid-2">
+    <!-- KIRI: DONUT CHART PROPORSI STOK -->
+    <div class="data-section-card">
+      <div class="data-section-header">
+        <span class="section-heading">PROPORSI STOK KATEGORI</span>
+        <span id="totalPcsBadge" class="section-badge-info" style="color: var(--primary); font-weight: 700;">0 Pcs</span>
+      </div>
+      <div style="padding: 16px; display: flex; align-items: center; justify-content: space-around; gap: 16px; flex-wrap: wrap;">
+        <div style="width: 140px; height: 140px; position: relative;">
+          <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border-subtle)" stroke-width="4.5" />
+            <path id="donut-A" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#f59e0b" stroke-width="4.5" stroke-dasharray="0, 100" />
+            <path id="donut-B" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#3b82f6" stroke-width="4.5" stroke-dasharray="0, 100" />
+            <path id="donut-C" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#10b981" stroke-width="4.5" stroke-dasharray="0, 100" />
+            <path id="donut-D" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ef4444" stroke-width="4.5" stroke-dasharray="0, 100" />
+          </svg>
+          <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+            <div id="donutTotalCount" style="font-size: 16px; font-weight: 800; color: var(--text);">0</div>
+            <div style="font-size: 9px; color: var(--text-muted); font-weight: 700;">TOTAL SKU</div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11.5px;">
+          <div><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#f59e0b; margin-right:6px;"></span>Dress: <b id="leg-val-A" style="color:var(--text);">0%</b></div>
+          <div><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#3b82f6; margin-right:6px;"></span>Bottom: <b id="leg-val-B" style="color:var(--text);">0%</b></div>
+          <div><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#10b981; margin-right:6px;"></span>Top: <b id="leg-val-C" style="color:var(--text);">0%</b></div>
+          <div><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#ef4444; margin-right:6px;"></span>Sale/SC: <b id="leg-val-D" style="color:var(--text);">0%</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KANAN: ANTREAN PROSES LANJUTAN (CUCI / PERMAK / DEFECT) -->
+    <div class="data-section-card">
+      <div class="data-section-header">
+        <span class="section-heading">ANTREAN PROSES LANJUTAN</span>
+        <span id="procHeaderBadge" class="section-badge-info" style="color: var(--danger); font-weight: 700;">0 Pcs</span>
+      </div>
+      <div style="padding: 14px;">
+        <div style="display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto;">
+          <button class="btn btn-secondary proc-btn active" style="height: 30px; font-size: 10.5px; padding: 0 10px;" onclick="setProcessTab('ALL', this)">Semua (<span id="cnt-all">0</span>)</button>
+          <button class="btn btn-secondary proc-btn" style="height: 30px; font-size: 10.5px; padding: 0 10px;" onclick="setProcessTab('CUCI', this)">🧼 Cuci (<span id="cnt-cuci">0</span>)</button>
+          <button class="btn btn-secondary proc-btn" style="height: 30px; font-size: 10.5px; padding: 0 10px;" onclick="setProcessTab('PERMAK', this)">🪡 Permak (<span id="cnt-permak">0</span>)</button>
+          <button class="btn btn-secondary proc-btn" style="height: 30px; font-size: 10.5px; padding: 0 10px;" onclick="setProcessTab('DEFECT', this)">⚠️ Defect (<span id="cnt-defect">0</span>)</button>
+        </div>
+        <div id="processListContainer" style="max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+          <div style="text-align: center; color: var(--text-muted); font-size: 11px; padding: 15px;">Memuat antrean...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: RAK LOKASI GUDANG -->
+  <div class="data-section-card" style="margin-bottom: 20px;">
+    <div class="data-section-header">
+      <span class="section-heading">📍 MONITORING LOKASI RAK GUDANG</span>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <input type="text" id="locSearchInput" placeholder="Filter rak..." class="search-input" style="width: 140px; height: 32px; font-size: 11px;" oninput="renderLokasiCards()">
+        <span id="locTotalBadge" class="section-badge-info">0 Lokasi</span>
+      </div>
+    </div>
+    <div id="locGridContainer" style="padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto;">
+      <div style="color: var(--text-muted); font-size: 11px;">Memuat lokasi...</div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: DETAIL TABLE VIEW -->
+  <div class="data-section-card">
+    <div class="data-section-header">
+      <div>
+        <span class="section-heading">DAFTAR RINCI PRODUK TERKLASIFIKASI</span>
+        <div id="tableFilterStatus" style="font-size: 11px; color: var(--text-muted); font-weight: 500;">Menampilkan seluruh data produk</div>
+      </div>
+      <span id="tableCountBadge" class="section-badge-info">0 Produk</span>
+    </div>
+
+    <div class="table-scroll-wrap">
+      <table class="unified-table" style="min-width: 900px;">
+        <thead>
+          <tr>
+            <th style="width: 120px; text-align: left; padding-left: 12px;">KATEGORI</th>
+            <th style="text-align: left; padding-left: 12px;">PRODUK</th>
+            <th style="width: 60px; text-align: center;">SIZE</th>
+            <th style="width: 140px; text-align: left; padding-left: 10px;">CODE / SKU</th>
+            <th style="text-align: left; padding-left: 10px;">LOKASI FISIK RAK</th>
+            <th style="width: 90px; text-align: center;">FISIK MAP</th>
+            <th style="width: 90px; text-align: center;">DP MAP</th>
+            <th style="width: 90px; text-align: center;">TOTAL FISIK</th>
+          </tr>
+        </thead>
+        <tbody id="detailTableBody">
+          <tr><td colspan="8" style="text-align: center; padding: 30px; color: var(--text-muted);">Memuat data produk...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="loadMoreSection" style="text-align: center; padding: 14px; display: none; border-top: 1px solid var(--border-subtle);">
+      <button class="btn btn-secondary" onclick="loadMoreKlasifikasi()" style="font-size: 12px; padding: 6px 20px;">
+        ⬇️ Tampilkan Lebih Banyak
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================
+     MODUL VIEW: UPDATE DATABASE & MASTER KATALOG (SPA)
+     ARSITEKTUR: SUPABASE FIRST (KILAT 1s) + GOOGLE SHEETS MIRROR
+     MENDUKUNG UPLOAD 2 FILE ATAU LEBIH SEKALIGUS (DESKTOP & SELULER)
+     ======================================================== -->
+<section id="view-updatedatabase" class="spa-view" style="display: none;">
+  <div class="data-section-card" style="max-width: 850px; margin: 0 auto 20px;">
+    
+    <!-- HEADER -->
+    <div class="data-section-header">
+      <div class="section-title-wrap">
+        <span class="section-heading">🗄️ UPDATE DATABASE &amp; MASTER KATALOG</span>
+      </div>
+      <button class="btn btn-secondary" id="btnRefreshDbInfo" onclick="muatInfoDatabase(this)" title="Tarik info ringkasan database terbaru">
+        🔄 REFRESH INFO
+      </button>
+    </div>
+
+    <div style="padding: 22px;">
+      
+      <!-- STATUS INFO DATABASE -->
+      <div style="background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">STATUS CLOUD SUPABASE &amp; SPREADSHEET</div>
+          <div id="dbLastUpdateText" style="font-size: 15px; font-weight: 800; color: var(--text); margin-top: 4px;">Memuat ringkasan database...</div>
+        </div>
+        <div>
+          <span id="dbTotalRecordsBadge" class="summary-badge" style="font-size: 12px; padding: 6px 14px; font-weight: 800;">- Records</span>
+        </div>
+      </div>
+
+      <!-- FILE UPLOAD DROPZONE -->
+      <div style="border: 2px dashed var(--border); border-radius: var(--radius-md); padding: 24px 18px; text-align: center; margin-bottom: 20px; background: var(--bg-surface);">
+        <div style="font-size: 36px; margin-bottom: 8px;">⚡</div>
+        <div style="font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 6px;">
+          UNGGAH FILE CSV (SUPABASE FAST-ENGINE)
+        </div>
+        <div style="font-size: 11.5px; color: var(--text-muted); max-width: 520px; margin: 0 auto 16px; line-height: 1.4;">
+          Pilih <b>1 atau 2 file CSV sekaligus</b> (DealPOS Batch 1 &amp; 2). Data akan langsung masuk ke <b>Supabase Cloud dalam 1-2 detik</b> lalu otomatis menyinkronkan Google Sheets di latar belakang.
+        </div>
+
+        <div style="max-width: 440px; margin: 0 auto 14px;">
+          <input type="file" id="dbCsvFileInput" accept=".csv" multiple class="search-input" style="width: 100%; height: 42px; padding: 8px 12px; cursor: pointer; background: var(--card-alt);" onchange="handleFilesSelected(this)">
+        </div>
+
+        <!-- PREVIEW FILE TERPILIH -->
+        <div id="dbFilesPreviewArea" style="display: none; max-width: 550px; margin: 0 auto 16px; text-align: left;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 6px;">
+            📄 FILE TERPILIH &amp; DATA TERBACA:
+          </div>
+          <div id="dbFilesList" style="display: flex; flex-direction: column; gap: 6px;"></div>
+          <div id="dbTotalSummaryBadge" style="margin-top: 10px; font-size: 12px; font-weight: 700; color: var(--success); background: var(--success-light); border: 1px solid var(--success); padding: 8px 12px; border-radius: var(--radius-sm);"></div>
+        </div>
+
+        <!-- REAL-TIME PROGRESS BAR -->
+        <div id="dbUploadProgressContainer" style="display: none; max-width: 550px; margin: 0 auto 16px; text-align: left;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 4px;">
+            <span id="dbProgressStatusText">Mengunggah ke Supabase...</span>
+            <span id="dbProgressPercentText">0%</span>
+          </div>
+          <div style="width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+            <div id="dbProgressBarFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #f59e0b, #10b981); transition: width 0.2s ease;"></div>
+          </div>
+        </div>
+
+        <div>
+          <button id="btnUploadDbCsv" class="btn btn-primary" onclick="startSupabaseFirstUpload(this)" style="font-size: 13px; padding: 0 28px; height: 42px;" disabled>
+            <span id="labelUploadDb">🚀 UNGGAH &amp; PERBARUI DATABASE</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- SINKRONISASI CACHE & MASTER -->
+      <div style="background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div style="max-width: 520px;">
+          <div style="font-size: 13px; font-weight: 700; color: var(--text);">REBUILD &amp; REVALIDASI STOK GUDANG</div>
+          <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.4;">
+            Rekalkulasi stok seluruh SKU dari riwayat mutasi dan sinkronkan status terbaru ke database.
+          </div>
+        </div>
+        <button id="btnRebuildStockDb" class="btn btn-secondary" onclick="handleRebuildStock(this)" style="font-size: 12px; padding: 0 18px; height: 38px;">
+          ⚡ REBUILD STOK LENGKAP
+        </button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================
+     MODUL VIEW: PENGATURAN & MANAJEMEN PENGGUNA (SPA)
+     KHUSUS HAK AKSES ADMINISTRATOR (ROLE ALL / ADMIN)
+     ======================================================== -->
+<section id="view-setting" class="spa-view" style="display: none;">
+  <div class="data-section-card" style="max-width: 1050px; margin: 0 auto 20px;">
+    
+    <!-- 1. HEADER SECTION -->
+    <div class="data-section-header" style="padding: 12px 18px;">
+      <div class="section-title-wrap">
+        <span class="section-heading" style="font-size: 13.5px;">⚙️ PENGATURAN &amp; MANAJEMEN PENGGUNA</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <button class="btn btn-secondary" id="btnRefreshUsers" onclick="muatDaftarPengguna(this)" style="height: 32px; font-size: 11px; padding: 0 12px;" title="Refresh data user">
+          🔄 REFRESH
+        </button>
+        <button class="btn btn-primary" onclick="bukaModalUser(false)" style="height: 32px; font-size: 11.5px; padding: 0 16px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+          ➕ TAMBAH USER BARU
+        </button>
+      </div>
+    </div>
+
+    <div style="padding: 16px 18px;">
+      
+      <!-- 2. INFO & STATS COMPACT BANNER -->
+      <div style="background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <div style="font-size: 10.5px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">MANAJEMEN HAK AKSES GUDANG</div>
+          <div style="font-size: 12.5px; font-weight: 700; color: var(--text); margin-top: 2px;">Kelola akun login, password, dan wewenang menu tim operasional WMS.</div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span id="badgeTotalUsers" class="section-badge-info" style="font-size: 11px; font-weight: 800; padding: 4px 12px;">
+            0 User Aktif
+          </span>
+        </div>
+      </div>
+
+      <!-- 3. SEARCH & INFO BAR -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; flex-wrap: wrap;">
+        <div style="position: relative; flex: 1; max-width: 320px;">
+          <input type="text" id="searchUserInput" class="search-input compact-input" placeholder="🔍 Cari username / role..." oninput="filterTabelUser()" style="width: 100%; height: 32px; font-size: 11.5px;">
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); font-style: italic;">
+          *Perubahan data user akan langsung aktif pada saat login berikutnya.
+        </div>
+      </div>
+
+      <!-- 4. TABEL DAFTAR PENGGUNA RAPI (UNIFIED TABLE) -->
+      <div style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow-x: auto; background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <table class="unified-table" id="tableUsersList" style="width: 100%; table-layout: fixed; min-width: 680px;">
+          <thead>
+            <tr>
+              <th style="width: 45px; text-align: center;">NO</th>
+              <th style="width: 25%; text-align: left; padding-left: 12px;">USERNAME</th>
+              <th style="width: 30%; text-align: left; padding-left: 8px;">HAK AKSES / ROLE</th>
+              <th style="width: 25%; text-align: left; padding-left: 8px;">PASSWORD</th>
+              <th style="width: 16%; text-align: center;">AKSI</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyUsersList">
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted); font-style: italic;">
+                ⏳ Memuat daftar pengguna...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================
+     MODAL FORM TAMBAH & EDIT USER
+     ======================================================== -->
+<div id="modalUserForm" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; align-items: center; padding: 16px;">
+  <div class="data-section-card" style="width: 100%; max-width: 460px; margin: auto; background: var(--bg-surface); border: 1px solid var(--border); box-shadow: 0 16px 40px rgba(0,0,0,0.4); border-radius: var(--radius-md); overflow: hidden;">
+    
+    <!-- MODAL HEADER -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--card-alt);">
+      <div style="font-size: 13px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px;">
+        <span id="modalUserTitleIcon">👤</span>
+        <span id="modalUserTitleText">TAMBAH PENGGUNA BARU</span>
+      </div>
+      <button type="button" onclick="tutupModalUser()" style="border: none; background: transparent; color: var(--text-muted); font-size: 18px; cursor: pointer; font-weight: bold; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">✕</button>
+    </div>
+
+    <!-- MODAL BODY -->
+    <div style="padding: 18px;">
+      <form id="formUserSetting" onsubmit="event.preventDefault(); submitFormUser();">
+        <input type="hidden" id="formUserIsEdit" value="0">
+        <input type="hidden" id="formUserOldUsername" value="">
+
+        <!-- USERNAME -->
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">
+            USERNAME <span style="color: var(--danger);">*</span>
+          </label>
+          <input type="text" id="formUserUsername" class="search-input compact-input" placeholder="Contoh: admin / operasional / sarah" style="width: 100%; height: 34px; font-size: 12px;" required>
+        </div>
+
+        <!-- PASSWORD -->
+        <div style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-muted);">PASSWORD <span style="color: var(--danger);">*</span></label>
+            <button type="button" onclick="toggleFormPasswordVisibility()" style="border: none; background: transparent; color: var(--primary); font-size: 11px; font-weight: 700; cursor: pointer;">👁️ LIHAT</button>
+          </div>
+          <input type="password" id="formUserPassword" class="search-input compact-input" placeholder="Ketik kata sandi..." style="width: 100%; height: 34px; font-size: 12px;" required>
+        </div>
+
+        <!-- HAK AKSES / ROLES (MULTI-SELECT CHECKBOX) -->
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">
+            PILIHAN HAK AKSES / ROLE <span style="color: var(--danger);">*</span>
+          </label>
+          
+          <div style="background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; color: var(--primary); cursor: pointer;">
+              <input type="checkbox" id="roleChkAll" onchange="handleRoleAllToggle(this)" style="cursor: pointer; width: 15px; height: 15px; accent-color: var(--primary);">
+              <span>👑 All (Administrator Penuh &amp; Semua Menu)</span>
+            </label>
+            <div style="height: 1px; background: var(--border); margin: 2px 0;"></div>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text); cursor: pointer;">
+              <input type="checkbox" class="role-sub-chk" value="Produk" onchange="handleRoleSubToggle()" style="cursor: pointer; width: 14px; height: 14px; accent-color: var(--primary);">
+              <span>📦 Produk (Inventory &amp; Master Stok)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text); cursor: pointer;">
+              <input type="checkbox" class="role-sub-chk" value="Peminjaman" onchange="handleRoleSubToggle()" style="cursor: pointer; width: 14px; height: 14px; accent-color: var(--primary);">
+              <span>📝 Peminjaman (Form SPS &amp; Stok Live)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text); cursor: pointer;">
+              <input type="checkbox" class="role-sub-chk" value="Fulfillment" onchange="handleRoleSubToggle()" style="cursor: pointer; width: 14px; height: 14px; accent-color: var(--primary);">
+              <span>🚚 Fulfillment (Refill &amp; Surat Jalan)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- BUTTONS -->
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn btn-secondary" onclick="tutupModalUser()" style="height: 34px; padding: 0 14px; font-size: 11.5px;">BATAL</button>
+          <button type="submit" id="btnSubmitUserForm" class="btn btn-primary" style="height: 34px; padding: 0 20px; font-size: 11.5px; font-weight: 800;">
+            <span id="labelSubmitUserForm">💾 SIMPAN PENGGUNA</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- CSS KHUSUS VIEW SETTING -->
+    </div>
+  </div>
+
+  <!-- CONTAINER FLOATING TOAST NOTIFIKASI SPA -->
+  <div id="wmsGlobalToastContainer" class="toast-container"></div>
+
+  <!-- ==================== JAVASCRIPT MODULES ==================== -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  
+  <!-- Module Scripts -->
+  <script src="js/modules/dashboard.js"></script>
+  <script src="js/modules/login.js"></script>
+  <script src="js/modules/peminjaman.js"></script>
+  <script src="js/modules/penerimaanproduksi.js"></script>
+  <script src="js/modules/fulfillment.js"></script>
+  <script src="js/modules/stockopname.js"></script>
+  <script src="js/modules/logproduk.js"></script>
+  <script src="js/modules/logmutasi.js"></script>
+  <script src="js/modules/klasifikasi.js"></script>
+  <script src="js/modules/updatedatabase.js"></script>
+  <script src="js/modules/setting.js"></script>
+
+  <script>
+    // Inisialisasi awal saat window ready
+    document.addEventListener('DOMContentLoaded', function() {
+      // Pindahkan injected views ke dalam .app-content jika ada
+      const appContent = document.querySelector('.app-content');
+      const injectedViewsContainer = document.getElementById('injectedSpaViews');
+      if (appContent && injectedViewsContainer) {
+        while (injectedViewsContainer.firstChild) {
+          appContent.appendChild(injectedViewsContainer.firstChild);
+        }
+        injectedViewsContainer.remove();
+      }
+      
+      // Cek sesi login
+      if (typeof checkAuthSession === 'function') {
+        checkAuthSession();
+      }
+    });
+  </script>
+</body>
+</html>

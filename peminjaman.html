@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peminjaman Sementara (SPS) - WMS Chocochips</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- External Libraries -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    #loginScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 99999;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #peminjamanAppWrapper {
+      display: none;
+      min-height: 100vh;
+      width: 100%;
+      flex-direction: column;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .peminjaman-standalone-header {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand-standalone {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .peminjaman-standalone-body {
+      padding: 16px;
+      flex: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <!-- ==================== LOGIN VIEW SCREEN ==================== -->
+  <div id="loginScreen">
+    <div class="login-wrap">
+    <div class="brand-header">
+      <div class="brand-title">WMS CHOCOCHIPS</div>
+      <p class="brand-subtitle">Warehouse Management System</p>
+    </div>
+
+    <form onsubmit="event.preventDefault(); doLogin();">
+      <div class="field">
+        <label for="username">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          Username
+        </label>
+        <input type="text" id="username" placeholder="Masukkan username..." autocomplete="username" autofocus required>
+      </div>
+
+      <div class="field">
+        <label for="password">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Password
+        </label>
+        <div class="password-wrap">
+          <input type="password" id="password" placeholder="Masukkan password..." autocomplete="current-password" required>
+          <button type="button" class="btn-toggle-pwd" id="btnTogglePwd" onclick="togglePasswordVisibility()" title="Lihat password">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="btnLogin">
+        <span id="loginLabel">Masuk</span>
+      </button>
+
+      <div class="toast" id="toast"></div>
+
+      <div class="theme-bar">
+        <button type="button" class="btn-theme" id="btnToggleTheme" onclick="toggleTheme()"></button>
+      </div>
+    </form>
+  </div>
+  </div>
+
+  <!-- ==================== PEMINJAMAN APP CONTAINER ==================== -->
+  <div id="peminjamanAppWrapper">
+    <header class="peminjaman-standalone-header">
+      <div class="brand-standalone">
+        <span style="color: var(--primary);">WMS</span> · PEMINJAMAN SEMENTARA (SPS)
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span id="userBadge" style="font-size: 11.5px; font-weight: 600; color: var(--text-muted);"></span>
+        <button type="button" class="btn-theme" onclick="toggleTheme()" style="height: 32px; padding: 0 10px; font-size: 11px;">🌓 Tema</button>
+        <button type="button" class="btn" onclick="logoutSession()" style="background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); font-size: 11px; height: 32px; width: auto; padding: 0 12px;">Logout</button>
+      </div>
+    </header>
+
+    <main class="peminjaman-standalone-body">
+      <!-- ========================================================
+     MODUL VIEW: PEMINJAMAN SEMENTARA SPS (SPA)
+     RESPONSIVE WEB SELULER / MOBILE & DESKTOP
+     DENGAN OPSI PILIHAN STOK STUDIO, SHOPEE & TIKTOK (DIVISI LIVE)
+     ======================================================== -->
+<section id="view-peminjaman" class="spa-view active" style="display: block;">
+
+  <!-- RESPONSIVE MOBILE TAB SWITCHER (<= 900px) -->
+  <div class="peminjaman-mobile-switcher wms-segmented-tabs" style="margin-bottom: 12px;">
+    <button type="button" id="mobileTabForm" class="wms-segmented-tab-btn active" onclick="switchPeminjamanMobileTab('form')">
+      📝 FORM PENGAJUAN
+    </button>
+    <button type="button" id="mobileTabStok" class="wms-segmented-tab-btn" onclick="switchPeminjamanMobileTab('stok')">
+      📍 STOK TERSEDIA (LIVE)
+    </button>
+  </div>
+
+  <!-- SPLIT 2-PANEL CONTAINER -->
+  <div class="peminjaman-split-container tab-form-active">
+    
+    <!-- KIRI: FORM PENGAJUAN PEMINJAMAN (SPS) -->
+    <div class="data-section-card" id="peminjamanPanelForm">
+      <div class="data-section-header" style="padding: 10px 16px;">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 12.5px;">📝 FORM PENGAJUAN PEMINJAMAN SEMENTARA (SPS)</span>
+        </div>
+        <button type="button" class="btn btn-primary" id="btnOpenPeminjamanScanner" onclick="bukaScannerPeminjamanModal()" style="display: none; font-size: 11.5px; height: 32px; padding: 0 12px; gap: 6px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+          📷 SCAN IN / OUT
+        </button>
+      </div>
+
+      <div class="peminjaman-card-body">
+        <form id="formPeminjaman" onsubmit="event.preventDefault(); submitFormPeminjamanSpa();">
+          <div style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">
+            1. INFORMASI PEMINJAM (DIVISI LIVE / STUDIO)
+          </div>
+
+          <div class="peminjaman-grid-2" style="margin-bottom: 12px;">
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">
+                NAMA / PIC PEMINJAM <span style="color: var(--danger);">*</span>
+              </label>
+              <input type="text" id="namaPeminjam" class="search-input" placeholder="Contoh: Sarah / Host Live" style="width: 100%; height: 36px; font-size: 12px;" required>
+            </div>
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">
+                KEPERLUAN PEMINJAMAN <span style="color: var(--danger);">*</span>
+              </label>
+              <input type="text" id="keperluan" class="search-input" placeholder="Contoh: Live TikTok / Live Shopee / Studio" style="width: 100%; height: 36px; font-size: 12px;" required>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">
+              TANGGAL PINJAM <span style="color: var(--danger);">*</span>
+            </label>
+            <input type="date" id="tglPinjam" class="search-input" style="width: 100%; max-width: 220px; height: 36px; font-size: 12px;" required>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-top: 1px dashed var(--border); padding-top: 12px;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px;">
+              2. DAFTAR BARANG YANG DIPINJAM
+            </span>
+            <button type="button" id="btnTambahItemAtas" class="btn btn-secondary" style="height: 28px; font-size: 11px; padding: 0 10px;">+ TAMBAH ITEM</button>
+          </div>
+
+          <div id="itemContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
+
+          <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+            <button type="button" id="btnTambahItemBawah" class="btn btn-secondary" style="flex: 1; min-width: 130px; height: 38px; font-size: 11.5px;">+ TAMBAH ITEM LAIN</button>
+            <button type="submit" id="btnSubmitPeminjaman" class="btn btn-primary" style="flex: 2; min-width: 160px; height: 38px; font-size: 12.5px; font-weight: 800;">
+              <span id="submitPeminjamanLabel">📨 AJUKAN PEMINJAMAN</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- KANAN: STOK TERSEDIA (STUDIO, SHOPEE & TIKTOK) -->
+    <div class="data-section-card" id="peminjamanPanelStok">
+      <div class="data-section-header" style="padding: 10px 16px;">
+        <div>
+          <span class="section-heading" id="stokChannelHeading" style="font-size: 12px;">📍 STOK TERSEDIA (BLOK F)</span>
+          <div id="studioSummary" style="font-size: 10.5px; color: var(--text-muted); font-weight: 500;">Memuat data...</div>
+        </div>
+        <button type="button" class="btn btn-secondary" id="btnRefreshStokChannel" style="height: 28px; font-size: 10.5px; padding: 0 8px;" onclick="refreshStockPeminjaman(this)">🔄 REFRESH</button>
+      </div>
+
+      <div class="peminjaman-card-body">
+        
+        <!-- OPSI FILTER CHANNEL STOK TERSEDIA (LIVE DIVISI) DENGAN SEGMENTED TABS -->
+        <div class="stock-ch-bar wms-segmented-tabs" style="margin-bottom: 10px; width: 100%;">
+          <button type="button" class="wms-segmented-tab-btn stock-ch-btn active" data-channel="STUDIO" onclick="switchStockChannel('STUDIO', this)">
+            📍 STUDIO
+          </button>
+          <button type="button" class="wms-segmented-tab-btn stock-ch-btn" data-channel="SHOPEE" onclick="switchStockChannel('SHOPEE', this)">
+            🧡 SHOPEE
+          </button>
+          <button type="button" class="wms-segmented-tab-btn stock-ch-btn" data-channel="TIKTOK" onclick="switchStockChannel('TIKTOK', this)">
+            🖤 TIKTOK
+          </button>
+          <button type="button" class="wms-segmented-tab-btn stock-ch-btn" data-channel="ALL" onclick="switchStockChannel('ALL', this)">
+            🌐 SEMUA
+          </button>
+        </div>
+
+        <div style="background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px 12px; margin-bottom: 12px; font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+          💡 <b>Acuan Peminjam Divisi Live:</b> Daftar barang yang sudah tersedia di channel/lokasi terpilih. Anda dapat meminjam langsung atau menghindari pengajuan ganda.
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+          <input type="text" id="searchStudio" class="search-input" placeholder="🔍 Cari Nama Produk / SKU / Lokasi..." oninput="filterStudioStockSpa()" style="flex: 1; height: 36px; font-size: 12px;">
+          <button type="button" class="btn btn-secondary compact-btn" onclick="exportPeminjamanStockData()" style="padding: 0 12px; height: 36px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; white-space: nowrap;">
+            <i class="fa-solid fa-file-csv" style="color:#10b981;"></i> Export CSV
+          </button>
+        </div>
+
+        <div class="table-scroll-wrap" style="max-height: 480px;">
+          <table class="unified-table" id="peminjamanStockTable" style="min-width: 480px; table-layout: fixed;">
+            <colgroup id="peminjamanColgroup"></colgroup>
+            <thead id="peminjamanThead"></thead>
+            <tbody id="studioTableBody">
+              <tr><td colspan="4" style="text-align: center; padding: 30px 0; color: var(--text-muted); font-style: italic;">MEMUAT DAFTAR STOK...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SCOPED RESPONSIVE STYLES FOR PEMINJAMAN -->
+
+
+
+
+<!-- ========================================================
+     MODAL SCANNER KAMERA HP MULTI-SCAN (IN / OUT) 
+     (DIADAPTASI DARI QC BARCODE SCANNER EXPRESS)
+     ======================================================== -->
+<div id="peminjamanScannerModal" onclick="if(event.target === this) tutupScannerPeminjamanModal()" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: flex-start; padding: 16px; overflow-y: auto; font-family: 'Inter', sans-serif;">
+  <div class="data-section-card" style="width: 100%; max-width: 580px; margin: auto; background: #0f172a; border: 1px solid #1e293b; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border-radius: 16px; overflow: hidden;" onclick="event.stopPropagation()">
+    
+    <!-- MODAL HEADER -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #1e293b; background: #1e293b;">
+      <div style="font-size: 14px; font-weight: 800; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-barcode text-emerald-400"></i>
+        <span id="scanModalTitleText">📤 SCAN OUT - PEMINJAMAN</span>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <button type="button" onclick="togglePeminjamanAudio()" style="background: none; border: none; font-size: 16px; color: #cbd5e1; cursor: pointer;">
+          <i id="soundIconPeminjaman" class="fa-solid fa-volume-high text-emerald-400"></i>
+        </button>
+        <button type="button" onclick="tutupScannerPeminjamanModal()" style="border: none; background: #334155; color: #f8fafc; font-size: 14px; cursor: pointer; font-weight: bold; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%;" title="Tutup Modal (Esc)">✕</button>
+      </div>
+    </div>
+
+    <div style="padding: 16px;">
+      
+      <!-- MODE PILL SWITCHER -->
+      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <button type="button" id="btnScanModeOut" class="scanner-mode-pill active out" onclick="switchScanMode('OUT')">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> SCAN OUT (PINJAM)
+        </button>
+        <button type="button" id="btnScanModeIn" class="scanner-mode-pill" onclick="switchScanMode('IN')">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> SCAN IN (KEMBALI)
+        </button>
+      </div>
+
+      <!-- CAMERA VIEWPORT (MODERN) -->
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+        <div style="position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #020617; border: 2px dashed #334155; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; min-height: 220px;">
+          <!-- Placeholder when off -->
+          <div id="cameraPlaceholderPeminjaman" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; background: rgba(2,6,23,0.92); z-index: 10;">
+            <div style="width: 52px; height: 52px; border-radius: 14px; background: #0f172a; border: 1px solid #334155; display: flex; align-items: center; justify-content: center; color: #f59e0b; margin-bottom: 10px; font-size: 22px;">
+              <i class="fa-solid fa-barcode"></i>
+            </div>
+            <p style="font-size: 12px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px;">Kamera Siaga / Nonaktif</p>
+            <p style="font-size: 11px; color: #64748b; max-width: 240px; margin: 0;">Klik tombol <b>"Nyalakan Kamera"</b> di bawah untuk mengaktifkan pemindai barcode otomatis.</p>
+          </div>
+          
+          <div id="peminjamanQrReader" style="width: 100%;"></div>
+          
+          <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; z-index: 20;">
+            <button type="button" onclick="toggleTorch()" title="Lampu Flash" style="background: rgba(15,23,42,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 7px 11px; font-size: 13px; cursor: pointer; backdrop-filter: blur(4px);"><i class="fa-solid fa-bolt text-amber-400"></i></button>
+            <button type="button" onclick="toggleCameraFlip()" title="Putar Kamera Depan/Belakang" style="background: rgba(15,23,42,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 7px 11px; font-size: 13px; cursor: pointer; backdrop-filter: blur(4px);"><i class="fa-solid fa-camera-rotate text-blue-400"></i></button>
+          </div>
+          <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #10b981, transparent); box-shadow: 0 0 8px #10b981; animation: scanLaserAnim 2s infinite linear; pointer-events: none; display: none; z-index: 15;" id="peminjamanLaserLine"></div>
+        </div>
+
+        <div>
+          <button type="button" id="toggleCamBtnPeminjaman" onclick="toggleCameraScanner()" style="width: 100%; height: 42px; font-size: 13px; font-weight: 700; background: #2563eb; color: #fff; border: none; border-radius: 10px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(37,99,235,0.3); transition: all 0.2s;">
+            <i class="fa-solid fa-video"></i> <span>Nyalakan Kamera</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- NATIVE CAMERA FALLBACK (BUTTON RESMI CEPAT) -->
+      <div style="text-align: center; margin-bottom: 16px;">
+        <input type="file" id="scanNativeCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleNativeCameraCapture(this)">
+        <button type="button" onclick="document.getElementById('scanNativeCameraInput').click()" style="width: 100%; height: 38px; background: rgba(30, 41, 59, 0.8); border: 1px dashed #475569; color: #94a3b8; font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+          <i class="fa-solid fa-camera text-blue-400"></i> Alternatif: Buka Aplikasi Kamera HP (Scan Instan)
+        </button>
+      </div>
+
+      <!-- DETECTION NOTIFICATION BANNER -->
+      <div id="scanDetectedBanner" style="display: none; padding: 12px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; margin-bottom: 16px; text-align: center; background: #1e293b; border: 1px solid #334155;"></div>
+
+      <!-- MANUAL SKU INPUT BAR -->
+      <div style="display: flex; gap: 6px; margin-bottom: 16px;">
+        <input type="text" id="inputManualScanSku" placeholder="Ketik barcode / SKU (Gunakan Barcode Scanner Hardware)..." style="flex: 1; height: 42px; font-size: 13px; background: #0f172a; border: 1px solid #3b82f6; border-radius: 8px; color: #f8fafc; padding: 0 12px; box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);" onkeydown="handleManualScanInput(event)" autocomplete="off">
+        <button type="button" onclick="submitManualScanInput()" style="height: 42px; font-size: 12px; font-weight: 700; padding: 0 16px; background: #334155; color: #f8fafc; border: none; border-radius: 8px; cursor: pointer;">+ INPUT</button>
+      </div>
+
+      <!-- BASKET SUMMARY HEADER -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-top: 1px solid #334155; padding-top: 16px;">
+        <div style="font-size: 12px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">
+          📦 HASIL SCAN: <span id="scanBasketCountBadge" style="color: #34d399; font-weight: 800;">0 Item</span>
+        </div>
+        <button type="button" onclick="resetScanBasket()" style="border: none; background: transparent; color: #ef4444; font-size: 11px; font-weight: 700; cursor: pointer;"><i class="fa-solid fa-trash"></i> KOSONGKAN</button>
+      </div>
+
+      <!-- BASKET LIST CONTAINER -->
+      <div id="scanBasketEmpty" style="text-align: center; padding: 24px 12px; color: #64748b; font-size: 12px; background: #1e293b; border-radius: 12px; border: 1px dashed #334155; margin-bottom: 16px;">
+        Belum ada item di-scan. Mulai scan menggunakan kamera atau alat barcode.
+      </div>
+      <div id="scanBasketList" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; margin-bottom: 16px; padding-right: 4px;"></div>
+
+      <!-- PIC & NOTES FORM -->
+      <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+        <div class="peminjaman-grid-2" style="margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 4px;">NAMA / PIC <span style="color: #ef4444;">*</span></label>
+            <input type="text" id="scanPicName" placeholder="Nama PIC..." style="width: 100%; height: 36px; font-size: 12px; background: #0f172a; border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 0 10px;">
+          </div>
+          <div>
+            <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 4px;">LOKASI STOK</label>
+            <select id="scanLokasiAsal" style="width: 100%; height: 36px; font-size: 12px; background: #0f172a; border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 0 10px;">
+              <option value="STUDIO">📍 STUDIO (BLOK F)</option>
+              <option value="SHOPEE">🧡 SHOPEE (SHP)</option>
+              <option value="TIKTOK">🖤 TIKTOK (TTK)</option>
+              <option value="MAP">🏢 GUDANG UTAMA (MAP)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label id="scanCatatanLabel" style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 4px;">KEPERLUAN PINJAM</label>
+          <input type="text" id="scanCatatanText" placeholder="Contoh: Host Live TikTok Pagi..." style="width: 100%; height: 36px; font-size: 12px; background: #0f172a; border: 1px solid #334155; color: #f8fafc; border-radius: 6px; padding: 0 10px;">
+        </div>
+      </div>
+
+      <!-- EXECUTE BUTTON -->
+      <div>
+        <button type="button" id="btnSubmitScanPeminjaman" onclick="handleExecuteScanSubmit(this)" style="width: 100%; height: 48px; font-size: 14px; font-weight: 800; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);" disabled>
+          <span id="labelSubmitScanPeminjaman"><i class="fa-solid fa-rocket"></i> EKSEKUSI SCAN OUT (0 PCS)</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+    </main>
+  </div>
+
+  <!-- CONTAINER FLOATING TOAST NOTIFIKASI SPA -->
+  <div id="wmsGlobalToastContainer" class="toast-container"></div>
+
+  <!-- JAVASCRIPT -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/modules/login.js"></script>
+  <script src="js/modules/peminjaman.js"></script>
+
+  <script>
+    // Inisialisasi Auth & Peminjaman saat DOM siap
+    document.addEventListener('DOMContentLoaded', function() {
+      // Override setAppVisible khusus peminjaman standalone
+      const origSetAppVisible = window.setAppVisible;
+      window.setAppVisible = function(isLoggedIn) {
+        const loginScreen = document.getElementById('loginScreen');
+        const pemWrapper = document.getElementById('peminjamanAppWrapper');
+        if (isLoggedIn) {
+          if (loginScreen) loginScreen.style.display = 'none';
+          if (pemWrapper) pemWrapper.style.display = 'flex';
+          const userBadge = document.getElementById('userBadge');
+          if (userBadge) userBadge.textContent = '👤 ' + (window.USERNAME || 'USER');
+          if (typeof initPeminjamanView === 'function') {
+            initPeminjamanView();
+          }
+        } else {
+          if (loginScreen) loginScreen.style.display = 'flex';
+          if (pemWrapper) pemWrapper.style.display = 'none';
+        }
+      };
+
+      // Cek sesi login
+      if (typeof checkAuthSession === 'function') {
+        checkAuthSession();
+      }
+    });
+  </script>
+</body>
+</html>
