@@ -24,25 +24,41 @@
     };
 
     try {
-      // Menggunakan POST mode no-cors / cors
-      // Pada GAS Web App, fetch POST dengan text/plain payload mencegah CORS preflight OPTIONS error
+      // POST with text/plain prevents CORS preflight OPTIONS error in GAS
       const response = await fetch(apiUrl, {
         method: "POST",
+        mode: "cors",
+        redirect: "follow",
         headers: {
           "Content-Type": "text/plain;charset=utf-8"
         },
         body: JSON.stringify(requestBody)
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
-      }
-
       const result = await response.json();
       return result;
     } catch (err) {
-      console.error(`[WMS API Error - ${action}]:`, err);
-      throw err;
+      console.warn(`[WMS API POST failed, trying GET fallback - ${action}]:`, err);
+      // GET Fallback (100% resilient across restrictive browser environments)
+      try {
+        const queryParams = new URLSearchParams({
+          action: action,
+          token: token,
+          payload: JSON.stringify(payload),
+          _t: Date.now()
+        });
+        const getUrl = `${apiUrl}?${queryParams.toString()}`;
+        const getResponse = await fetch(getUrl, {
+          method: "GET",
+          mode: "cors",
+          redirect: "follow"
+        });
+        const getResult = await getResponse.json();
+        return getResult;
+      } catch (fallbackErr) {
+        console.error(`[WMS API Error - ${action}]:`, fallbackErr);
+        throw fallbackErr;
+      }
     }
   }
 
