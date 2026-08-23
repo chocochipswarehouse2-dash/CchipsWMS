@@ -4,46 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WMS Chocochips - Warehouse Management System</title>
-  
-  <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- External Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Stylesheet -->
   <link rel="stylesheet" href="css/style.css">
   <style>
-    /* Login Overlay State */
-    #loginScreen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 99999;
-      background: var(--bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    #appWrapper {
-      display: none;
-      min-height: 100vh;
-      width: 100%;
-    }
+    #loginScreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99999; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 20px; }
+    #appWrapper { display: none; min-height: 100vh; width: 100%; }
   </style>
 </head>
 <body data-theme="dark">
-
-  <!-- ==================== LOGIN VIEW SCREEN ==================== -->
-  <div id="loginScreen">
-    <div class="login-wrap">
+  <div id="loginScreen"><div class="login-wrap">
     <div class="brand-header">
       <div class="brand-title">WMS CHOCOCHIPS</div>
       <p class="brand-subtitle">Warehouse Management System</p>
@@ -81,12 +55,8 @@
         <button type="button" class="btn-theme" id="btnToggleTheme" onclick="toggleTheme()"></button>
       </div>
     </form>
-  </div>
-  </div>
-
-  <!-- ==================== MAIN DASHBOARD APPLICATION ==================== -->
-  <div id="appWrapper">
-    <!-- MOBILE SIDEBAR BACKDROP OVERLAY -->
+  </div></div>
+  <div id="appWrapper"><!-- MOBILE SIDEBAR BACKDROP OVERLAY -->
   <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar()"></div>
 
   <!-- 1. LEFT SIDEBAR NAVIGATION (COLLAPSIBLE / DRAWER) -->
@@ -308,11 +278,7 @@
 
 
   <!-- CONTAINER FLOATING TOAST NOTIFIKASI SPA -->
-  <div id="wmsGlobalToastContainer" class="toast-container"></div>
-    
-    <!-- INJECTED SPA VIEWS -->
-    <div id="injectedSpaViews">
-      <!-- ========================================================
+  <div id="wmsGlobalToastContainer" class="toast-container"></div><div id="injectedSpaViews"><!-- ========================================================
      MODUL VIEW: PEMINJAMAN SEMENTARA SPS (SPA)
      RESPONSIVE WEB SELULER / MOBILE & DESKTOP
      DENGAN OPSI PILIHAN STOK STUDIO, SHOPEE & TIKTOK (DIVISI LIVE)
@@ -1924,19 +1890,11 @@
   </div>
 </div>
 
-<!-- CSS KHUSUS VIEW SETTING -->
-    </div>
-  </div>
-
-  <!-- CONTAINER FLOATING TOAST NOTIFIKASI SPA -->
+<!-- CSS KHUSUS VIEW SETTING --></div></div>
   <div id="wmsGlobalToastContainer" class="toast-container"></div>
-
-  <!-- ==================== JAVASCRIPT MODULES ==================== -->
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
-  
-  <!-- Module Scripts -->
   <script src="js/modules/dashboard.js"></script>
   <script src="js/modules/login.js"></script>
   <script src="js/modules/peminjaman.js"></script>
@@ -1948,24 +1906,15 @@
   <script src="js/modules/klasifikasi.js"></script>
   <script src="js/modules/updatedatabase.js"></script>
   <script src="js/modules/setting.js"></script>
-
   <script>
-    // Inisialisasi awal saat window ready
     document.addEventListener('DOMContentLoaded', function() {
-      // Pindahkan injected views ke dalam .app-content jika ada
       const appContent = document.querySelector('.app-content');
-      const injectedViewsContainer = document.getElementById('injectedSpaViews');
-      if (appContent && injectedViewsContainer) {
-        while (injectedViewsContainer.firstChild) {
-          appContent.appendChild(injectedViewsContainer.firstChild);
-        }
-        injectedViewsContainer.remove();
+      const injected = document.getElementById('injectedSpaViews');
+      if (appContent && injected) {
+        while (injected.firstChild) appContent.appendChild(injected.firstChild);
+        injected.remove();
       }
-      
-      // Cek sesi login
-      if (typeof checkAuthSession === 'function') {
-        checkAuthSession();
-      }
+      if (typeof checkAuthSession === 'function') checkAuthSession();
     });
   </script>
 </body>

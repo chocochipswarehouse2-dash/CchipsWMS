@@ -4,72 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Peminjaman Sementara (SPS) - WMS Chocochips</title>
-  
-  <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- External Libraries -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Stylesheet -->
   <link rel="stylesheet" href="css/style.css">
   <style>
-    #loginScreen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 99999;
-      background: var(--bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    #peminjamanAppWrapper {
-      display: none;
-      min-height: 100vh;
-      width: 100%;
-      flex-direction: column;
-      background: var(--bg);
-      color: var(--text);
-    }
-    .peminjaman-standalone-header {
-      background: var(--bg-surface);
-      border-bottom: 1px solid var(--border);
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .brand-standalone {
-      font-size: 14px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .peminjaman-standalone-body {
-      padding: 16px;
-      flex: 1;
-      max-width: 1400px;
-      margin: 0 auto;
-      width: 100%;
-    }
+    #loginScreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99999; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 20px; }
+    #peminjamanAppWrapper { display: none; min-height: 100vh; width: 100%; flex-direction: column; background: var(--bg); color: var(--text); }
+    .peminjaman-standalone-header { background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand-standalone { font-size: 14px; font-weight: 800; letter-spacing: 1px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+    .peminjaman-standalone-body { padding: 16px; flex: 1; max-width: 1400px; margin: 0 auto; width: 100%; }
   </style>
 </head>
 <body data-theme="dark">
-
-  <!-- ==================== LOGIN VIEW SCREEN ==================== -->
-  <div id="loginScreen">
-    <div class="login-wrap">
+  <div id="loginScreen"><div class="login-wrap">
     <div class="brand-header">
       <div class="brand-title">WMS CHOCOCHIPS</div>
       <p class="brand-subtitle">Warehouse Management System</p>
@@ -107,24 +57,17 @@
         <button type="button" class="btn-theme" id="btnToggleTheme" onclick="toggleTheme()"></button>
       </div>
     </form>
-  </div>
-  </div>
-
-  <!-- ==================== PEMINJAMAN APP CONTAINER ==================== -->
+  </div></div>
   <div id="peminjamanAppWrapper">
     <header class="peminjaman-standalone-header">
-      <div class="brand-standalone">
-        <span style="color: var(--primary);">WMS</span> · PEMINJAMAN SEMENTARA (SPS)
-      </div>
+      <div class="brand-standalone"><span style="color: var(--primary);">WMS</span> · PEMINJAMAN SEMENTARA (SPS)</div>
       <div style="display: flex; align-items: center; gap: 10px;">
         <span id="userBadge" style="font-size: 11.5px; font-weight: 600; color: var(--text-muted);"></span>
         <button type="button" class="btn-theme" onclick="toggleTheme()" style="height: 32px; padding: 0 10px; font-size: 11px;">🌓 Tema</button>
         <button type="button" class="btn" onclick="logoutSession()" style="background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); font-size: 11px; height: 32px; width: auto; padding: 0 12px;">Logout</button>
       </div>
     </header>
-
-    <main class="peminjaman-standalone-body">
-      <!-- ========================================================
+    <main class="peminjaman-standalone-body"><!-- ========================================================
      MODUL VIEW: PEMINJAMAN SEMENTARA SPS (SPA)
      RESPONSIVE WEB SELULER / MOBILE & DESKTOP
      DENGAN OPSI PILIHAN STOK STUDIO, SHOPEE & TIKTOK (DIVISI LIVE)
@@ -385,25 +328,16 @@
 
     </div>
   </div>
-</div>
-    </main>
+</div></main>
   </div>
-
-  <!-- CONTAINER FLOATING TOAST NOTIFIKASI SPA -->
   <div id="wmsGlobalToastContainer" class="toast-container"></div>
-
-  <!-- JAVASCRIPT -->
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/modules/login.js"></script>
   <script src="js/modules/peminjaman.js"></script>
-
   <script>
-    // Inisialisasi Auth & Peminjaman saat DOM siap
     document.addEventListener('DOMContentLoaded', function() {
-      // Override setAppVisible khusus peminjaman standalone
-      const origSetAppVisible = window.setAppVisible;
       window.setAppVisible = function(isLoggedIn) {
         const loginScreen = document.getElementById('loginScreen');
         const pemWrapper = document.getElementById('peminjamanAppWrapper');
@@ -412,19 +346,13 @@
           if (pemWrapper) pemWrapper.style.display = 'flex';
           const userBadge = document.getElementById('userBadge');
           if (userBadge) userBadge.textContent = '👤 ' + (window.USERNAME || 'USER');
-          if (typeof initPeminjamanView === 'function') {
-            initPeminjamanView();
-          }
+          if (typeof initPeminjamanView === 'function') initPeminjamanView();
         } else {
           if (loginScreen) loginScreen.style.display = 'flex';
           if (pemWrapper) pemWrapper.style.display = 'none';
         }
       };
-
-      // Cek sesi login
-      if (typeof checkAuthSession === 'function') {
-        checkAuthSession();
-      }
+      if (typeof checkAuthSession === 'function') checkAuthSession();
     });
   </script>
 </body>
