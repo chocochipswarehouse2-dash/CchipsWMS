@@ -113,7 +113,7 @@
           } catch (e) {}
 
           const redirectUrl = EXEC_URL + '?token=' + encodeURIComponent(res.token);
-          window.top.location.href = redirectUrl;
+          if (typeof handleLoginSuccess === "function") { handleLoginSuccess(res); } else if (typeof setAppVisible === "function") { setAppVisible(true); }
         } else {
           setLoading(false);
           showToast(false, (res ? res.message : null) || 'LOGIN GAGAL: USERNAME ATAU PASSWORD SALAH.');

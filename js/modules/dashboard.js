@@ -346,7 +346,7 @@
           localStorage.removeItem('wms_role');
           localStorage.removeItem('wms_username');
         } catch(e) {}
-        window.top.location.href = EXEC_URL + '?logout=1';
+        if (typeof logoutSession === "function") { logoutSession(); } else if (typeof setAppVisible === "function") { setAppVisible(false); }
       }).logoutWmsSession(TOKEN);
     }
 
