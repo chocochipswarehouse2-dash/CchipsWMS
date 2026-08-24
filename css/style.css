@@ -1887,51 +1887,6 @@
   }
 
 
-  /* Styling khusus untuk Modal Scanner Peminjaman (Dark Theme ala Tailwind) */
-  #peminjamanScannerModal ::-webkit-scrollbar { width: 6px; height: 6px; }
-  #peminjamanScannerModal ::-webkit-scrollbar-track { background: #0f172a; }
-  #peminjamanScannerModal ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-  #peminjamanScannerModal ::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-  #peminjamanQrReader video {
-    border-radius: 6px;
-    object-fit: cover;
-  }
-  #peminjamanQrReader { border: none !important; }
-  
-  .scanner-mode-pill {
-    flex: 1; height: 42px; font-size: 12px; font-weight: 800; border-radius: 8px; cursor: pointer;
-    background: #1e293b; color: #94a3b8; border: 1px solid #334155;
-    transition: all 0.2s ease;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  .scanner-mode-pill.active.out {
-    background: #451a03; color: #fbbf24; border-color: #d97706;
-    box-shadow: 0 0 0 1px #d97706;
-  }
-  .scanner-mode-pill.active.in {
-    background: #064e3b; color: #34d399; border-color: #059669;
-    box-shadow: 0 0 0 1px #059669;
-  }
-  
-  .basket-item-card {
-    display: flex; justify-content: space-between; align-items: center; 
-    background: #1e293b; border: 1px solid #334155; border-radius: 8px; 
-    padding: 10px 14px; gap: 8px; transition: border-color 0.2s;
-  }
-  .basket-item-card:hover { border-color: #475569; }
-
-  .basket-item-name { font-weight: 700; font-size: 13px; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .basket-item-sku { font-family: monospace; font-size: 11px; color: #94a3b8; }
-  .basket-item-size { background: #334155; color: #cbd5e1; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; }
-
-  @keyframes scanLaserAnim {
-    0% { top: 0%; opacity: 0.8; }
-    50% { top: 100%; opacity: 1; }
-    100% { top: 0%; opacity: 0.8; }
-  }
-
-
 /* === VIEW: penerimaanproduksi STYLES === */
 
   /* SEGMENTED TAB NAVIGATION (ANTIGRAVITY THEME) */
