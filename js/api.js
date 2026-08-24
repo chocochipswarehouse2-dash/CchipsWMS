@@ -153,28 +153,32 @@
       this.successHandler = null;
       this.failureHandler = null;
       this.userObject = null;
+      this.proxy = null;
     }
 
     withSuccessHandler(fn) {
       this.successHandler = fn;
-      return this;
+      return this.proxy;
     }
 
     withFailureHandler(fn) {
       this.failureHandler = fn;
-      return this;
+      return this.proxy;
     }
 
     withUserObject(obj) {
       this.userObject = obj;
-      return this;
+      return this.proxy;
     }
 
     // Dynamic method invocation handler via Proxy
     static create() {
       const builder = new ScriptRunBuilder();
-      return new Proxy(builder, {
+      builder.proxy = new Proxy(builder, {
         get(target, propKey) {
+          if (typeof target[propKey] === 'function') {
+            return target[propKey].bind(target);
+          }
           if (propKey in target) {
             return target[propKey];
           }
@@ -231,20 +235,23 @@
           };
         }
       });
+      return builder.proxy;
     }
   }
 
-  // Pasang google.script.run jika belum ada
+  // Create a proxy that spawns new proxies for every call/chain
   if (!window.google) window.google = {};
   if (!window.google.script) window.google.script = {};
-  window.google.script.run = {
-    withSuccessHandler(fn) {
-      return ScriptRunBuilder.create().withSuccessHandler(fn);
-    },
-    withFailureHandler(fn) {
-      return ScriptRunBuilder.create().withFailureHandler(fn);
+  
+  window.google.script.run = new Proxy({}, {
+    get(target, propKey) {
+      const freshBuilderProxy = ScriptRunBuilder.create();
+      if (typeof freshBuilderProxy[propKey] === 'function') {
+         return freshBuilderProxy[propKey];
+      }
+      return freshBuilderProxy[propKey]; // This handles direct calls like google.script.run.myFunc()
     }
-  };
+  });
 
   // Expose Global Helper
   window.apiCall = apiCall;
