@@ -694,3 +694,26 @@
     });
   }
 
+
+
+// --- Global Window Binding for peminjaman ---
+if (typeof switchPeminjamanMobileTab === 'function') window.switchPeminjamanMobileTab = switchPeminjamanMobileTab;
+if (typeof initPeminjamanView === 'function') window.initPeminjamanView = initPeminjamanView;
+if (typeof extractExactLocationStocks === 'function') window.extractExactLocationStocks = extractExactLocationStocks;
+if (typeof syncPeminjamanWithMasterStore === 'function') window.syncPeminjamanWithMasterStore = syncPeminjamanWithMasterStore;
+if (typeof switchStockChannel === 'function') window.switchStockChannel = switchStockChannel;
+if (typeof getProductLocationStringPeminjaman === 'function') window.getProductLocationStringPeminjaman = getProductLocationStringPeminjaman;
+if (typeof sortPeminjamanAlphabetical === 'function') window.sortPeminjamanAlphabetical = sortPeminjamanAlphabetical;
+if (typeof buildChannelStockList === 'function') window.buildChannelStockList = buildChannelStockList;
+if (typeof renderStockTableByChannel === 'function') window.renderStockTableByChannel = renderStockTableByChannel;
+if (typeof filterStudioStockSpa === 'function') window.filterStudioStockSpa = filterStudioStockSpa;
+if (typeof exportPeminjamanStockData === 'function') window.exportPeminjamanStockData = exportPeminjamanStockData;
+if (typeof refreshStockPeminjaman === 'function') window.refreshStockPeminjaman = refreshStockPeminjaman;
+if (typeof loadPeminjamanInitData === 'function') window.loadPeminjamanInitData = loadPeminjamanInitData;
+if (typeof tambahItemPeminjaman === 'function') window.tambahItemPeminjaman = tambahItemPeminjaman;
+if (typeof updateStokInfo === 'function') window.updateStokInfo = updateStokInfo;
+if (typeof renderCombo === 'function') window.renderCombo = renderCombo;
+if (typeof selectItem === 'function') window.selectItem = selectItem;
+if (typeof getFilteredOpts === 'function') window.getFilteredOpts = getFilteredOpts;
+if (typeof updateActiveItem === 'function') window.updateActiveItem = updateActiveItem;
+if (typeof submitFormPeminjamanSpa === 'function') window.submitFormPeminjamanSpa = submitFormPeminjamanSpa;

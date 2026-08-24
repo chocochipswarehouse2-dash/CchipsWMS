@@ -108,3 +108,12 @@
       renderLogMutasiTable();
     }
   }
+
+
+// --- Global Window Binding for logmutasi ---
+if (typeof initLogMutasiView === 'function') window.initLogMutasiView = initLogMutasiView;
+if (typeof muatDataLogMutasi === 'function') window.muatDataLogMutasi = muatDataLogMutasi;
+if (typeof handleLogMutasiSearch === 'function') window.handleLogMutasiSearch = handleLogMutasiSearch;
+if (typeof handleLogMutasiFilterChange === 'function') window.handleLogMutasiFilterChange = handleLogMutasiFilterChange;
+if (typeof renderLogMutasiTable === 'function') window.renderLogMutasiTable = renderLogMutasiTable;
+if (typeof changeLogMutasiPage === 'function') window.changeLogMutasiPage = changeLogMutasiPage;

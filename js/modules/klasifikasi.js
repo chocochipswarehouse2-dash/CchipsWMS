@@ -334,3 +334,19 @@
     KLASIFIKASI_RENDER_COUNT += 50;
     renderKlasifikasiTable();
   }
+
+
+// --- Global Window Binding for klasifikasi ---
+if (typeof initKlasifikasiView === 'function') window.initKlasifikasiView = initKlasifikasiView;
+if (typeof klasifikasiItemDef === 'function') window.klasifikasiItemDef = klasifikasiItemDef;
+if (typeof muatDataKlasifikasi === 'function') window.muatDataKlasifikasi = muatDataKlasifikasi;
+if (typeof parseAndRenderKlasifikasi === 'function') window.parseAndRenderKlasifikasi = parseAndRenderKlasifikasi;
+if (typeof updateDonutChartDef === 'function') window.updateDonutChartDef = updateDonutChartDef;
+if (typeof setProcessTab === 'function') window.setProcessTab = setProcessTab;
+if (typeof renderProcessListDef === 'function') window.renderProcessListDef = renderProcessListDef;
+if (typeof renderLokasiCards === 'function') window.renderLokasiCards = renderLokasiCards;
+if (typeof filterKlasifikasiByRak === 'function') window.filterKlasifikasiByRak = filterKlasifikasiByRak;
+if (typeof toggleCategoryFilter === 'function') window.toggleCategoryFilter = toggleCategoryFilter;
+if (typeof handleKlasifikasiSearch === 'function') window.handleKlasifikasiSearch = handleKlasifikasiSearch;
+if (typeof renderKlasifikasiTable === 'function') window.renderKlasifikasiTable = renderKlasifikasiTable;
+if (typeof loadMoreKlasifikasi === 'function') window.loadMoreKlasifikasi = loadMoreKlasifikasi;

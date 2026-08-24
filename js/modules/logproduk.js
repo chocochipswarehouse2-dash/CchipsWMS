@@ -113,3 +113,12 @@
       renderLogProdukTable();
     }
   }
+
+
+// --- Global Window Binding for logproduk ---
+if (typeof initLogProdukView === 'function') window.initLogProdukView = initLogProdukView;
+if (typeof muatDataLogProduk === 'function') window.muatDataLogProduk = muatDataLogProduk;
+if (typeof handleLogProdukSearch === 'function') window.handleLogProdukSearch = handleLogProdukSearch;
+if (typeof handleLogProdukFilterChange === 'function') window.handleLogProdukFilterChange = handleLogProdukFilterChange;
+if (typeof renderLogProdukTable === 'function') window.renderLogProdukTable = renderLogProdukTable;
+if (typeof changeLogProdukPage === 'function') window.changeLogProdukPage = changeLogProdukPage;

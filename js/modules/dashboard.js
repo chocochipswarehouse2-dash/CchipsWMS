@@ -1,8 +1,8 @@
 
-    const TOKEN = window.TOKEN || "";
-    const EXEC_URL = window.EXEC_URL || "";
-    const AKSES = window.AKSES || "All";
-    const INITIAL_PAGE = window.INITIAL_PAGE || "produk";
+    var TOKEN = window.TOKEN || "";
+    var EXEC_URL = window.EXEC_URL || "";
+    var AKSES = window.AKSES || "All";
+    var INITIAL_PAGE = window.INITIAL_PAGE || "produk";
 
     const ICON_THEME_SUN = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
     const ICON_THEME_MOON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
@@ -355,7 +355,7 @@
     const STORE_COLS = ["LMP", "MKG", "BTS", "CPJ", "CWS", "LWS", "DPM", "PHB", "PMS", "NSJ", "PIM", "SPM", "GAIA", "GST", "LVL"];
     const ONLINE_COLS = ["WEB", "SHP", "TPD", "TTK", "LZD", "WOO"];
 
-    let ALL_PRODUK_DATA = [];
+    var ALL_PRODUK_DATA = window.ALL_PRODUK_DATA || [];
     let DISPLAY_DATA = [];
     let isFullDataLoaded = false;
     let currentRenderLimit = 50;
@@ -2121,3 +2121,67 @@
       exportKpiDataToCsv(`stok_blokf_${ACTIVE_BLOKF_CHANNEL}`, headers, rows);
     }
   
+
+// --- Global Window Binding for dashboard ---
+if (typeof initTheme === 'function') window.initTheme = initTheme;
+if (typeof updateThemeButtonText === 'function') window.updateThemeButtonText = updateThemeButtonText;
+if (typeof toggleTheme === 'function') window.toggleTheme = toggleTheme;
+if (typeof toggleSidebar === 'function') window.toggleSidebar = toggleSidebar;
+if (typeof initSidebarState === 'function') window.initSidebarState = initSidebarState;
+if (typeof updateViewButtonText === 'function') window.updateViewButtonText = updateViewButtonText;
+if (typeof toggleViewMode === 'function') window.toggleViewMode = toggleViewMode;
+if (typeof initFilterAreaState === 'function') window.initFilterAreaState = initFilterAreaState;
+if (typeof toggleFilterAreaDropdown === 'function') window.toggleFilterAreaDropdown = toggleFilterAreaDropdown;
+if (typeof handleAreaCheckboxChange === 'function') window.handleAreaCheckboxChange = handleAreaCheckboxChange;
+if (typeof syncFilterAreaCheckboxes === 'function') window.syncFilterAreaCheckboxes = syncFilterAreaCheckboxes;
+if (typeof updateFilterAreaButtonText === 'function') window.updateFilterAreaButtonText = updateFilterAreaButtonText;
+if (typeof bisaAksesMenuWms === 'function') window.bisaAksesMenuWms = bisaAksesMenuWms;
+if (typeof renderSidebarNavItems === 'function') window.renderSidebarNavItems = renderSidebarNavItems;
+if (typeof navigasiKe === 'function') window.navigasiKe = navigasiKe;
+if (typeof logoutSession === 'function') window.logoutSession = logoutSession;
+if (typeof handleSearchInput === 'function') window.handleSearchInput = handleSearchInput;
+if (typeof normalisasiProdukData === 'function') window.normalisasiProdukData = normalisasiProdukData;
+if (typeof sortSize === 'function') window.sortSize = sortSize;
+if (typeof urutkanProdukData === 'function') window.urutkanProdukData = urutkanProdukData;
+if (typeof updateKpiCards === 'function') window.updateKpiCards = updateKpiCards;
+if (typeof syncGlobalMasterStore === 'function') window.syncGlobalMasterStore = syncGlobalMasterStore;
+if (typeof initFastClientCache === 'function') window.initFastClientCache = initFastClientCache;
+if (typeof muatDataProduk === 'function') window.muatDataProduk = muatDataProduk;
+if (typeof initSupabaseRealtimeSync === 'function') window.initSupabaseRealtimeSync = initSupabaseRealtimeSync;
+if (typeof handleRealtimeChange === 'function') window.handleRealtimeChange = handleRealtimeChange;
+if (typeof terapkanFilterLokal === 'function') window.terapkanFilterLokal = terapkanFilterLokal;
+if (typeof renderProdukList === 'function') window.renderProdukList = renderProdukList;
+if (typeof renderCardView === 'function') window.renderCardView = renderCardView;
+if (typeof renderChipsGroup === 'function') window.renderChipsGroup = renderChipsGroup;
+if (typeof renderTableView === 'function') window.renderTableView = renderTableView;
+if (typeof getKompCellHtml === 'function') window.getKompCellHtml = getKompCellHtml;
+if (typeof getSingleCellHtml === 'function') window.getSingleCellHtml = getSingleCellHtml;
+if (typeof exportDataCsv === 'function') window.exportDataCsv = exportDataCsv;
+if (typeof closeKpiModal === 'function') window.closeKpiModal = closeKpiModal;
+if (typeof getActiveProdukDataSource === 'function') window.getActiveProdukDataSource = getActiveProdukDataSource;
+if (typeof showKpiDetails === 'function') window.showKpiDetails = showKpiDetails;
+if (typeof detectKategori === 'function') window.detectKategori = detectKategori;
+if (typeof renderKpiChartKategori === 'function') window.renderKpiChartKategori = renderKpiChartKategori;
+if (typeof getProductLocationString === 'function') window.getProductLocationString = getProductLocationString;
+if (typeof exportKpiDataToCsv === 'function') window.exportKpiDataToCsv = exportKpiDataToCsv;
+if (typeof sortAlphabetical === 'function') window.sortAlphabetical = sortAlphabetical;
+if (typeof classifyMapItem === 'function') window.classifyMapItem = classifyMapItem;
+if (typeof renderKpiListLokasi === 'function') window.renderKpiListLokasi = renderKpiListLokasi;
+if (typeof filterGenericKpiTable === 'function') window.filterGenericKpiTable = filterGenericKpiTable;
+if (typeof renderGenericKpiTable === 'function') window.renderGenericKpiTable = renderGenericKpiTable;
+if (typeof exportCurrentGenericData === 'function') window.exportCurrentGenericData = exportCurrentGenericData;
+if (typeof renderMapPopup === 'function') window.renderMapPopup = renderMapPopup;
+if (typeof switchKpiMapTab === 'function') window.switchKpiMapTab = switchKpiMapTab;
+if (typeof filterKpiMapTable === 'function') window.filterKpiMapTable = filterKpiMapTable;
+if (typeof renderKpiMapTable === 'function') window.renderKpiMapTable = renderKpiMapTable;
+if (typeof exportCurrentMapData === 'function') window.exportCurrentMapData = exportCurrentMapData;
+if (typeof renderPerbaikanPopup === 'function') window.renderPerbaikanPopup = renderPerbaikanPopup;
+if (typeof switchKpiPerbaikanTab === 'function') window.switchKpiPerbaikanTab = switchKpiPerbaikanTab;
+if (typeof filterKpiPerbaikanTable === 'function') window.filterKpiPerbaikanTable = filterKpiPerbaikanTable;
+if (typeof renderKpiPerbaikanTable === 'function') window.renderKpiPerbaikanTable = renderKpiPerbaikanTable;
+if (typeof exportCurrentPerbaikanData === 'function') window.exportCurrentPerbaikanData = exportCurrentPerbaikanData;
+if (typeof renderBlokFPopup === 'function') window.renderBlokFPopup = renderBlokFPopup;
+if (typeof switchKpiBlokFTab === 'function') window.switchKpiBlokFTab = switchKpiBlokFTab;
+if (typeof filterKpiBlokFTable === 'function') window.filterKpiBlokFTable = filterKpiBlokFTable;
+if (typeof renderKpiBlokFTable === 'function') window.renderKpiBlokFTable = renderKpiBlokFTable;
+if (typeof exportCurrentBlokFData === 'function') window.exportCurrentBlokFData = exportCurrentBlokFData;

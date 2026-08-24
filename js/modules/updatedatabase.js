@@ -3,8 +3,8 @@
   let DB_PARSED_HEADER = null;
   let DB_PARSED_ROWS = [];
 
-  const SUPABASE_DB_URL = "https://filgijcfhgqlirzhvwho.supabase.co";
-  const SUPABASE_DB_KEY = "sb_publishable_L4FEkugwRKqcwFzLXfpZag_aByUy5mD";
+  var SUPABASE_DB_URL = "https://filgijcfhgqlirzhvwho.supabase.co";
+  var SUPABASE_DB_KEY = "sb_publishable_L4FEkugwRKqcwFzLXfpZag_aByUy5mD";
 
   function initUpdateDatabaseView() {
     if (!isUpdateDbInitialized) {
@@ -152,7 +152,7 @@
     if (skuIdx === -1)  skuIdx  = 4;
     if (catIdx === -1)  catIdx  = 0;
 
-    const CABANG_MAP = {
+    var CABANG_MAP = {
       "inventory_lippo mall puri": "LMP", "inventory_mall kelapa gading": "MKG",
       "inventory_by the sea pik": "BTS", "inventory_central park jakarta": "CPJ",
       "inventory_ciputra world surabaya": "CWS", "inventory_living world tangerang": "LWS",
@@ -323,3 +323,13 @@
       if (window.showWmsToast) window.showWmsToast('Gagal rebuild: ' + err.message, 'error');
     }).rebuildStockTriggerManual();
   }
+
+
+// --- Global Window Binding for updatedatabase ---
+if (typeof initUpdateDatabaseView === 'function') window.initUpdateDatabaseView = initUpdateDatabaseView;
+if (typeof muatInfoDatabase === 'function') window.muatInfoDatabase = muatInfoDatabase;
+if (typeof parseDbCsvLine === 'function') window.parseDbCsvLine = parseDbCsvLine;
+if (typeof bacaFileCsvSebagaiTeks === 'function') window.bacaFileCsvSebagaiTeks = bacaFileCsvSebagaiTeks;
+if (typeof handleFilesSelected === 'function') window.handleFilesSelected = handleFilesSelected;
+if (typeof startSupabaseFirstUpload === 'function') window.startSupabaseFirstUpload = startSupabaseFirstUpload;
+if (typeof handleRebuildStock === 'function') window.handleRebuildStock = handleRebuildStock;

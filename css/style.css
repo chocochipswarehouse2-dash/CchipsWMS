@@ -699,10 +699,16 @@
     .app-content {
       padding: 24px;
       flex: 1;
+      min-width: 0;
+      width: 100%;
+      overflow-x: hidden;
+      box-sizing: border-box;
     }
 
     .spa-view {
       display: none;
+      width: 100%;
+      box-sizing: border-box;
       animation: fadeInSpaView 0.22s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -817,6 +823,8 @@
       box-shadow: var(--shadow);
       overflow: hidden;
       margin-bottom: 20px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .data-section-header {
@@ -853,19 +861,22 @@
     /* UNIFIED SINGLE TABLE DENGAN HEADER PRESISI TANPA GAP */
     .table-scroll-wrap {
       width: 100%;
-      max-height: 62vh;
+      max-width: 100%;
+      max-height: 65vh;
       overflow-x: auto;
       overflow-y: auto;
       position: relative;
       background: var(--card);
+      box-sizing: border-box;
+      -webkit-overflow-scrolling: touch;
     }
 
     table.unified-table {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      table-layout: fixed;
       font-size: 12px;
+      box-sizing: border-box;
     }
 
     table.unified-table th,
@@ -874,7 +885,20 @@
       border-bottom: 1px solid var(--border);
       color: var(--text);
       box-sizing: border-box;
-      overflow: hidden;
+      padding: 8px 10px;
+      vertical-align: middle;
+    }
+
+    table.unified-table td.col-produk,
+    table.unified-table td.col-nama {
+      white-space: normal;
+      word-break: break-word;
+      min-width: 140px;
+    }
+
+    table.unified-table td .btn,
+    table.unified-table td button {
+      white-space: nowrap;
     }
 
     table.unified-table th:first-child,
@@ -896,6 +920,7 @@
       top: 0;
       z-index: 25;
       border-top: 1px solid var(--border);
+      white-space: nowrap;
     }
 
     /* Khusus tabel dengan 2 baris header bertingkat (Halaman Inventory) */
@@ -919,13 +944,6 @@
       z-index: 26;
       height: 60px;
       vertical-align: middle !important;
-    }
-
-    table.unified-table td {
-      padding: 9px 8px;
-      vertical-align: middle;
-      transition: background 0.15s ease;
-      background: var(--card);
     }
 
     table.unified-table tbody tr:hover td {

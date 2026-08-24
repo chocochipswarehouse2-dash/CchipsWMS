@@ -902,3 +902,41 @@
     if (/,\s*$/.test(text)) a.push('');
     return a;
   }
+
+
+// --- Global Window Binding for stockopname ---
+if (typeof initStockOpnameView === 'function') window.initStockOpnameView = initStockOpnameView;
+if (typeof syncStockOpnameWithMasterData === 'function') window.syncStockOpnameWithMasterData = syncStockOpnameWithMasterData;
+if (typeof populateLokasiDatalist === 'function') window.populateLokasiDatalist = populateLokasiDatalist;
+if (typeof refreshStockOpnameMaster === 'function') window.refreshStockOpnameMaster = refreshStockOpnameMaster;
+if (typeof switchSoTab === 'function') window.switchSoTab = switchSoTab;
+if (typeof setupProductCombobox === 'function') window.setupProductCombobox = setupProductCombobox;
+if (typeof renderOptions === 'function') window.renderOptions = renderOptions;
+if (typeof chooseItem === 'function') window.chooseItem = chooseItem;
+if (typeof highlightOption === 'function') window.highlightOption = highlightOption;
+if (typeof updateOpnameProductInfo === 'function') window.updateOpnameProductInfo = updateOpnameProductInfo;
+if (typeof updateManualProductInfo === 'function') window.updateManualProductInfo = updateManualProductInfo;
+if (typeof cekQtySistem === 'function') window.cekQtySistem = cekQtySistem;
+if (typeof tambahKeKeranjang === 'function') window.tambahKeKeranjang = tambahKeKeranjang;
+if (typeof hapusItemSo === 'function') window.hapusItemSo = hapusItemSo;
+if (typeof renderKeranjang === 'function') window.renderKeranjang = renderKeranjang;
+if (typeof submitSesi === 'function') window.submitSesi = submitSesi;
+if (typeof tambahKeKeranjangManual === 'function') window.tambahKeKeranjangManual = tambahKeKeranjangManual;
+if (typeof hapusManualItemSo === 'function') window.hapusManualItemSo = hapusManualItemSo;
+if (typeof renderKeranjangManual === 'function') window.renderKeranjangManual = renderKeranjangManual;
+if (typeof submitManualBulk === 'function') window.submitManualBulk = submitManualBulk;
+if (typeof muatPending === 'function') window.muatPending = muatPending;
+if (typeof cleanOperatorDisplay === 'function') window.cleanOperatorDisplay = cleanOperatorDisplay;
+if (typeof renderPending === 'function') window.renderPending = renderPending;
+if (typeof toggleSelectAll === 'function') window.toggleSelectAll = toggleSelectAll;
+if (typeof getSelectedPendingIds === 'function') window.getSelectedPendingIds = getSelectedPendingIds;
+if (typeof aksiApproval === 'function') window.aksiApproval = aksiApproval;
+if (typeof prosesAksiMassal === 'function') window.prosesAksiMassal = prosesAksiMassal;
+if (typeof downloadCsvBrowserSo === 'function') window.downloadCsvBrowserSo = downloadCsvBrowserSo;
+if (typeof downloadTemplateCsv === 'function') window.downloadTemplateCsv = downloadTemplateCsv;
+if (typeof exportStockCsv === 'function') window.exportStockCsv = exportStockCsv;
+if (typeof importCsv === 'function') window.importCsv = importCsv;
+if (typeof downloadTemplateManualCsv === 'function') window.downloadTemplateManualCsv = downloadTemplateManualCsv;
+if (typeof exportStockCsvManual === 'function') window.exportStockCsvManual = exportStockCsvManual;
+if (typeof importCsvManual === 'function') window.importCsvManual = importCsvManual;
+if (typeof barisCsvKeArraySo === 'function') window.barisCsvKeArraySo = barisCsvKeArraySo;

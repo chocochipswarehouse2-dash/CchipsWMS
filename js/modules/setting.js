@@ -307,3 +307,22 @@
   window.filterTabelUser = filterTabelUser;
   window.submitFormUser = submitFormUser;
   window.konfirmasiHapusUser = konfirmasiHapusUser;
+
+
+// --- Global Window Binding for setting ---
+if (typeof initSettingView === 'function') window.initSettingView = initSettingView;
+if (typeof muatDaftarPengguna === 'function') window.muatDaftarPengguna = muatDaftarPengguna;
+if (typeof renderTabelUsers === 'function') window.renderTabelUsers = renderTabelUsers;
+if (typeof formatRoleBadges === 'function') window.formatRoleBadges = formatRoleBadges;
+if (typeof togglePasswordRow === 'function') window.togglePasswordRow = togglePasswordRow;
+if (typeof filterTabelUser === 'function') window.filterTabelUser = filterTabelUser;
+if (typeof bukaModalUser === 'function') window.bukaModalUser = bukaModalUser;
+if (typeof bukaModalEditUser === 'function') window.bukaModalEditUser = bukaModalEditUser;
+if (typeof tutupModalUser === 'function') window.tutupModalUser = tutupModalUser;
+if (typeof toggleFormPasswordVisibility === 'function') window.toggleFormPasswordVisibility = toggleFormPasswordVisibility;
+if (typeof handleRoleAllToggle === 'function') window.handleRoleAllToggle = handleRoleAllToggle;
+if (typeof handleRoleSubToggle === 'function') window.handleRoleSubToggle = handleRoleSubToggle;
+if (typeof setRoleCheckboxes === 'function') window.setRoleCheckboxes = setRoleCheckboxes;
+if (typeof getSelectedRoles === 'function') window.getSelectedRoles = getSelectedRoles;
+if (typeof submitFormUser === 'function') window.submitFormUser = submitFormUser;
+if (typeof konfirmasiHapusUser === 'function') window.konfirmasiHapusUser = konfirmasiHapusUser;

@@ -731,3 +731,27 @@
   window.cetakSingleSuratJalan = cetakSingleSuratJalan;
   window.cetakSingleSuratJalanCompleted = cetakSingleSuratJalanCompleted;
   window.cetakSemuaSuratJalanAktif = cetakSemuaSuratJalanAktif;
+
+
+// --- Global Window Binding for fulfillment ---
+if (typeof initFulfillmentView === 'function') window.initFulfillmentView = initFulfillmentView;
+if (typeof switchFulfillmentTab === 'function') window.switchFulfillmentTab = switchFulfillmentTab;
+if (typeof muatDataFulfillment === 'function') window.muatDataFulfillment = muatDataFulfillment;
+if (typeof updateTabBadges === 'function') window.updateTabBadges = updateTabBadges;
+if (typeof handleCsvFileSelected === 'function') window.handleCsvFileSelected = handleCsvFileSelected;
+if (typeof resetFulfillmentUpload === 'function') window.resetFulfillmentUpload = resetFulfillmentUpload;
+if (typeof showFulfillmentToast === 'function') window.showFulfillmentToast = showFulfillmentToast;
+if (typeof handleProcessFulfillment === 'function') window.handleProcessFulfillment = handleProcessFulfillment;
+if (typeof renderFulfillmentOnProcessBubbles === 'function') window.renderFulfillmentOnProcessBubbles = renderFulfillmentOnProcessBubbles;
+if (typeof toggleCheckItem === 'function') window.toggleCheckItem = toggleCheckItem;
+if (typeof updateItemPickedQty === 'function') window.updateItemPickedQty = updateItemPickedQty;
+if (typeof updateBubbleProgress === 'function') window.updateBubbleProgress = updateBubbleProgress;
+if (typeof toggleBubbleDetail === 'function') window.toggleBubbleDetail = toggleBubbleDetail;
+if (typeof konfirmasiSelesaiPicking === 'function') window.konfirmasiSelesaiPicking = konfirmasiSelesaiPicking;
+if (typeof renderFulfillmentCompletedBubbles === 'function') window.renderFulfillmentCompletedBubbles = renderFulfillmentCompletedBubbles;
+if (typeof toggleCompletedDetail === 'function') window.toggleCompletedDetail = toggleCompletedDetail;
+if (typeof kembalikanKeProses === 'function') window.kembalikanKeProses = kembalikanKeProses;
+if (typeof cetakSingleSuratJalan === 'function') window.cetakSingleSuratJalan = cetakSingleSuratJalan;
+if (typeof cetakSingleSuratJalanCompleted === 'function') window.cetakSingleSuratJalanCompleted = cetakSingleSuratJalanCompleted;
+if (typeof cetakSemuaSuratJalanAktif === 'function') window.cetakSemuaSuratJalanAktif = cetakSemuaSuratJalanAktif;
+if (typeof openPdfPopup === 'function') window.openPdfPopup = openPdfPopup;
