@@ -22,19 +22,33 @@
       if (loginScreen) loginScreen.style.display = 'none';
       if (appWrapper) appWrapper.style.display = 'flex';
       
+      const userAv = document.getElementById('sidebarUserAvatar');
+      const userNm = document.getElementById('sidebarUserName');
+      const userRl = document.getElementById('sidebarUserRole');
+      const uname = window.USERNAME || localStorage.getItem('wms_username') || 'WAREHOUSE';
+      const urole = window.AKSES || localStorage.getItem('wms_role') || 'All';
+
+      if (userAv) userAv.textContent = uname.charAt(0).toUpperCase();
+      if (userNm) userNm.textContent = uname;
+      if (userRl) userRl.textContent = 'Role: ' + urole;
+      
       // Update info profil di topbar/sidebar jika ada
       const userLabels = document.querySelectorAll('.user-name-label, #topbarUsername');
-      userLabels.forEach(el => el.textContent = window.USERNAME || 'USER');
+      userLabels.forEach(el => el.textContent = uname);
       
       const roleLabels = document.querySelectorAll('.user-role-label, #topbarRole');
-      roleLabels.forEach(el => el.textContent = window.AKSES || 'WMS User');
+      roleLabels.forEach(el => el.textContent = urole);
+
+      // Cek apakah ada parameter ?page= di URL atau default INITIAL_PAGE
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetPage = urlParams.get('page') || window.INITIAL_PAGE || 'produk';
 
       // Render menu sidebar & navigasi halaman awal
       if (typeof renderSidebarNavItems === 'function') {
-        renderSidebarNavItems(window.INITIAL_PAGE || 'produk');
+        renderSidebarNavItems(targetPage);
       }
       if (typeof navigasiKe === 'function') {
-        navigasiKe(window.INITIAL_PAGE || 'produk', true);
+        navigasiKe(targetPage, true);
       }
       if (typeof muatDataProduk === 'function') {
         muatDataProduk(false);

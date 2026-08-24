@@ -9,7 +9,7 @@
 
     // ============ THEME MANAGER ============
     function initTheme() {
-      const savedTheme = localStorage.getItem('wms_theme') || 'dark';
+      const savedTheme = localStorage.getItem('wms_theme') || 'light';
       document.body.setAttribute('data-theme', savedTheme);
       updateThemeButtonText(savedTheme);
     }
@@ -17,11 +17,11 @@
     function updateThemeButtonText(theme) {
       const btn = document.getElementById('btnSidebarTheme');
       if (!btn) return;
-      btn.innerHTML = (theme === 'dark') ? (ICON_THEME_SUN + ' Terang') : (ICON_THEME_MOON + ' Gelap');
+      btn.innerHTML = (theme === 'light') ? (ICON_THEME_MOON + ' GELAP') : (ICON_THEME_SUN + ' TERANG');
     }
 
     function toggleTheme() {
-      const currentTheme = document.body.getAttribute('data-theme') || 'dark';
+      const currentTheme = document.body.getAttribute('data-theme') || 'light';
       const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
       document.body.setAttribute('data-theme', newTheme);
       localStorage.setItem('wms_theme', newTheme);
