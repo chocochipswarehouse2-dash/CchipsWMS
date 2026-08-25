@@ -65,7 +65,8 @@ masterShell = masterShell.replace('</head>', bridgeScriptsHead);
 
 // 7. Normalisasi Variabel Template & Token
 masterShell = masterShell
-  .replace(/const TOKEN\s*=\s*"<\?=\s*token\s*\?>";?/g, 'var TOKEN = window.TOKEN || "";')
+  // TOKEN: gunakan var biasa yang baca window.TOKEN (sudah di-set auth.js dari localStorage)
+  .replace(/const TOKEN\s*=\s*"<\?=\s*token\s*\?>";?/g, 'var TOKEN = window.TOKEN || localStorage.getItem(\'wms_token\') || sessionStorage.getItem(\'wms_token\') || "";')
   .replace(/const EXEC_URL\s*=\s*"<\?=\s*execUrl\s*\?>";?/g, 'var EXEC_URL = window.EXEC_URL || "";')
   .replace(/const AKSES\s*=\s*"<\?=\s*akses\s*\?>";?/g, 'var AKSES = window.AKSES || "All";')
   .replace(/const INITIAL_PAGE\s*=\s*"<\?=[\s\S]*?\?>";?/g, 'var INITIAL_PAGE = window.INITIAL_PAGE || "produk";')
@@ -85,6 +86,19 @@ masterShell = masterShell
 masterShell = masterShell
   .replace(/window\.top\.location\.href\s*=\s*EXEC_URL\s*\+\s*'\?logout=1';?/g, 'if (typeof logoutWms === "function") { logoutWms(); } else if (typeof setAppVisible === "function") { setAppVisible(false); }')
   .replace(/window\.top\.location\.href\s*=\s*redirectUrl;?/g, 'if (typeof handleLoginSuccess === "function") { handleLoginSuccess(res); } else if (typeof setAppVisible === "function") { setAppVisible(true); }');
+
+// Hapus panggilan muatDataProduk(false) yang duplikat dari inline WmsDashboard
+// (auth.js setAppVisible() sudah memanggil muatDataProduk(false) setelah login berhasil)
+masterShell = masterShell
+  .replace(/window\.muatDataProduk\s*=\s*muatDataProduk;\s*\n\s*muatDataProduk\(false\);/g,
+           'window.muatDataProduk = muatDataProduk;');
+
+// Perbaiki URL history push untuk GitHub Pages (EXEC_URL kosong, gunakan path relatif)
+masterShell = masterShell
+  .replace(
+    /const newUrl = EXEC_URL \+ '\?token=' \+ encodeURIComponent\(TOKEN\) \+ '&page=' \+ encodeURIComponent\(pageCode\);/g,
+    `const newUrl = (window.EXEC_URL && !window.EXEC_URL.includes('script.google.com')) ? (window.EXEC_URL + '?page=' + encodeURIComponent(pageCode)) : ('?page=' + encodeURIComponent(pageCode));`
+  );
 
 // 8. Generator untuk Halaman SPA Spesifik
 function buildPage(defaultPageCode) {

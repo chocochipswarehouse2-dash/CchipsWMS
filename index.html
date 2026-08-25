@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <base target="_top">
@@ -1437,11 +1437,11 @@
   </style>
 
   <!-- Font Awesome Icons -->
-  <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- WMS Core Standalone Bridge & Auth Controller -->
-  <script src='js/config.js'></script>
-  <script src='js/api.js'></script>
-  <script src='js/auth.js'></script>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
 </head>
 <body data-theme="light">
 
@@ -3175,20 +3175,13 @@
       return;
     }
     win.document.write(
-      `<html><head><title>${escapeHtml(docTitle)}</title>
-  <!-- Font Awesome Icons -->
-  <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'>
-  <!-- WMS Core Standalone Bridge & Auth Controller -->
-  <script src='js/config.js'></script>
-  <script src='js/api.js'></script>
-  <script src='js/auth.js'></script>
-</head>` +
+      `<html><head><title>${escapeHtml(docTitle)}</title></head>` +
       `<body style="margin:0; background:#333;">` +
       `<iframe src="${base64PdfData}" style="width:100%; height:100%; border:none;"></iframe>` +
       `
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      window.INITIAL_PAGE = 'produk';
+      window.INITIAL_PAGE = "produk";
       if (typeof checkAuthSession === 'function') {
         checkAuthSession();
       }
@@ -8850,7 +8843,7 @@
   </div> <!-- END #appWrapper -->
 
   <script>
-    var TOKEN = window.TOKEN || "";
+    var TOKEN = window.TOKEN || localStorage.getItem('wms_token') || sessionStorage.getItem('wms_token') || "";
     var EXEC_URL = window.EXEC_URL || "";
     var AKSES = window.AKSES || "All";
     var INITIAL_PAGE = window.INITIAL_PAGE || "produk";
@@ -9154,7 +9147,7 @@
       // 5. Update browser history URL tanpa reload
       if (!skipHistory) {
         try {
-          const newUrl = EXEC_URL + '?token=' + encodeURIComponent(TOKEN) + '&page=' + encodeURIComponent(pageCode);
+          const newUrl = (window.EXEC_URL && !window.EXEC_URL.includes('script.google.com')) ? (window.EXEC_URL + '?page=' + encodeURIComponent(pageCode)) : ('?page=' + encodeURIComponent(pageCode));
           window.history.pushState({ page: pageCode }, '', newUrl);
         } catch(e) {}
       }
@@ -9422,7 +9415,6 @@
       }).getWmsProdukCompact(TOKEN, Boolean(force));
     }
     window.muatDataProduk = muatDataProduk;
-    muatDataProduk(false);
 
     // ============ SUPABASE REALTIME AUTO-SYNC & BACKGROUND TIMER ============
     let supabaseRealtimeClient = null;
@@ -11078,14 +11070,5 @@
 
   <!-- CONTAINER FLOATING TOAST NOTIFIKASI SPA -->
   <div id="wmsGlobalToastContainer" class="toast-container"></div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      window.INITIAL_PAGE = 'produk';
-      if (typeof checkAuthSession === 'function') {
-        checkAuthSession();
-      }
-    });
-  </script>
 </body>
 </html>
