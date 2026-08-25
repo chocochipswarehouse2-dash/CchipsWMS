@@ -1,0 +1,1030 @@
+<!-- ========================================================
+     MODUL VIEW: FULFILLMENT REFILL & PICKING LIST (SPA)
+     FITUR: PERSISTENT PICKING LIST (2 TAB: ON-PROSES & SELESAI)
+     1 BUBBLE 1 CSV, INTERACTIVE CHECKLIST PICKING & ALOKASI RAK
+     ======================================================== -->
+<section id="view-fulfillment" class="spa-view" style="display: none;">
+  
+  <!-- SUB-NAV / SEGMENTED TABS & TOP TOOLBAR -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+    <div class="wms-segmented-tabs">
+      <button type="button" id="tabBtnFulfillmentProses" class="wms-segmented-tab-btn active" onclick="switchFulfillmentTab('proses')">
+        🟡 PICKING ON PROSES <span id="badgeCountProses" class="tab-count-badge">0</span>
+      </button>
+      <button type="button" id="tabBtnFulfillmentSelesai" class="wms-segmented-tab-btn" onclick="switchFulfillmentTab('selesai')">
+        🟢 SELESAI PICKING <span id="badgeCountSelesai" class="tab-count-badge">0</span>
+      </button>
+    </div>
+
+    <div style="display: flex; gap: 6px; align-items: center;">
+      <button class="btn btn-secondary" onclick="muatDataFulfillment(true)" style="height: 32px; padding: 0 10px; font-size: 11px;" title="Perbarui data Picking List dari database">
+        🔄 REFRESH
+      </button>
+      <button id="btnTopCetakSemua" class="btn btn-primary" onclick="cetakSemuaSuratJalanAktif()" style="display: none; height: 32px; padding: 0 12px; font-size: 11px; font-weight: 700;" title="Cetak seluruh Surat Jalan aktif ke PDF">
+        🖨️ CETAK SEMUA SJ
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       TAB 1: PICKING ON PROSES
+       ======================================================== -->
+  <div id="fulfillmentTabProses">
+    
+    <!-- 1. COMPACT UPLOAD SECTION CARD -->
+    <div class="data-section-card" style="margin-bottom: 14px;">
+      <div class="data-section-header" style="padding: 10px 16px; background: var(--card-alt);">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 12.5px;">🚚 UPLOAD CSV TRANSFER ORDER (REFILL TOKO)</span>
+        </div>
+        <div class="section-badge-info" style="font-size: 11px;">
+          1 CSV = 1 Kartu Picking List
+        </div>
+      </div>
+
+      <div style="padding: 12px 16px;">
+        <!-- Compact Upload Toolbar -->
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          
+          <!-- File Input -->
+          <div style="flex: 1; min-width: 240px;">
+            <input type="file" id="csvFileInput" multiple accept=".csv" class="search-input compact-input" style="width: 100%; cursor: pointer;" onchange="handleCsvFileSelected(this)">
+          </div>
+
+          <!-- Checkbox Opsi Cetak Langsung -->
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text); cursor: pointer; user-select: none;">
+              <input type="checkbox" id="chkDirectPrint" checked style="width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer;">
+              <span>Langsung cetak PDF Surat Jalan</span>
+            </label>
+          </div>
+
+          <!-- Tombol Proses Compact -->
+          <div style="display: flex; gap: 6px;">
+            <button id="btnProcessFulfillment" type="button" onclick="handleProcessFulfillment()" class="btn btn-primary" style="height: 32px; font-size: 11.5px; font-weight: 700; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px;" title="Proses CSV dan buat Picking List">
+              <span id="processIcon">⚡</span>
+              <span id="processLabel">PROSES CSV</span>
+            </button>
+            
+            <button type="button" onclick="resetFulfillmentUpload()" class="btn btn-secondary" style="height: 32px; font-size: 11px; padding: 0 10px;" title="Kosongkan input file">
+              RESET
+            </button>
+          </div>
+
+        </div>
+
+        <div id="fulfillmentToast" style="display: none; margin-top: 10px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 11.5px; font-weight: 600;"></div>
+      </div>
+    </div>
+
+    <!-- 2. DAFTAR BUBBLE PICKING ON PROSES -->
+    <div class="data-section-card">
+      <div class="data-section-header" style="padding: 10px 16px;">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 13px;">📋 DAFTAR PICKING LIST AKTIF (ON PROSES)</span>
+        </div>
+        <div id="fulfillmentProsesSummaryBadge" class="section-badge-info" style="font-size: 11px;">
+          Memuat data...
+        </div>
+      </div>
+
+      <!-- CONTAINER BUBBLE ON PROSES -->
+      <div id="fulfillmentOnProcessContainer" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="text-align: center; padding: 35px 20px; color: var(--text-muted); font-style: italic;">
+          ⏳ Mengambil data Picking List dari database WMS...
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ========================================================
+       TAB 2: SELESAI PICKING
+       ======================================================== -->
+  <div id="fulfillmentTabSelesai" style="display: none;">
+    
+    <div class="data-section-card">
+      <div class="data-section-header" style="padding: 10px 16px;">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 13px;">✅ RIWAYAT PICKING LIST SELESAI</span>
+        </div>
+        <div id="fulfillmentSelesaiSummaryBadge" class="section-badge-info" style="font-size: 11px;">
+          0 Surat Jalan Selesai
+        </div>
+      </div>
+
+      <!-- Filter Toolbar Selesai -->
+      <div style="padding: 10px 16px; background: var(--card-alt); border-bottom: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <input type="text" id="searchFulfillmentSelesai" class="search-input compact-input" placeholder="🔍 Cari No SJ / Toko Tujuan..." style="width: 240px;" oninput="renderFulfillmentCompletedBubbles()">
+        <button class="btn btn-secondary" onclick="document.getElementById('searchFulfillmentSelesai').value=''; renderFulfillmentCompletedBubbles();" style="height: 32px; padding: 0 10px; font-size: 11px;">
+          RESET
+        </button>
+      </div>
+
+      <!-- CONTAINER BUBBLE SELESAI -->
+      <div id="fulfillmentCompletedContainer" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="text-align: center; padding: 35px 20px; color: var(--text-muted); font-style: italic;">
+          Belum ada Picking List yang diselesaikan.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- CSS KHUSUS BUBBLE PICKING LIST & CHECKLIST -->
+<style>
+  .tab-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 800;
+    margin-left: 4px;
+    background: rgba(0, 0, 0, 0.08);
+  }
+  .wms-segmented-tab-btn.active .tab-count-badge {
+    background: #fff;
+    color: var(--primary);
+  }
+
+  .fulfillment-bubble-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    overflow: hidden;
+    transition: all 0.15s ease;
+  }
+  .fulfillment-bubble-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  }
+  .fulfillment-bubble-card.completed-card {
+    border-left: 4px solid #10b981;
+    background: rgba(16, 185, 129, 0.02);
+  }
+
+  .bubble-header {
+    background: var(--card-alt);
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .bubble-meta-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .bubble-tag-sj {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+  }
+  .bubble-tag-tujuan {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+  }
+  .bubble-tag-printed {
+    background: rgba(139, 92, 246, 0.12);
+    color: #8b5cf6;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+  }
+  .bubble-tag-unprinted {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+  }
+  .bubble-tag-done {
+    background: rgba(16, 185, 129, 0.15);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+  }
+
+  .badge-rak-loc {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    background: rgba(59, 130, 246, 0.15);
+    color: #2563eb;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+  .badge-rak-koli {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    background: rgba(245, 158, 11, 0.15);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  /* Baris Picking Interaktif */
+  .picking-item-row {
+    transition: background 0.12s ease;
+  }
+  .picking-item-row.row-picked-active {
+    background: rgba(16, 185, 129, 0.08) !important;
+  }
+  .btn-check-pick {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    padding: 0;
+  }
+  .btn-check-pick.checked {
+    background: #10b981;
+    border-color: #10b981;
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3);
+  }
+  .input-qty-pick {
+    width: 55px;
+    height: 28px;
+    text-align: center;
+    font-weight: 800;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-surface);
+    color: var(--text);
+    font-size: 12px;
+  }
+  .input-qty-pick:focus {
+    border-color: var(--primary);
+    outline: none;
+    background: #fff;
+  }
+
+  /* Progress Bar Mini di Bubble */
+  .mini-progress-track {
+    width: 110px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .mini-progress-fill {
+    height: 100%;
+    background: #10b981;
+    transition: width 0.2s ease;
+  }
+</style>
+
+<!-- JAVASCRIPT LOGIC FULFILLMENT REFILL -->
+<script>
+  let isFulfillmentInitialized = false;
+  let FULFILLMENT_ON_PROCESS = []; // Data On-Process dari Database
+  let FULFILLMENT_COMPLETED = [];  // Data Selesai dari Database
+  let currentFulfillmentTab = 'proses';
+
+  function initFulfillmentView() {
+    if (!isFulfillmentInitialized) {
+      isFulfillmentInitialized = true;
+      muatDataFulfillment(false);
+    }
+  }
+
+  // ============ TAB SWITCHER (ON PROSES vs SELESAI) ============
+  function switchFulfillmentTab(tab) {
+    currentFulfillmentTab = tab;
+    const tabProses = document.getElementById('fulfillmentTabProses');
+    const tabSelesai = document.getElementById('fulfillmentTabSelesai');
+    const btnProses = document.getElementById('tabBtnFulfillmentProses');
+    const btnSelesai = document.getElementById('tabBtnFulfillmentSelesai');
+
+    if (tab === 'proses') {
+      if (tabProses) tabProses.style.display = 'block';
+      if (tabSelesai) tabSelesai.style.display = 'none';
+      if (btnProses) btnProses.classList.add('active');
+      if (btnSelesai) btnSelesai.classList.remove('active');
+    } else {
+      if (tabProses) tabProses.style.display = 'none';
+      if (tabSelesai) tabSelesai.style.display = 'block';
+      if (btnProses) btnProses.classList.remove('active');
+      if (btnSelesai) btnSelesai.classList.add('active');
+      renderFulfillmentCompletedBubbles();
+    }
+  }
+
+  // ============ MUAT DATA PERMANEN DARI DATABASE ============
+  function muatDataFulfillment(force) {
+    const containerProses = document.getElementById('fulfillmentOnProcessContainer');
+    if (containerProses && force) {
+      containerProses.innerHTML = '<div style="text-align: center; padding: 35px 20px; color: var(--text-muted); font-style: italic;">⏳ Memperbarui data Picking List dari server...</div>';
+    }
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.success) {
+          FULFILLMENT_ON_PROCESS = res.onProcess || [];
+          FULFILLMENT_COMPLETED = res.completed || [];
+          
+          updateTabBadges();
+          renderFulfillmentOnProcessBubbles();
+          renderFulfillmentCompletedBubbles();
+        } else {
+          if (containerProses) {
+            containerProses.innerHTML = '<div style="text-align: center; color: var(--danger); padding: 30px;">' + (res ? res.message : 'Gagal memuat data') + '</div>';
+          }
+        }
+      })
+      .withFailureHandler(err => {
+        if (containerProses) {
+          containerProses.innerHTML = '<div style="text-align: center; color: var(--danger); padding: 30px;">Error koneksi: ' + err.message + '</div>';
+        }
+      })
+      .getFulfillmentPickingLists(TOKEN);
+  }
+
+  function updateTabBadges() {
+    const badgeP = document.getElementById('badgeCountProses');
+    const badgeS = document.getElementById('badgeCountSelesai');
+    const btnCetakAll = document.getElementById('btnTopCetakSemua');
+
+    if (badgeP) badgeP.textContent = FULFILLMENT_ON_PROCESS.length;
+    if (badgeS) badgeS.textContent = FULFILLMENT_COMPLETED.length;
+
+    if (btnCetakAll) {
+      btnCetakAll.style.display = FULFILLMENT_ON_PROCESS.length > 0 ? "inline-flex" : "none";
+    }
+  }
+
+  function handleCsvFileSelected(input) {
+    const files = input.files;
+    const btn = document.getElementById('btnProcessFulfillment');
+    if (files && files.length > 0 && btn) {
+      btn.classList.add('pulse-highlight');
+    }
+  }
+
+  function resetFulfillmentUpload() {
+    const fileInput = document.getElementById('csvFileInput');
+    if (fileInput) fileInput.value = '';
+    const btn = document.getElementById('btnProcessFulfillment');
+    if (btn) btn.classList.remove('pulse-highlight');
+  }
+
+  function showFulfillmentToast(ok, msg) {
+    const el = document.getElementById('fulfillmentToast');
+    if (!el) return;
+    el.style.display = 'block';
+    el.style.background = ok ? 'var(--success-light)' : 'var(--danger-light)';
+    el.style.border = '1px solid ' + (ok ? 'var(--success)' : 'var(--danger)');
+    el.style.color = ok ? 'var(--success)' : 'var(--danger)';
+    el.innerHTML = (ok ? '✓ ' : '⚠️ ') + msg;
+    setTimeout(function () { el.style.display = 'none'; }, 6000);
+  }
+
+  // ============ PROSES UPLOAD CSV MULTI-FILE ============
+  function handleProcessFulfillment(force = false) {
+    const fileInput = document.getElementById('csvFileInput');
+    const files = fileInput ? fileInput.files : null;
+
+    if (!files || files.length === 0) {
+      showFulfillmentToast(false, "Silakan pilih minimal 1 file CSV Transfer Order terlebih dahulu.");
+      return;
+    }
+
+    const chkDirectPrint = document.getElementById('chkDirectPrint');
+    const isDirectPrint = chkDirectPrint ? chkDirectPrint.checked : false;
+
+    const btn = document.getElementById('btnProcessFulfillment');
+    const icon = document.getElementById('processIcon');
+    const label = document.getElementById('processLabel');
+
+    if (btn) btn.disabled = true;
+    if (icon) icon.innerHTML = "⏳";
+    if (label) label.textContent = "MEMPROSES CSV...";
+
+    let readCount = 0;
+    let filePayloads = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        filePayloads.push({
+          fileName: file.name,
+          content: e.target.result
+        });
+        readCount++;
+
+        if (readCount === files.length) {
+          google.script.run
+            .withSuccessHandler(res => {
+              if (btn) btn.disabled = false;
+              if (icon) icon.innerHTML = "⚡";
+              if (label) label.textContent = "PROSES CSV";
+
+              if (!res.success && res.isDuplicate) {
+                if (confirm(res.message)) {
+                  handleProcessFulfillment(true);
+                }
+                return;
+              }
+
+              if (!res.success) {
+                showFulfillmentToast(false, "Gagal: " + res.message);
+                return;
+              }
+
+              showFulfillmentToast(true, res.message || "Transfer Order berhasil disimpan ke database!");
+              resetFulfillmentUpload();
+              muatDataFulfillment(true);
+
+              if (isDirectPrint && res.pdfData) {
+                openPdfPopup(res.pdfData, "Surat_Jalan_Gabungan");
+              }
+            })
+            .withFailureHandler(err => {
+              if (btn) btn.disabled = false;
+              if (icon) icon.innerHTML = "⚡";
+              if (label) label.textContent = "PROSES CSV";
+              showFulfillmentToast(false, "Terjadi kesalahan server: " + err.message);
+            })
+            .processRefillCsvFilesToPickingList(filePayloads, {
+              isDirectPrint: isDirectPrint,
+              forceProcess: force
+            });
+        }
+      };
+      reader.readAsText(file);
+    }
+  }
+
+  // ============ RENDER TAB 1: ON PROSES (INTERACTIVE PICKING) ============
+  function renderFulfillmentOnProcessBubbles() {
+    const container = document.getElementById('fulfillmentOnProcessContainer');
+    const badge = document.getElementById('fulfillmentProsesSummaryBadge');
+    if (!container) return;
+
+    if (FULFILLMENT_ON_PROCESS.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); font-style: italic;">
+          <div style="font-size: 32px; margin-bottom: 8px;">📦</div>
+          Tidak ada antrean Picking List yang aktif.<br>Silakan upload file CSV di atas untuk membuat Picking List baru.
+        </div>
+      `;
+      if (badge) badge.textContent = "0 Surat Jalan Aktif";
+      return;
+    }
+
+    let totalPcsReq = 0;
+    FULFILLMENT_ON_PROCESS.forEach(b => { totalPcsReq += (Number(b.totalQtyReq) || 0); });
+    if (badge) badge.innerHTML = `<b>${FULFILLMENT_ON_PROCESS.length} Surat Jalan</b> &bull; <b>${totalPcsReq} Pcs Total</b>`;
+
+    let html = '';
+    FULFILLMENT_ON_PROCESS.forEach((bubble, bIdx) => {
+      const items = bubble.items || [];
+      const totalItems = items.length;
+      let checkedCount = 0;
+      let totalPcsPicked = 0;
+
+      items.forEach(it => {
+        if (it.isChecked) {
+          checkedCount++;
+          totalPcsPicked += (Number(it.qtyPicked) || 0);
+        }
+      });
+
+      const pct = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
+      const isAllChecked = (totalItems > 0 && checkedCount === totalItems);
+
+      let rowsHtml = '';
+      items.forEach((item, itemIdx) => {
+        const loc = String(item.lokasi || '-').trim();
+        const isKoli = loc.toUpperCase().includes('KOLI');
+        const locBadge = (loc && loc !== '-')
+          ? (isKoli ? `<span class="badge-rak-koli">📦 ${escapeHtml(loc)}</span>` : `<span class="badge-rak-loc">📍 ${escapeHtml(loc)}</span>`)
+          : `<span style="color: var(--text-muted); font-size: 10.5px;">-</span>`;
+
+        const isRowChecked = Boolean(item.isChecked);
+
+        rowsHtml += `
+          <tr class="picking-item-row ${isRowChecked ? 'row-picked-active' : ''}" id="pickRow_${bIdx}_${itemIdx}" style="font-size: 12px;">
+            <td style="text-align: center; width: 35px; color: var(--text-muted); font-weight: 600;">${itemIdx + 1}</td>
+            <td style="text-align: center; width: 45px; padding: 4px;">
+              <button type="button" class="btn-check-pick ${isRowChecked ? 'checked' : ''}" onclick="toggleCheckItem(${bIdx}, ${itemIdx})" title="Ceklis barang sudah diambil dari rak">
+                ${isRowChecked ? '✓' : ''}
+              </button>
+            </td>
+            <td style="font-weight: 700; color: var(--primary); padding-left: 8px; width: 135px;"><span class="badge-sku">${escapeHtml(item.sku || '-')}</span></td>
+            <td style="padding-left: 8px; font-weight: 600;">${escapeHtml(item.nama || '-')}</td>
+            <td style="text-align: center; font-weight: 700; color: var(--text-muted); width: 60px;">${item.qtyReq || 0}</td>
+            <td style="text-align: center; width: 75px; padding: 4px;">
+              <input type="number" min="0" max="${item.qtyReq || 999}" value="${item.qtyPicked !== undefined ? item.qtyPicked : item.qtyReq}" class="input-qty-pick" onchange="updateItemPickedQty(${bIdx}, ${itemIdx}, this.value)" onfocus="this.select()" title="Sesuaikan jika barang yang didapat kurang dari request">
+            </td>
+            <td style="text-align: center; width: 110px;">${locBadge}</td>
+          </tr>
+        `;
+      });
+
+      html += `
+        <div class="fulfillment-bubble-card" id="bubbleCard_${bIdx}">
+          
+          <!-- Bubble Header -->
+          <div class="bubble-header">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span style="font-size: 14px;">📄</span>
+              <span class="bubble-meta-tag bubble-tag-sj">No SJ: ${escapeHtml(bubble.noSJ || '-')}</span>
+              <span class="bubble-meta-tag bubble-tag-tujuan">🏪 ${escapeHtml(bubble.tujuan || '-')}</span>
+              <span class="bubble-meta-tag ${bubble.isPrinted ? 'bubble-tag-printed' : 'bubble-tag-unprinted'}">${bubble.isPrinted ? '🖨️ TERCETAK' : '🟢 SIAP PICKING'}</span>
+            </div>
+
+            <!-- Picking Progress & Actions -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              
+              <!-- Progress Bar Mini -->
+              <div style="display: flex; align-items: center; gap: 6px;" title="Progress pengambilan barang">
+                <div class="mini-progress-track">
+                  <div class="mini-progress-fill" id="progFill_${bIdx}" style="width: ${pct}%;"></div>
+                </div>
+                <span id="progText_${bIdx}" style="font-size: 11px; font-weight: 700; color: var(--text-muted); min-width: 45px;">${checkedCount}/${totalItems}</span>
+              </div>
+
+              <!-- Tombol Cetak SJ -->
+              <button type="button" class="btn btn-secondary" onclick="cetakSingleSuratJalan(${bIdx}, this)" style="height: 28px; padding: 0 10px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Cetak Surat Jalan PDF">
+                🖨️ CETAK SJ
+              </button>
+
+              <!-- Tombol SELESAI PICKING (DONE) -->
+              <button type="button" class="btn btn-primary" onclick="konfirmasiSelesaiPicking(${bIdx}, this)" style="height: 28px; padding: 0 12px; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; background: #10b981; border-color: #10b981;" title="Selesaikan picking dan pindahkan ke tab Selesai">
+                ✓ DONE
+              </button>
+
+              <!-- Toggle Detail -->
+              <button type="button" class="btn btn-secondary" onclick="toggleBubbleDetail(${bIdx})" style="height: 28px; padding: 0 8px; font-size: 11px;" title="Buka / Tutup tabel rincian">
+                <span id="toggleText_${bIdx}">👁️ Rincian</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Meta Summary Bar -->
+          <div style="padding: 6px 14px; background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted);">
+            <div>
+              <b>Tanggal:</b> ${escapeHtml(bubble.date || '-')} &bull; <b>Tujuan:</b> ${escapeHtml(bubble.tujuan || '-')}
+            </div>
+            <div>
+              Total: <b>${totalItems} SKU</b> &bull; Request: <b>${bubble.totalQtyReq || 0} Pcs</b> &bull; Diambil: <b style="color: #10b981;" id="pickedTotal_${bIdx}">${totalPcsPicked} Pcs</b>
+            </div>
+          </div>
+
+          <!-- Collapsible Picking Table Detail -->
+          <div id="bubbleTableWrap_${bIdx}" style="display: block; overflow-x: auto;">
+            <table class="unified-table" style="width: 100%; min-width: 620px;">
+              <thead>
+                <tr>
+                  <th style="width: 35px; text-align: center;">NO</th>
+                  <th style="width: 45px; text-align: center;">CEK</th>
+                  <th style="width: 135px; text-align: left; padding-left: 8px;">SKU</th>
+                  <th style="text-align: left; padding-left: 8px;">NAMA PRODUK &amp; VARIAN</th>
+                  <th style="width: 60px; text-align: center;">REQ</th>
+                  <th style="width: 75px; text-align: center;">PICKED</th>
+                  <th style="width: 110px; text-align: center;">LOKASI RAK</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  // ============ INTERAKSI CEKLIS & EDIT PICKED QTY ============
+  function toggleCheckItem(bIdx, itemIdx) {
+    const bubble = FULFILLMENT_ON_PROCESS[bIdx];
+    if (!bubble || !bubble.items || !bubble.items[itemIdx]) return;
+
+    const item = bubble.items[itemIdx];
+    item.isChecked = !item.isChecked;
+
+    if (item.isChecked && (item.qtyPicked === undefined || item.qtyPicked === 0)) {
+      item.qtyPicked = item.qtyReq || 1;
+    }
+
+    // Update row DOM
+    const rowEl = document.getElementById(`pickRow_${bIdx}_${itemIdx}`);
+    if (rowEl) {
+      const btnCheck = rowEl.querySelector('.btn-check-pick');
+      const inputQty = rowEl.querySelector('.input-qty-pick');
+
+      if (item.isChecked) {
+        rowEl.classList.add('row-picked-active');
+        if (btnCheck) {
+          btnCheck.classList.add('checked');
+          btnCheck.textContent = '✓';
+        }
+        if (inputQty) inputQty.value = item.qtyPicked;
+      } else {
+        rowEl.classList.remove('row-picked-active');
+        if (btnCheck) {
+          btnCheck.classList.remove('checked');
+          btnCheck.textContent = '';
+        }
+      }
+    }
+
+    updateBubbleProgress(bIdx);
+  }
+
+  function updateItemPickedQty(bIdx, itemIdx, val) {
+    const bubble = FULFILLMENT_ON_PROCESS[bIdx];
+    if (!bubble || !bubble.items || !bubble.items[itemIdx]) return;
+
+    const item = bubble.items[itemIdx];
+    const parsed = parseInt(val, 10);
+    item.qtyPicked = isNaN(parsed) ? 0 : Math.max(0, parsed);
+
+    if (item.qtyPicked > 0 && !item.isChecked) {
+      toggleCheckItem(bIdx, itemIdx);
+    } else {
+      updateBubbleProgress(bIdx);
+    }
+  }
+
+  function updateBubbleProgress(bIdx) {
+    const bubble = FULFILLMENT_ON_PROCESS[bIdx];
+    if (!bubble || !bubble.items) return;
+
+    let checkedCount = 0;
+    let totalPcsPicked = 0;
+    const totalItems = bubble.items.length;
+
+    bubble.items.forEach(it => {
+      if (it.isChecked) {
+        checkedCount++;
+        totalPcsPicked += (Number(it.qtyPicked) || 0);
+      }
+    });
+
+    const pct = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
+    const fillEl = document.getElementById(`progFill_${bIdx}`);
+    const textEl = document.getElementById(`progText_${bIdx}`);
+    const pickedTotalEl = document.getElementById(`pickedTotal_${bIdx}`);
+
+    if (fillEl) fillEl.style.width = `${pct}%`;
+    if (textEl) textEl.textContent = `${checkedCount}/${totalItems}`;
+    if (pickedTotalEl) pickedTotalEl.textContent = `${totalPcsPicked} Pcs`;
+  }
+
+  function toggleBubbleDetail(bIdx) {
+    const wrap = document.getElementById(`bubbleTableWrap_${bIdx}`);
+    const toggleText = document.getElementById(`toggleText_${bIdx}`);
+    if (!wrap) return;
+
+    if (wrap.style.display === 'none') {
+      wrap.style.display = 'block';
+      if (toggleText) toggleText.textContent = `👁️ Tutup`;
+    } else {
+      wrap.style.display = 'none';
+      if (toggleText) toggleText.textContent = `👁️ Rincian`;
+    }
+  }
+
+  // ============ SELESAI PICKING (DONE) ============
+  function konfirmasiSelesaiPicking(bIdx, btn) {
+    const bubble = FULFILLMENT_ON_PROCESS[bIdx];
+    if (!bubble) return;
+
+    const items = bubble.items || [];
+    let checkedCount = 0;
+    let totalPicked = 0;
+    items.forEach(it => {
+      if (it.isChecked) {
+        checkedCount++;
+        totalPicked += (Number(it.qtyPicked) || 0);
+      }
+    });
+
+    let confirmMsg = `Konfirmasi selesai picking untuk Surat Jalan ${bubble.noSJ} (${bubble.tujuan})?\n\n` +
+      `• Total SKU: ${items.length}\n` +
+      `• SKU Diceklis: ${checkedCount} dari ${items.length}\n` +
+      `• Total Fisik Diambil: ${totalPicked} dari ${bubble.totalQtyReq} pcs\n\n` +
+      `Picking list ini akan otomatis dipindahkan ke tab SELESAI PICKING. Lanjutkan?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    if (btn && window.setButtonLoading) window.setButtonLoading(btn, true, 'MENYIMPAN...');
+
+    const payload = {
+      noSJ: bubble.noSJ,
+      items: items.map(it => ({
+        sku: it.sku,
+        qtyReq: it.qtyReq,
+        qtyPicked: it.isChecked ? (it.qtyPicked !== undefined ? it.qtyPicked : it.qtyReq) : 0
+      })),
+      pickerName: (typeof CURRENT_USER !== 'undefined' && CURRENT_USER) ? CURRENT_USER : 'Picker'
+    };
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (res && res.success) {
+          if (window.showToast) window.showToast(res.message || "Picking selesai! Dipindahkan ke tab Selesai.", "success");
+          muatDataFulfillment(true);
+        } else {
+          alert("Gagal menyelesaikan: " + (res ? res.message : "Error server"));
+        }
+      })
+      .withFailureHandler(err => {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        alert("Error server: " + err.message);
+      })
+      .selesaiPickingFulfillment(TOKEN, payload);
+  }
+
+  // ============ RENDER TAB 2: SELESAI PICKING ============
+  function renderFulfillmentCompletedBubbles() {
+    const container = document.getElementById('fulfillmentCompletedContainer');
+    const badge = document.getElementById('fulfillmentSelesaiSummaryBadge');
+    if (!container) return;
+
+    const keyword = (document.getElementById('searchFulfillmentSelesai') ? document.getElementById('searchFulfillmentSelesai').value : '').toLowerCase().trim();
+
+    let filtered = FULFILLMENT_COMPLETED;
+    if (keyword) {
+      filtered = filtered.filter(b => {
+        const combined = (String(b.noSJ || '') + ' ' + String(b.tujuan || '') + ' ' + String(b.date || '')).toLowerCase();
+        return combined.includes(keyword);
+      });
+    }
+
+    if (badge) badge.textContent = `${filtered.length} Surat Jalan Selesai`;
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); font-style: italic;">
+          <div style="font-size: 32px; margin-bottom: 8px;">✅</div>
+          Belum ada riwayat Picking List selesai yang sesuai pencarian.
+        </div>
+      `;
+      return;
+    }
+
+    let html = '';
+    filtered.forEach((bubble, bIdx) => {
+      const items = bubble.items || [];
+      let rowsHtml = '';
+      items.forEach((item, itemIdx) => {
+        rowsHtml += `
+          <tr style="font-size: 11.5px;">
+            <td style="text-align: center; width: 35px; color: var(--text-muted); font-weight: 600;">${itemIdx + 1}</td>
+            <td style="font-weight: 700; color: var(--primary); padding-left: 8px; width: 135px;"><span class="badge-sku">${escapeHtml(item.sku || '-')}</span></td>
+            <td style="padding-left: 8px; font-weight: 600;">${escapeHtml(item.nama || '-')}</td>
+            <td style="text-align: center; font-weight: 700; width: 70px;">${item.qtyReq || 0}</td>
+            <td style="text-align: center; font-weight: 800; color: #10b981; width: 70px;">${item.qtyPicked || item.qtyReq || 0}</td>
+            <td style="text-align: center; width: 110px;"><span class="badge-rak-loc">${escapeHtml(item.lokasi || '-')}</span></td>
+          </tr>
+        `;
+      });
+
+      html += `
+        <div class="fulfillment-bubble-card completed-card">
+          <!-- Header -->
+          <div class="bubble-header">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span style="font-size: 14px;">✅</span>
+              <span class="bubble-meta-tag bubble-tag-sj">No SJ: ${escapeHtml(bubble.noSJ || '-')}</span>
+              <span class="bubble-meta-tag bubble-tag-tujuan">🏪 ${escapeHtml(bubble.tujuan || '-')}</span>
+              <span class="bubble-meta-tag bubble-tag-done">✓ SELESAI PICKING</span>
+            </div>
+
+            <!-- Actions -->
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <button type="button" class="btn btn-secondary" onclick="cetakSingleSuratJalanCompleted('${escapeHtml(bubble.noSJ)}', this)" style="height: 28px; padding: 0 10px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Cetak ulang Surat Jalan PDF">
+                🖨️ CETAK ULANG SJ
+              </button>
+
+              <button type="button" class="btn btn-secondary" onclick="toggleCompletedDetail(${bIdx})" style="height: 28px; padding: 0 8px; font-size: 11px;" title="Lihat rincian barang">
+                <span id="toggleCompText_${bIdx}">👁️ Rincian (${items.length})</span>
+              </button>
+
+              <button type="button" class="btn btn-secondary" onclick="kembalikanKeProses('${escapeHtml(bubble.noSJ)}', this)" style="height: 28px; padding: 0 8px; font-size: 11px; color: var(--danger); border-color: rgba(239,68,68,0.3);" title="Kembalikan ke tab On Proses jika salah selesai">
+                ↩️ KEMBALIKAN
+              </button>
+            </div>
+          </div>
+
+          <!-- Meta Bar -->
+          <div style="padding: 6px 14px; background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted);">
+            <div>
+              <b>Tanggal:</b> ${escapeHtml(bubble.date || '-')} &bull; <b>Tujuan:</b> ${escapeHtml(bubble.tujuan || '-')}
+            </div>
+            <div>
+              Total: <b>${items.length} SKU</b> &bull; Request: <b>${bubble.totalQtyReq || 0} Pcs</b> &bull; Terambil: <b style="color: #10b981;">${bubble.totalQtyPicked || bubble.totalQtyReq || 0} Pcs</b>
+            </div>
+          </div>
+
+          <!-- Detail Table -->
+          <div id="compTableWrap_${bIdx}" style="display: none; overflow-x: auto;">
+            <table class="unified-table" style="width: 100%; min-width: 600px;">
+              <thead>
+                <tr>
+                  <th style="width: 35px; text-align: center;">NO</th>
+                  <th style="width: 135px; text-align: left; padding-left: 8px;">SKU</th>
+                  <th style="text-align: left; padding-left: 8px;">NAMA PRODUK &amp; VARIAN</th>
+                  <th style="width: 70px; text-align: center;">REQ</th>
+                  <th style="width: 70px; text-align: center;">PICKED</th>
+                  <th style="width: 110px; text-align: center;">LOKASI RAK</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function toggleCompletedDetail(bIdx) {
+    const wrap = document.getElementById(`compTableWrap_${bIdx}`);
+    const toggleText = document.getElementById(`toggleCompText_${bIdx}`);
+    if (!wrap) return;
+
+    if (wrap.style.display === 'none') {
+      wrap.style.display = 'block';
+      if (toggleText) toggleText.textContent = `👁️ Tutup`;
+    } else {
+      wrap.style.display = 'none';
+      if (toggleText) toggleText.textContent = `👁️ Rincian`;
+    }
+  }
+
+  function kembalikanKeProses(noSJ, btn) {
+    if (!confirm(`Kembalikan Surat Jalan ${noSJ} ke tab Picking Proses?`)) return;
+
+    if (btn && window.setButtonLoading) window.setButtonLoading(btn, true, 'MEMPROSES...');
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (res && res.success) {
+          if (window.showToast) window.showToast(res.message, "success");
+          muatDataFulfillment(true);
+        } else {
+          alert("Gagal: " + (res ? res.message : "Error"));
+        }
+      })
+      .withFailureHandler(err => {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        alert("Error: " + err.message);
+      })
+      .kembalikanPickingKeProses(TOKEN, noSJ);
+  }
+
+  // ============ CETAK SURAT JALAN ============
+  function cetakSingleSuratJalan(bIdx, btn) {
+    const bubble = FULFILLMENT_ON_PROCESS[bIdx];
+    if (!bubble) return;
+
+    if (btn && window.setButtonLoading) window.setButtonLoading(btn, true, 'MEMBUAT PDF...');
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (res && res.success && res.pdfData) {
+          bubble.isPrinted = true;
+          bubble.status = "TERCETAK";
+          renderFulfillmentOnProcessBubbles();
+          openPdfPopup(res.pdfData, `Surat_Jalan_${bubble.noSJ}`);
+        } else {
+          alert("Gagal membuat PDF: " + (res ? res.message : "Error tidak diketahui"));
+        }
+      })
+      .withFailureHandler(err => {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        alert("Error server: " + err.message);
+      })
+      .cetakSingleSuratJalanRefill(bubble);
+  }
+
+  function cetakSingleSuratJalanCompleted(noSJ, btn) {
+    const bubble = FULFILLMENT_COMPLETED.find(b => b.noSJ === noSJ);
+    if (!bubble) return;
+
+    if (btn && window.setButtonLoading) window.setButtonLoading(btn, true, 'MEMBUAT PDF...');
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (res && res.success && res.pdfData) {
+          openPdfPopup(res.pdfData, `Surat_Jalan_${bubble.noSJ}`);
+        } else {
+          alert("Gagal membuat PDF: " + (res ? res.message : "Error"));
+        }
+      })
+      .withFailureHandler(err => {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        alert("Error server: " + err.message);
+      })
+      .cetakSingleSuratJalanRefill(bubble);
+  }
+
+  function cetakSemuaSuratJalanAktif() {
+    if (FULFILLMENT_ON_PROCESS.length === 0) {
+      alert("Tidak ada Surat Jalan aktif untuk dicetak.");
+      return;
+    }
+
+    const btn = document.getElementById('btnTopCetakSemua');
+    if (btn && window.setButtonLoading) window.setButtonLoading(btn, true, 'MEMBUAT PDF...');
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (res && res.success && res.pdfData) {
+          FULFILLMENT_ON_PROCESS.forEach(b => {
+            b.isPrinted = true;
+            b.status = "TERCETAK";
+          });
+          renderFulfillmentOnProcessBubbles();
+          openPdfPopup(res.pdfData, "Semua_Surat_Jalan_Aktif");
+        } else {
+          alert("Gagal membuat PDF: " + (res ? res.message : "Error"));
+        }
+      })
+      .withFailureHandler(err => {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        alert("Error: " + err.message);
+      })
+      .cetakMultipleSuratJalanRefill(FULFILLMENT_ON_PROCESS);
+  }
+
+  // ============ POPUP PDF & PRINT ============
+  function openPdfPopup(base64PdfData, docTitle = "Surat_Jalan_Refill") {
+    var win = window.open();
+    if (!win) {
+      alert("Pop-up diblokir oleh browser! Izinkan pop-up untuk situs ini agar PDF Surat Jalan dapat ditampilkan.");
+      return;
+    }
+    win.document.write(
+      `<html><head><title>${escapeHtml(docTitle)}</title></head>` +
+      `<body style="margin:0; background:#333;">` +
+      `<iframe src="${base64PdfData}" style="width:100%; height:100%; border:none;"></iframe>` +
+      `</body></html>`
+    );
+    setTimeout(() => { 
+      try { win.print(); } catch(e) {}
+    }, 1200);
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Expose function global ke window
+  window.initFulfillmentView = initFulfillmentView;
+  window.switchFulfillmentTab = switchFulfillmentTab;
+  window.muatDataFulfillment = muatDataFulfillment;
+  window.handleProcessFulfillment = handleProcessFulfillment;
+  window.handleCsvFileSelected = handleCsvFileSelected;
+  window.resetFulfillmentUpload = resetFulfillmentUpload;
+  window.toggleCheckItem = toggleCheckItem;
+  window.updateItemPickedQty = updateItemPickedQty;
+  window.toggleBubbleDetail = toggleBubbleDetail;
+  window.konfirmasiSelesaiPicking = konfirmasiSelesaiPicking;
+  window.toggleCompletedDetail = toggleCompletedDetail;
+  window.kembalikanKeProses = kembalikanKeProses;
+  window.cetakSingleSuratJalan = cetakSingleSuratJalan;
+  window.cetakSingleSuratJalanCompleted = cetakSingleSuratJalanCompleted;
+  window.cetakSemuaSuratJalanAktif = cetakSemuaSuratJalanAktif;
+</script>

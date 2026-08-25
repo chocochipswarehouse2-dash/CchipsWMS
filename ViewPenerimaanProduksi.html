@@ -1,0 +1,2199 @@
+<!-- ========================================================
+     MODUL VIEW: PENERIMAAN PRODUKSI & KEDATANGAN BARANG (SPA)
+     FITUR: COMPACT BATCH INPUT (1 PENERIMAAN BISA BANYAK KODE)
+     1 KODE PRODUKSI = 1 FOTO PRODUK + MULTI-VARIANT (SIZE & QTY) + CATATAN
+     ======================================================== -->
+<section id="view-penerimaanproduksi" class="spa-view" style="display: none;">
+
+  <!-- SUB-NAV / VIEW MODE TOGGLE (STANDARDIZED COMPACT SEGMENTED PILL) -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+    <div class="wms-segmented-tabs">
+      <button type="button" id="tabBtnRiwayat" class="wms-segmented-tab-btn active" onclick="switchPenerimaanTab('riwayat')">
+        📊 RIWAYAT PENERIMAAN
+      </button>
+      <button type="button" id="tabBtnForm" class="wms-segmented-tab-btn" onclick="switchPenerimaanTab('form')">
+        📝 INPUT KEDATANGAN
+      </button>
+    </div>
+
+    <div style="display: flex; gap: 6px; align-items: center;">
+      <button class="btn btn-secondary" onclick="muatDataPenerimaan(true)" style="height: 32px; padding: 0 10px; font-size: 11px;" title="Perbarui data dari Supabase">
+        🔄 REFRESH
+      </button>
+      <button class="btn btn-success" onclick="exportPenerimaanCsv()" style="height: 32px; padding: 0 10px; font-size: 11px;" title="Unduh Data CSV">
+        📥 CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       TAB 1: COMPACT FORM INPUT KEDATANGAN BARANG
+       ======================================================== -->
+  <div id="penerimaanFormContainer" style="display: none; max-width: 1050px; margin: 0 auto 24px;">
+    
+    <!-- 1. DATA INFORMASI PENERIMAAN (HEADER COMPACT) -->
+    <div class="data-section-card" style="margin-bottom: 14px;">
+      <div class="data-section-header" style="padding: 10px 16px; background: var(--card-alt);">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 12.5px;">📋 1. DATA INFORMASI PENERIMAAN</span>
+        </div>
+        <div class="section-badge-info" style="font-size: 11px;">
+          Header Surat Jalan
+        </div>
+      </div>
+
+      <div style="padding: 14px 16px;">
+        <div class="penerimaan-header-grid">
+          
+          <!-- Kategori Selector Compact -->
+          <div>
+            <label class="form-compact-label">KATEGORI PRODUKSI <span style="color: var(--danger);">*</span></label>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" id="btnKatLokal" class="btn-kat-pill active" onclick="pilihKategoriCompact('Lokal CMT')">
+                🏭 LOKAL CMT
+              </button>
+              <button type="button" id="btnKatKargo" class="btn-kat-pill" onclick="pilihKategoriCompact('Kargo')">
+                🚚 KARGO
+              </button>
+            </div>
+            <input type="hidden" id="inPenerimaanKategori" value="Lokal CMT">
+          </div>
+
+          <!-- Tanggal Penerimaan -->
+          <div>
+            <label class="form-compact-label">TANGGAL TERIMA <span style="color: var(--danger);">*</span></label>
+            <input type="date" id="inPenerimaanTanggal" class="search-input compact-input" style="width: 100%;">
+          </div>
+
+          <!-- No Surat Jalan -->
+          <div>
+            <label class="form-compact-label">NO SURAT JALAN <span style="color: var(--danger);">*</span></label>
+            <input type="text" id="inPenerimaanSuratJalan" class="search-input compact-input" placeholder="Contoh: SJ-2026/08/001" style="width: 100%; font-weight: 700; text-transform: uppercase;">
+          </div>
+
+          <!-- Catatan Penerimaan Global -->
+          <div>
+            <label class="form-compact-label">CATATAN PENERIMAAN</label>
+            <input type="text" id="inPenerimaanCatatanGlobal" class="search-input compact-input" placeholder="Catatan umum (opsional)..." style="width: 100%;">
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. DATA PRODUK (1 KODE = 1 FOTO PRODUK + MULTI VARIANT) -->
+    <div class="data-section-card" style="margin-bottom: 14px;">
+      <div class="data-section-header" style="padding: 10px 16px; background: var(--card-alt);">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 12.5px;">📦 2. DATA PRODUK (1 KODE = 1 FOTO + VARIAN UKURAN)</span>
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="tambahBlokProduk()" style="height: 28px; padding: 0 10px; font-size: 11px; font-weight: 700;">
+          ➕ TAMBAH KODE LAIN
+        </button>
+      </div>
+
+      <!-- CONTAINER DAFTAR BLOK KODE PRODUK -->
+      <div id="daftarBlokProdukContainer" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 14px;">
+        <!-- Dihasilkan secara dinamis oleh JavaScript renderProductBlocks() -->
+      </div>
+
+      <!-- FOOTER ACTION BAR -->
+      <div style="padding: 12px 16px; background: var(--bg-surface); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <button type="button" class="btn btn-secondary" onclick="tambahBlokProduk()" style="height: 36px; padding: 0 14px; font-size: 11.5px; font-weight: 700;">
+          ➕ TAMBAH KODE PRODUKSI LAIN
+        </button>
+
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div id="formSummaryBadge" style="font-size: 12px; font-weight: 700; color: var(--text-muted);">
+            Total: 1 Kode &bull; 0 Pcs
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="resetFormPenerimaan()" style="height: 38px; padding: 0 16px; font-size: 12px;">
+            🔄 RESET FORM
+          </button>
+          <button type="button" id="btnSubmitPenerimaan" class="btn btn-primary" onclick="submitBatchPenerimaan(this)" style="height: 38px; padding: 0 24px; font-size: 12.5px; font-weight: 800;">
+            💾 SIMPAN SEMUA DATA
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ========================================================
+       TAB 2: DATA KHUSUS RIWAYAT PENERIMAAN PRODUKSI (TABEL)
+       ======================================================== -->
+  <div id="penerimaanRiwayatContainer">
+    
+    <!-- KPI SUMMARY CARDS -->
+    <div class="kpi-grid" style="margin-bottom: 16px;">
+      <div class="kpi-card c-primary" style="padding: 12px 16px;">
+        <div class="kpi-info">
+          <span class="kpi-title">TOTAL DATA</span>
+          <span id="kpiPenerimaanTotal" class="kpi-value" style="font-size: 20px;">0</span>
+          <span class="kpi-desc">Baris penerimaan tercatat</span>
+        </div>
+        <div class="kpi-icon-wrap" style="width: 38px; height: 38px; font-size: 18px;">📥</div>
+      </div>
+
+      <div class="kpi-card c-success" style="padding: 12px 16px;">
+        <div class="kpi-info">
+          <span class="kpi-title">TOTAL QTY (PCS)</span>
+          <span id="kpiPenerimaanQty" class="kpi-value" style="font-size: 20px;">0</span>
+          <span class="kpi-desc">Fisik barang masuk</span>
+        </div>
+        <div class="kpi-icon-wrap" style="width: 38px; height: 38px; font-size: 18px;">📦</div>
+      </div>
+
+      <div class="kpi-card c-info" style="padding: 12px 16px;">
+        <div class="kpi-info">
+          <span class="kpi-title">LOKAL CMT</span>
+          <span id="kpiPenerimaanLokal" class="kpi-value" style="font-size: 20px;">0</span>
+          <span class="kpi-desc">Produksi penjahit lokal</span>
+        </div>
+        <div class="kpi-icon-wrap" style="width: 38px; height: 38px; font-size: 18px;">🏭</div>
+      </div>
+
+      <div class="kpi-card c-warning" style="padding: 12px 16px;">
+        <div class="kpi-info">
+          <span class="kpi-title">KARGO</span>
+          <span id="kpiPenerimaanKargo" class="kpi-value" style="font-size: 20px;">0</span>
+          <span class="kpi-desc">Penerimaan ekspedisi</span>
+        </div>
+        <div class="kpi-icon-wrap" style="width: 38px; height: 38px; font-size: 18px;">🚚</div>
+      </div>
+    </div>
+
+    <!-- DATA TABLE & FILTER SECTION -->
+    <div class="data-section-card">
+      <div class="data-section-header" style="padding: 12px 18px;">
+        <div class="section-title-wrap">
+          <span class="section-heading" style="font-size: 13px;">📋 DATA PENERIMAAN PRODUKSI (1 KODE + FOTO PRODUK)</span>
+        </div>
+        <div id="penerimaanTotalCount" class="section-badge-info">
+          Memuat data...
+        </div>
+      </div>
+
+      <!-- FILTER TOOLBAR -->
+      <div style="padding: 10px 16px; background: var(--card-alt); border-bottom: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <!-- Search Input -->
+        <input type="text" id="searchPenerimaan" class="search-input compact-input" placeholder="🔍 Cari Kode / No SJ / Warna / Catatan..." style="width: 240px;" oninput="filterDataPenerimaanLokal()">
+
+        <!-- Kategori Filter -->
+        <select id="filterPenerimaanKategori" class="search-input compact-input" style="width: 150px; cursor: pointer;" onchange="muatDataPenerimaan(true)">
+          <option value="ALL">SEMUA KATEGORI</option>
+          <option value="Lokal CMT">🏭 LOKAL CMT</option>
+          <option value="Kargo">🚚 KARGO</option>
+        </select>
+
+        <!-- Date Range Filter -->
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <input type="date" id="filterPenerimaanStart" class="search-input compact-input" style="width: 125px;" onchange="muatDataPenerimaan(true)" title="Tanggal Mulai">
+          <span style="color: var(--text-muted); font-size: 10.5px;">-</span>
+          <input type="date" id="filterPenerimaanEnd" class="search-input compact-input" style="width: 125px;" onchange="muatDataPenerimaan(true)" title="Tanggal Selesai">
+        </div>
+
+        <button class="btn btn-secondary" onclick="resetFilterPenerimaan()" style="height: 32px; padding: 0 10px; font-size: 11px;">
+          RESET
+        </button>
+      </div>
+
+      <!-- TABLE WRAPPER -->
+      <div class="table-scroll-wrap">
+        <table class="unified-table" style="min-width: 1050px; width: 100%; table-layout: fixed;">
+          <thead>
+            <tr>
+              <th style="width: 9.5%; min-width: 95px; text-align: left; padding-left: 10px;">TANGGAL</th>
+              <th style="width: 10%; min-width: 100px; text-align: center;">KATEGORI</th>
+              <th style="width: 13%; min-width: 125px; text-align: left; padding-left: 8px;">NO SURAT JALAN</th>
+              <th style="width: 5.5%; min-width: 55px; text-align: center;">FOTO</th>
+              <th style="width: 12%; min-width: 115px; text-align: left; padding-left: 8px;">KODE PRODUKSI</th>
+              <th style="width: 11%; min-width: 105px; text-align: left; padding-left: 8px;">WARNA</th>
+              <th style="width: 6%; min-width: 55px; text-align: center;">SIZE</th>
+              <th style="width: 6%; min-width: 55px; text-align: center;">QTY</th>
+              <th style="width: 14%; min-width: 130px; text-align: left; padding-left: 8px;">CATATAN / KET</th>
+              <th style="width: 6.5%; min-width: 75px; text-align: left; padding-left: 8px;">OPERATOR</th>
+              <th style="width: 6.5%; min-width: 75px; text-align: center;">AKSI</th>
+            </tr>
+          </thead>
+          <tbody id="penerimaanTableBody">
+            <tr>
+              <td colspan="11" style="text-align: center; padding: 35px; color: var(--text-muted); font-style: italic;">
+                ⏳ Memuat riwayat penerimaan barang dari Supabase...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PAGINATION FOOTER -->
+      <div style="padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); font-size: 11.5px; background: var(--bg-surface);">
+        <div id="penerimaanPaginationInfo" style="color: var(--text-muted); font-weight: 600;">
+          Menampilkan 0 data
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button id="btnPenerimaanPrev" class="btn btn-secondary" style="height: 28px; padding: 0 10px; font-size: 11px;" onclick="changePenerimaanPage(-1)">◀ PREV</button>
+          <span id="penerimaanPageIndicator" style="font-weight: 700; color: var(--text); padding: 0 6px;">1 / 1</span>
+          <button id="btnPenerimaanNext" class="btn btn-secondary" style="height: 28px; padding: 0 10px; font-size: 11px;" onclick="changePenerimaanPage(1)">NEXT ▶</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</section>
+
+<!-- ========================================================
+     MODAL EDIT DATA PENERIMAAN (PER SURAT JALAN / BATCH)
+     ======================================================== -->
+<div id="modalEditPenerimaan" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 14px;">
+  <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); max-width: 960px; width: 96%; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow); display: flex; flex-direction: column;">
+    
+    <!-- MODAL HEADER -->
+    <div style="padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); position: sticky; top: 0; z-index: 10;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 16px;">✏️</span>
+        <div>
+          <div style="font-size: 13.5px; font-weight: 800; color: var(--text);">EDIT PENERIMAAN (PER SURAT JALAN)</div>
+          <div style="font-size: 11px; color: var(--text-muted);">Edit seluruh informasi kedatangan barang dan semua item dalam surat jalan ini</div>
+        </div>
+      </div>
+      <button type="button" onclick="closeEditPenerimaanModal()" style="background: transparent; border: none; font-size: 18px; color: var(--text-muted); cursor: pointer; padding: 4px 8px;">✕</button>
+    </div>
+
+    <!-- MODAL BODY -->
+    <div style="padding: 16px 18px; display: flex; flex-direction: column; gap: 14px;">
+      <input type="hidden" id="editPenerimaanOrigSJ">
+
+      <!-- 1. HEADER PENERIMAAN -->
+      <div style="background: var(--card-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px;">
+        <div style="font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+          📋 Informasi Header Penerimaan
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+          <div>
+            <label class="form-compact-label">KATEGORI PRODUKSI <span style="color: var(--danger);">*</span></label>
+            <select id="editInKategori" class="search-input compact-input" style="width: 100%; cursor: pointer; font-weight: 700;">
+              <option value="Lokal CMT">🏭 Lokal CMT</option>
+              <option value="Kargo">🚚 Kargo</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-compact-label">TANGGAL TERIMA <span style="color: var(--danger);">*</span></label>
+            <input type="date" id="editInTanggal" class="search-input compact-input" style="width: 100%;">
+          </div>
+          <div>
+            <label class="form-compact-label">NO SURAT JALAN / RESI <span style="color: var(--danger);">*</span></label>
+            <input type="text" id="editInSuratJalan" class="search-input compact-input" style="width: 100%; font-weight: 800; text-transform: uppercase;">
+          </div>
+          <div>
+            <label class="form-compact-label">CATATAN UMUM PENERIMAAN</label>
+            <input type="text" id="editInCatatanGlobal" class="search-input compact-input" placeholder="Catatan penerimaan..." style="width: 100%;">
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. DAFTAR ITEM PRODUK (BATCH) -->
+      <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden;">
+        <div style="padding: 10px 14px; background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div style="font-size: 11.5px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 6px;">
+            <span>📦</span> DAFTAR ITEM PRODUK (<span id="editBatchCountBadge">0 Item</span>)
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="tambahItemEditBatch()" style="height: 28px; padding: 0 10px; font-size: 11px; font-weight: 700;">
+            ➕ TAMBAH ITEM PRODUK
+          </button>
+        </div>
+
+        <div style="overflow-x: auto; max-height: 48vh;">
+          <table class="unified-table" style="min-width: 780px; width: 100%; table-layout: fixed;">
+            <thead>
+              <tr>
+                <th style="width: 65px; text-align: center;">FOTO</th>
+                <th style="width: 150px; text-align: left; padding-left: 8px;">KODE PRODUKSI <span style="color:var(--danger)">*</span></th>
+                <th style="width: 130px; text-align: left; padding-left: 8px;">WARNA</th>
+                <th style="width: 90px; text-align: center;">SIZE</th>
+                <th style="width: 80px; text-align: center;">QTY (PCS)</th>
+                <th style="text-align: left; padding-left: 8px;">CATATAN ITEM</th>
+                <th style="width: 48px; text-align: center;">AKSI</th>
+              </tr>
+            </thead>
+            <tbody id="editBatchTableBody">
+              <!-- Dihasilkan secara dinamis oleh renderEditBatchItemsTable() -->
+            </tbody>
+          </table>
+        </div>
+
+        <div style="padding: 8px 14px; background: var(--card-alt); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" class="btn btn-secondary" onclick="tambahItemEditBatch()" style="height: 28px; font-size: 10.5px; padding: 0 10px;">
+            ➕ Tambah Baris
+          </button>
+          <div id="editBatchLiveSummary" style="font-size: 11.5px; font-weight: 800; color: var(--text);">
+            Total: 0 Item &bull; 0 Pcs
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MODAL FOOTER -->
+    <div style="padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; background: var(--card-alt); border-top: 1px solid var(--border); position: sticky; bottom: 0; z-index: 10;">
+      <button type="button" class="btn btn-secondary" onclick="hapusSeluruhPenerimaanDariEditModal()" style="height: 34px; font-size: 11px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+        🗑️ HAPUS SURAT JALAN INI
+      </button>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-secondary" onclick="closeEditPenerimaanModal()" style="height: 34px; font-size: 11.5px;">BATAL</button>
+        <button type="button" id="btnSimpanEditPenerimaan" class="btn btn-primary" onclick="saveEditPenerimaan(this)" style="height: 34px; font-size: 11.5px; font-weight: 800;">
+          💾 SIMPAN SELURUH PENERIMAAN
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ========================================================
+     MODAL KONFIRMASI HAPUS PENERIMAAN
+     ======================================================== -->
+<div id="modalHapusPenerimaan" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
+  <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); max-width: 440px; width: 100%; box-shadow: var(--shadow); overflow: hidden;">
+    
+    <div style="padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(239, 68, 68, 0.08);">
+      <div style="font-size: 13px; font-weight: 800; color: var(--danger); display: flex; align-items: center; gap: 8px;">
+        <span>🗑️</span> KONFIRMASI HAPUS DATA
+      </div>
+      <button type="button" onclick="closeHapusPenerimaanModal()" style="background: transparent; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer;">✕</button>
+    </div>
+
+    <div style="padding: 18px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-size: 12px; color: var(--text); line-height: 1.4;">
+        Apakah Anda yakin ingin menghapus data kedatangan barang berikut secara permanen?
+      </div>
+
+      <div id="hapusPenerimaanSummaryCard" style="background: var(--bg-surface); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 11.5px; line-height: 1.5;">
+        <!-- Dihasilkan dinamis -->
+      </div>
+
+      <div style="font-size: 11px; color: var(--text-muted); font-style: italic;">
+        ⚠️ Data yang dihapus tidak dapat dipulihkan kembali.
+      </div>
+    </div>
+
+    <div style="padding: 12px 18px; display: flex; justify-content: flex-end; gap: 8px; background: var(--card-alt); border-top: 1px solid var(--border);">
+      <button type="button" class="btn btn-secondary" onclick="closeHapusPenerimaanModal()" style="height: 34px; font-size: 11.5px;">BATAL</button>
+      <button type="button" id="btnKonfirmHapusPenerimaan" class="btn" onclick="eksekusiHapusPenerimaan(this)" style="height: 34px; font-size: 11.5px; font-weight: 800; background: var(--danger); color: #fff; border: none;">🗑️ YA, HAPUS PERMANEN</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ========================================================
+     MODAL LIGHTBOX PREVIEW FOTO LENGKAP
+     ======================================================== -->
+<div id="penerimaanLightboxModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;" onclick="closePhotoLightbox()">
+  <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); max-width: 600px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow);" onclick="event.stopPropagation()">
+    <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
+      <div style="font-size: 12.5px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px;">
+        <span>📸</span> <span id="lightboxTitle">Foto Produk</span>
+      </div>
+      <button onclick="closePhotoLightbox()" style="background: transparent; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer; padding: 0 4px;">✕</button>
+    </div>
+    <div style="padding: 14px; text-align: center; background: #0b0f17; flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center;">
+      <img id="lightboxImg" src="" alt="Foto Produk" style="max-width: 100%; max-height: 55vh; object-fit: contain; border-radius: var(--radius-sm);">
+    </div>
+    <div id="lightboxFooterInfo" style="padding: 10px 16px; background: var(--card-alt); border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+      <div id="lightboxDetails"></div>
+      <a id="lightboxDownloadBtn" href="#" download="foto_produksi.jpg" class="btn btn-secondary" style="height: 28px; font-size: 10.5px; padding: 0 10px;">💾 UNDUH</a>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================
+     MODAL WEBCAM LIVE CAPTURE (DESKTOP)
+     ======================================================== -->
+<div id="webcamCaptureModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+  <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); max-width: 480px; width: 100%; overflow: hidden; box-shadow: var(--shadow);">
+    <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
+      <div style="font-size: 12.5px; font-weight: 800; color: var(--text);">📷 KAMERA LIVE WEBCAM</div>
+      <button onclick="closeWebcamModal()" style="background: transparent; border: none; font-size: 16px; color: var(--text-muted); cursor: pointer;">✕</button>
+    </div>
+    <div style="padding: 12px; background: #000; text-align: center;">
+      <video id="webcamVideoEl" autoplay playsinline style="width: 100%; max-height: 280px; object-fit: cover; border-radius: var(--radius-sm);"></video>
+    </div>
+    <div style="padding: 10px 16px; display: flex; justify-content: space-between; background: var(--card-alt); border-top: 1px solid var(--border);">
+      <button class="btn btn-secondary" onclick="closeWebcamModal()" style="height: 32px; font-size: 11px;">BATAL</button>
+      <button class="btn btn-primary" onclick="capturePhotoFromWebcam()" style="height: 32px; font-size: 11.5px; font-weight: 800;">📸 JEPRET FOTO</button>
+    </div>
+  </div>
+</div>
+
+<!-- STYLES KHUSUS MODUL PENERIMAAN (COMPACT & MODERN DESIGN) -->
+<style>
+  /* SEGMENTED TAB NAVIGATION (ANTIGRAVITY THEME) */
+  .wms-segmented-tabs {
+    display: inline-flex;
+    align-items: center;
+    background: var(--card-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    gap: 4px;
+    user-select: none;
+    box-shadow: var(--shadow-sm);
+    max-width: 100%;
+  }
+
+  .wms-segmented-tab-btn {
+    height: 32px;
+    padding: 0 14px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: var(--transition);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    outline: none;
+  }
+
+  .wms-segmented-tab-btn:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  [data-theme="light"] .wms-segmented-tab-btn:hover {
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .wms-segmented-tab-btn.active {
+    background: var(--card);
+    color: var(--primary);
+    border-color: rgba(245, 158, 11, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    font-weight: 800 !important;
+  }
+
+  .form-compact-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    letter-spacing: 0.4px;
+  }
+  .compact-input {
+    height: 34px !important;
+    font-size: 12px !important;
+    padding: 0 10px !important;
+  }
+  .btn-kat-pill {
+    flex: 1;
+    height: 34px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--input-bg);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .btn-kat-pill:hover {
+    border-color: var(--primary);
+    color: var(--text);
+  }
+  .btn-kat-pill.active,
+  .btn-kat-pill.active-lokal {
+    background: rgba(59, 130, 246, 0.15) !important;
+    color: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    font-weight: 800 !important;
+  }
+  .btn-kat-pill.active-kargo {
+    background: rgba(245, 158, 11, 0.18) !important;
+    color: #f59e0b !important;
+    border-color: #f59e0b !important;
+    font-weight: 800 !important;
+  }
+
+  /* KARTU BLOK PRODUK */
+  .penerimaan-header-grid {
+    display: grid;
+    grid-template-columns: 240px 140px 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+
+  .penerimaan-prod-grid {
+    display: grid;
+    grid-template-columns: 96px 240px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .wms-segmented-tabs {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      width: 100%;
+      margin-bottom: 8px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .wms-segmented-tab-btn {
+      height: 30px;
+      padding: 0 6px;
+      font-size: 10.5px;
+      gap: 4px;
+    }
+    #penerimaanRiwayatContainer .kpi-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 6px !important;
+      margin-bottom: 10px !important;
+    }
+    #penerimaanRiwayatContainer .kpi-card {
+      padding: 8px 10px !important;
+      border-radius: var(--radius-sm) !important;
+    }
+    #penerimaanRiwayatContainer .kpi-value {
+      font-size: 15px !important;
+    }
+    #penerimaanRiwayatContainer .kpi-title {
+      font-size: 8.5px !important;
+    }
+    #penerimaanRiwayatContainer .kpi-desc {
+      font-size: 7.5px !important;
+    }
+    #penerimaanRiwayatContainer .kpi-icon-wrap {
+      width: 26px !important;
+      height: 26px !important;
+      font-size: 12px !important;
+    }
+    .penerimaan-header-grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .penerimaan-prod-grid {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 10px;
+    }
+    .penerimaan-col-photo {
+      grid-column: 1 / 2;
+    }
+    .penerimaan-col-info {
+      grid-column: 2 / 3;
+    }
+    .penerimaan-col-variants {
+      grid-column: 1 / 3;
+      margin-top: 4px;
+    }
+    .compact-photo-dropzone {
+      width: 80px !important;
+      height: 80px !important;
+    }
+    .variant-row {
+      grid-template-columns: 1fr 75px 60px 24px !important;
+      gap: 4px !important;
+    }
+    .variant-row input {
+      font-size: 11px !important;
+      padding: 0 4px !important;
+      height: 32px !important;
+    }
+  }
+
+  .prod-block-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    transition: border-color 0.15s ease;
+  }
+  .prod-block-card:hover {
+    border-color: rgba(245, 158, 11, 0.4);
+  }
+
+  /* PHOTO DROPZONE / BOX COMPACT */
+  .compact-photo-dropzone {
+    width: 88px;
+    height: 88px;
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+  .compact-photo-dropzone:hover {
+    border-color: var(--primary);
+    background: var(--card-alt);
+  }
+  .compact-photo-dropzone.drag-active {
+    border-color: var(--success) !important;
+    background: var(--success-light) !important;
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  }
+  .compact-photo-dropzone.has-image {
+    border-style: solid;
+    border-color: var(--primary);
+  }
+  .compact-photo-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* VARIANT CHIP / ROW */
+  .variant-row {
+    display: grid;
+    grid-template-columns: 1fr 90px 70px 24px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .btn-tambah-varian-bottom {
+    width: 100%;
+    height: 28px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-alt);
+    color: var(--primary);
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    margin-top: 6px;
+  }
+  .btn-tambah-varian-bottom:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .compact-photo-dropzone:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+  }
+  .btn-action-mini {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--card-alt);
+    color: var(--text);
+    transition: all 0.15s ease;
+  }
+  .btn-action-mini.edit:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: #3b82f6;
+    color: #3b82f6;
+  }
+  .btn-action-mini.delete {
+    color: var(--danger);
+    margin-left: 3px;
+  }
+  .btn-action-mini.delete:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--danger);
+  }
+  .btn-remove-mini {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .btn-remove-mini:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--danger);
+  }
+
+  .badge-kategori-lokal {
+    background: rgba(59, 130, 246, 0.14);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .badge-kategori-kargo {
+    background: rgba(245, 158, 11, 0.14);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .table-foto-thumb {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+  .table-foto-thumb:hover {
+    transform: scale(1.2);
+    border-color: var(--primary);
+  }
+</style>
+
+<!-- JAVASCRIPT LOGIC MODUL PENERIMAAN PRODUKSI -->
+<script>
+  let PENERIMAAN_DATA = [];
+  let penerimaanCurrentPage = 1;
+  const penerimaanPageSize = 50;
+  let isPenerimaanInitialized = false;
+
+  // Struktur State Form Multi-Kode & Multi-Variant
+  let FORM_PRODUCT_BLOCKS = [];
+  let currentTargetBlockIndexForPhoto = 0;
+  let activeWebcamStream = null;
+
+  const STANDARD_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', 'ALL SIZE', 'FREE SIZE', 'Default'];
+
+  function initPenerimaanView() {
+    if (!isPenerimaanInitialized) {
+      isPenerimaanInitialized = true;
+      const today = new Date().toISOString().split('T')[0];
+      const tglInput = document.getElementById('inPenerimaanTanggal');
+      if (tglInput && !tglInput.value) tglInput.value = today;
+
+      // Inisialisasi blok produk pertama jika kosong
+      if (FORM_PRODUCT_BLOCKS.length === 0) {
+        tambahBlokProduk();
+      }
+
+      muatDataPenerimaan(false);
+    }
+  }
+
+  // ============ TAB SWITCHER (RIWAYAT vs FORM INPUT) ============
+  function switchPenerimaanTab(tabName) {
+    const formEl = document.getElementById('penerimaanFormContainer');
+    const riwayatEl = document.getElementById('penerimaanRiwayatContainer');
+    const btnForm = document.getElementById('tabBtnForm');
+    const btnRiwayat = document.getElementById('tabBtnRiwayat');
+
+    if (tabName === 'form') {
+      if (formEl) formEl.style.display = 'block';
+      if (riwayatEl) riwayatEl.style.display = 'none';
+      if (btnForm) btnForm.classList.add('active');
+      if (btnRiwayat) btnRiwayat.classList.remove('active');
+      setTimeout(() => {
+        const el = document.getElementById('inPenerimaanSuratJalan');
+        if (el) el.focus();
+      }, 100);
+    } else {
+      if (formEl) formEl.style.display = 'none';
+      if (riwayatEl) riwayatEl.style.display = 'block';
+      if (btnForm) btnForm.classList.remove('active');
+      if (btnRiwayat) btnRiwayat.classList.add('active');
+    }
+  }
+
+  // ============ HEADER KATEGORI COMPACT ============
+  function pilihKategoriCompact(kat) {
+    const inKat = document.getElementById('inPenerimaanKategori');
+    const btnLokal = document.getElementById('btnKatLokal');
+    const btnKargo = document.getElementById('btnKatKargo');
+    const inSj = document.getElementById('inPenerimaanSuratJalan');
+    if (inKat) inKat.value = kat;
+
+    if (kat === 'Lokal CMT') {
+      if (btnLokal) {
+        btnLokal.classList.add('active', 'active-lokal');
+        btnLokal.classList.remove('active-kargo');
+      }
+      if (btnKargo) {
+        btnKargo.classList.remove('active', 'active-kargo', 'active-lokal');
+      }
+      if (inSj) inSj.placeholder = "Contoh: SJ-2026/08/001";
+    } else {
+      if (btnLokal) {
+        btnLokal.classList.remove('active', 'active-lokal', 'active-kargo');
+      }
+      if (btnKargo) {
+        btnKargo.classList.add('active', 'active-kargo');
+        btnKargo.classList.remove('active-lokal');
+      }
+      if (inSj) inSj.placeholder = "Contoh: RESI-KRG-001 / PACKING LIST";
+    }
+  }
+
+  // ============ SIZE PROGRESSION HELPER ============
+  function getNextSize(prevSize) {
+    if (!prevSize || typeof prevSize !== 'string') return 'M';
+    const clean = prevSize.trim().toUpperCase();
+
+    const standardSizes = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'];
+    const idx = standardSizes.indexOf(clean);
+    if (idx !== -1 && idx < standardSizes.length - 1) {
+      return standardSizes[idx + 1];
+    }
+    if (clean === '2XL') return '3XL';
+
+    const num = parseInt(clean, 10);
+    if (!isNaN(num) && String(num) === clean) {
+      return String(num + 1);
+    }
+
+    if (clean === 'S/M') return 'L/XL';
+    if (clean === 'ALL SIZE' || clean === 'ALLSIZE' || clean === 'DEFAULT' || clean === 'FREE SIZE') return 'S';
+
+    return 'M';
+  }
+
+  // ============ MULTI-KODE & MULTI-VARIANT BUILDER ============
+  function tambahBlokProduk() {
+    FORM_PRODUCT_BLOCKS.push({
+      id: Date.now() + Math.random(),
+      kode_produksi: '',
+      catatan: '',
+      foto_url: '',
+      variants: [
+        { warna: '', size: 'S', qty: 1 }
+      ]
+    });
+    renderProductBlocks();
+  }
+
+  function hapusBlokProduk(index) {
+    if (FORM_PRODUCT_BLOCKS.length <= 1) {
+      if (window.showToast) window.showToast('Minimal harus ada 1 Kode Produk.', 'warning');
+      return;
+    }
+    FORM_PRODUCT_BLOCKS.splice(index, 1);
+    renderProductBlocks();
+  }
+
+  function tambahVariantRow(blockIdx) {
+    if (!FORM_PRODUCT_BLOCKS[blockIdx]) return;
+    const variants = FORM_PRODUCT_BLOCKS[blockIdx].variants;
+    const lastVar = variants.length > 0 ? variants[variants.length - 1] : null;
+    const prevWarna = lastVar ? (lastVar.warna || '') : '';
+    const nextSize = lastVar ? getNextSize(lastVar.size) : 'M';
+    FORM_PRODUCT_BLOCKS[blockIdx].variants.push({ warna: prevWarna, size: nextSize, qty: 1 });
+    renderProductBlocks();
+  }
+
+  function hapusVariantRow(blockIdx, varIdx) {
+    if (!FORM_PRODUCT_BLOCKS[blockIdx]) return;
+    if (FORM_PRODUCT_BLOCKS[blockIdx].variants.length <= 1) {
+      if (window.showToast) window.showToast('Minimal harus ada 1 varian (warna & size).', 'warning');
+      return;
+    }
+    FORM_PRODUCT_BLOCKS[blockIdx].variants.splice(varIdx, 1);
+    renderProductBlocks();
+  }
+
+  function updateBlockField(blockIdx, field, val) {
+    if (FORM_PRODUCT_BLOCKS[blockIdx]) {
+      FORM_PRODUCT_BLOCKS[blockIdx][field] = val;
+      updateFormSummary();
+    }
+  }
+
+  function updateVariantField(blockIdx, varIdx, field, val) {
+    if (FORM_PRODUCT_BLOCKS[blockIdx] && FORM_PRODUCT_BLOCKS[blockIdx].variants[varIdx]) {
+      FORM_PRODUCT_BLOCKS[blockIdx].variants[varIdx][field] = val;
+      updateFormSummary();
+    }
+  }
+
+  function renderProductBlocks() {
+    const container = document.getElementById('daftarBlokProdukContainer');
+    if (!container) return;
+
+    let html = '';
+    FORM_PRODUCT_BLOCKS.forEach((block, bIdx) => {
+      const blockNum = bIdx + 1;
+      const hasPhoto = Boolean(block.foto_url);
+
+      const lastVar = (block.variants && block.variants.length > 0) ? block.variants[block.variants.length - 1] : null;
+      const nextSizePreview = lastVar ? getNextSize(lastVar.size) : 'M';
+
+      // Foto box HTML
+      let photoBoxHtml = '';
+      if (hasPhoto) {
+        photoBoxHtml = `
+          <div class="compact-photo-dropzone has-image" tabindex="0" onfocus="setTargetBlockForPaste(${bIdx})" onpaste="handleDirectPhotoPaste(event, ${bIdx})" ondragover="handlePhotoDragOver(event, ${bIdx})" ondragleave="handlePhotoDragLeave(event, ${bIdx})" ondrop="handlePhotoDrop(event, ${bIdx})" title="Klik preview foto &bull; Tarik / Paste (Ctrl+V) foto baru">
+            <img src="${block.foto_url}" class="compact-photo-thumb" onclick="openPhotoLightbox('${escapeHtml(block.foto_url)}', '${escapeHtml(block.kode_produksi || 'Produk ' + blockNum)}', '', '', '', '')" title="Klik preview foto">
+            <button type="button" onclick="hapusFotoBlock(${bIdx}, event)" style="position: absolute; top: 2px; right: 2px; background: rgba(239, 68, 68, 0.85); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 11px; font-weight: 800;" title="Hapus foto">✕</button>
+          </div>
+        `;
+      } else {
+        photoBoxHtml = `
+          <div class="compact-photo-dropzone" tabindex="0" onfocus="setTargetBlockForPaste(${bIdx})" onpaste="handleDirectPhotoPaste(event, ${bIdx})" ondragover="handlePhotoDragOver(event, ${bIdx})" ondragleave="handlePhotoDragLeave(event, ${bIdx})" ondrop="handlePhotoDrop(event, ${bIdx})" onclick="openPhotoPickerOptions(${bIdx})" title="Klik ambil foto / Drag &amp; Drop / Ctrl+V Paste disini">
+            <div style="font-size: 18px; margin-bottom: 2px;">📷</div>
+            <div style="font-size: 9px; font-weight: 700; color: var(--text-muted); text-align: center; line-height: 1.1;">FOTO<br><span style="font-size: 8px; color: var(--primary); font-weight: 600;">+DROP/PASTE</span></div>
+          </div>
+        `;
+      }
+
+      // Variants rows HTML (Warna, Size, Qty)
+      let variantsHtml = `
+        <div style="display: grid; grid-template-columns: 1fr 90px 70px 24px; gap: 6px; font-size: 9.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; padding-left: 2px;">
+          <span>WARNA</span>
+          <span>SIZE</span>
+          <span style="text-align: center;">QTY</span>
+          <span></span>
+        </div>
+      `;
+
+      block.variants.forEach((v, vIdx) => {
+        variantsHtml += `
+          <div class="variant-row">
+            <input type="text" class="search-input compact-input" placeholder="Warna (misal: Black, Sage)" value="${escapeHtml(v.warna || '')}" onfocus="setTargetBlockForPaste(${bIdx})" oninput="updateVariantField(${bIdx}, ${vIdx}, 'warna', this.value.toUpperCase())" style="font-weight: 700; text-transform: uppercase;">
+            <input type="text" class="search-input compact-input" list="sizeOptionsList" value="${escapeHtml(v.size || 'S')}" placeholder="Size" onfocus="setTargetBlockForPaste(${bIdx})" oninput="updateVariantField(${bIdx}, ${vIdx}, 'size', this.value)" style="text-align: center; font-weight: 700;">
+            <input type="number" class="search-input compact-input" min="1" value="${v.qty || 1}" placeholder="Qty" onfocus="setTargetBlockForPaste(${bIdx})" oninput="updateVariantField(${bIdx}, ${vIdx}, 'qty', parseInt(this.value, 10) || 1)" style="text-align: center; font-weight: 800;">
+            <button type="button" class="btn-remove-mini" onclick="hapusVariantRow(${bIdx}, ${vIdx})" title="Hapus varian ini">✕</button>
+          </div>
+        `;
+      });
+
+      html += `
+        <div class="prod-block-card" data-block-index="${bIdx}" onfocusin="setTargetBlockForPaste(${bIdx})">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px dashed var(--border); padding-bottom: 6px;">
+            <div style="font-size: 11px; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+              <span>🏷️</span> PRODUK #${blockNum}
+            </div>
+            ${FORM_PRODUCT_BLOCKS.length > 1 ? `<button type="button" onclick="hapusBlokProduk(${bIdx})" class="btn btn-secondary" style="height: 24px; padding: 0 8px; font-size: 10px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);" title="Hapus seluruh kode produk ini">🗑️ HAPUS KODE</button>` : ''}
+          </div>
+
+          <div class="penerimaan-prod-grid">
+            
+            <!-- 1. FOTO PRODUK (1 KODE = 1 FOTO + DRAG/DROP & PASTE) -->
+            <div class="penerimaan-col-photo" id="photoCol_${bIdx}">
+              <label class="form-compact-label">FOTO PRODUK</label>
+              <div id="photoDropzoneWrap_${bIdx}">
+                ${photoBoxHtml}
+              </div>
+              <div style="display: flex; gap: 3px; margin-top: 4px;">
+                <button type="button" onclick="triggerKameraBlock(${bIdx})" style="flex: 1; height: 20px; font-size: 9px; padding: 0; background: var(--card-alt); border: 1px solid var(--border); border-radius: 3px; cursor: pointer; color: var(--text);" title="Ambil Kamera">📷 Kam</button>
+                <button type="button" onclick="triggerGaleriBlock(${bIdx})" style="flex: 1; height: 20px; font-size: 9px; padding: 0; background: var(--card-alt); border: 1px solid var(--border); border-radius: 3px; cursor: pointer; color: var(--text);" title="Pilih File Galeri">📁 File</button>
+              </div>
+            </div>
+
+            <!-- 2. KODE PRODUKSI & CATATAN TAMBAHAN -->
+            <div class="penerimaan-col-info">
+              <div style="margin-bottom: 8px;">
+                <label class="form-compact-label">KODE PRODUKSI <span style="color: var(--danger);">*</span></label>
+                <input type="text" class="search-input compact-input" placeholder="Contoh: K-1049, D-552" value="${escapeHtml(block.kode_produksi)}" onfocus="setTargetBlockForPaste(${bIdx})" oninput="updateBlockField(${bIdx}, 'kode_produksi', this.value.toUpperCase())" style="width: 100%; font-weight: 800; color: var(--primary); text-transform: uppercase;">
+              </div>
+              
+              <div>
+                <label class="form-compact-label">CATATAN TAMBAHAN</label>
+                <input type="text" class="search-input compact-input" placeholder="Catatan khusus produk (opsional)..." value="${escapeHtml(block.catatan)}" onfocus="setTargetBlockForPaste(${bIdx})" oninput="updateBlockField(${bIdx}, 'catatan', this.value)" style="width: 100%; font-size: 11.5px;">
+              </div>
+            </div>
+
+            <!-- 3. DAFTAR VARIAN (WARNA, SIZE & QTY) -->
+            <div class="penerimaan-col-variants">
+              <div style="margin-bottom: 4px;">
+                <label class="form-compact-label" style="margin-bottom: 0;">VARIAN (WARNA &amp; SIZE &amp; QTY) <span style="color: var(--danger);">*</span></label>
+              </div>
+              <div style="background: var(--bg-surface); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                ${variantsHtml}
+                <button type="button" class="btn-tambah-varian-bottom" onclick="tambahVariantRow(${bIdx})">
+                  ➕ Tambah Varian (${nextSizePreview})
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    updateFormSummary();
+  }
+
+  function updateFormSummary() {
+    let totalKode = FORM_PRODUCT_BLOCKS.length;
+    let totalVarian = 0;
+    let totalQty = 0;
+
+    FORM_PRODUCT_BLOCKS.forEach(b => {
+      if (Array.isArray(b.variants)) {
+        totalVarian += b.variants.length;
+        b.variants.forEach(v => {
+          totalQty += (parseInt(v.qty, 10) || 0);
+        });
+      }
+    });
+
+    const badge = document.getElementById('formSummaryBadge');
+    if (badge) {
+      badge.innerHTML = `Total: <b>${totalKode} Kode</b> &bull; <b>${totalVarian} Varian</b> &bull; <b>${totalQty} Pcs</b>`;
+    }
+  }
+
+  // ============ UPDATE HANYA DOM FOTO SPESIFIK (ANTI RESET FORM) ============
+  function updateBlockPhotoDOM(blockIdx) {
+    const block = FORM_PRODUCT_BLOCKS[blockIdx];
+    if (!block) return;
+    const wrap = document.getElementById(`photoDropzoneWrap_${blockIdx}`);
+    if (!wrap) {
+      renderProductBlocks();
+      return;
+    }
+
+    const blockNum = blockIdx + 1;
+    const hasPhoto = Boolean(block.foto_url);
+    if (hasPhoto) {
+      wrap.innerHTML = `
+        <div class="compact-photo-dropzone has-image" tabindex="0" onfocus="setTargetBlockForPaste(${blockIdx})" onpaste="handleDirectPhotoPaste(event, ${blockIdx})" ondragover="handlePhotoDragOver(event, ${blockIdx})" ondragleave="handlePhotoDragLeave(event, ${blockIdx})" ondrop="handlePhotoDrop(event, ${blockIdx})" title="Klik preview foto &bull; Tarik / Paste (Ctrl+V) foto baru">
+          <img src="${block.foto_url}" class="compact-photo-thumb" onclick="openPhotoLightbox('${escapeHtml(block.foto_url)}', '${escapeHtml(block.kode_produksi || 'Produk ' + blockNum)}', '', '', '', '')" title="Klik preview foto">
+          <button type="button" onclick="hapusFotoBlock(${blockIdx}, event)" style="position: absolute; top: 2px; right: 2px; background: rgba(239, 68, 68, 0.85); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 11px; font-weight: 800;" title="Hapus foto">✕</button>
+        </div>
+      `;
+    } else {
+      wrap.innerHTML = `
+        <div class="compact-photo-dropzone" tabindex="0" onfocus="setTargetBlockForPaste(${blockIdx})" onpaste="handleDirectPhotoPaste(event, ${blockIdx})" ondragover="handlePhotoDragOver(event, ${blockIdx})" ondragleave="handlePhotoDragLeave(event, ${blockIdx})" ondrop="handlePhotoDrop(event, ${blockIdx})" onclick="openPhotoPickerOptions(${blockIdx})" title="Klik ambil foto / Drag &amp; Drop / Ctrl+V Paste disini">
+          <div style="font-size: 18px; margin-bottom: 2px;">📷</div>
+          <div style="font-size: 9px; font-weight: 700; color: var(--text-muted); text-align: center; line-height: 1.1;">FOTO<br><span style="font-size: 8px; color: var(--primary); font-weight: 600;">+DROP/PASTE</span></div>
+        </div>
+      `;
+    }
+  }
+
+  // ============ PHOTO PICKER & DRAG/PASTE PER BLOCK ============
+  function setTargetBlockForPaste(blockIdx) {
+    currentTargetBlockIndexForPhoto = blockIdx;
+  }
+
+  function openPhotoPickerOptions(blockIdx) {
+    currentTargetBlockIndexForPhoto = blockIdx;
+    triggerKameraBlock(blockIdx);
+  }
+
+  function triggerKameraBlock(blockIdx) {
+    currentTargetBlockIndexForPhoto = blockIdx;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      const camIn = document.getElementById('globalCameraFileInput');
+      if (camIn) {
+        camIn.onchange = function() { handleGlobalPhotoSelected(this); };
+        camIn.click();
+      }
+    } else {
+      openWebcamModal();
+    }
+  }
+
+  function triggerGaleriBlock(blockIdx) {
+    currentTargetBlockIndexForPhoto = blockIdx;
+    const fileIn = document.getElementById('globalGalleryFileInput');
+    if (fileIn) {
+      fileIn.onchange = function() { handleGlobalPhotoSelected(this); };
+      fileIn.click();
+    }
+  }
+
+  function handleGlobalPhotoSelected(input) {
+    if (!input || !input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    processImageFile(file, currentTargetBlockIndexForPhoto);
+    input.value = '';
+  }
+
+  function processImageFile(file, blockIdx) {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      if (window.showToast) window.showToast('Berkas yang dilampirkan harus berupa gambar (JPG/PNG).', 'warning');
+      return;
+    }
+
+    if (window.showToast) window.showToast('Memproses & mengompresi foto...', 'info');
+
+    const reader = new FileReader();
+    reader.onerror = function() {
+      if (window.showToast) window.showToast('Gagal membaca berkas gambar.', 'danger');
+    };
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onerror = function() {
+        if (window.showToast) window.showToast('Gambar tidak valid atau rusak.', 'danger');
+      };
+      img.onload = function() {
+        try {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 900;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.78);
+          if (FORM_PRODUCT_BLOCKS[blockIdx]) {
+            FORM_PRODUCT_BLOCKS[blockIdx].foto_url = compressedDataUrl;
+            updateBlockPhotoDOM(blockIdx);
+            if (window.showToast) window.showToast(`✓ Foto berhasil dilampirkan ke Produk #${blockIdx + 1}!`, 'success');
+          }
+        } catch(err) {
+          console.error('Error compressing image:', err);
+          if (window.showToast) window.showToast('Gagal memproses gambar: ' + err.message, 'danger');
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ============ DRAG & DROP FOTO ============
+  window.addEventListener('dragover', function(e) { e.preventDefault(); }, false);
+  window.addEventListener('drop', function(e) { e.preventDefault(); }, false);
+
+  function handlePhotoDragOver(e, blockIdx) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    const el = e.currentTarget;
+    if (el) el.classList.add('drag-active');
+  }
+
+  function handlePhotoDragLeave(e, blockIdx) {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = e.currentTarget;
+    if (el) el.classList.remove('drag-active');
+  }
+
+  function handlePhotoDrop(e, blockIdx) {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = e.currentTarget;
+    if (el) el.classList.remove('drag-active');
+
+    currentTargetBlockIndexForPhoto = blockIdx;
+
+    if (e.dataTransfer) {
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        for (let i = 0; i < e.dataTransfer.files.length; i++) {
+          const file = e.dataTransfer.files[i];
+          if (file.type && file.type.startsWith('image/')) {
+            processImageFile(file, blockIdx);
+            return;
+          }
+        }
+      }
+      if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+        for (let i = 0; i < e.dataTransfer.items.length; i++) {
+          const item = e.dataTransfer.items[i];
+          if (item.type && item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            if (file) {
+              processImageFile(file, blockIdx);
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    if (window.showToast) window.showToast('Tarik berkas foto yang valid (JPG/PNG).', 'warning');
+  }
+
+  // ============ DIRECT & GLOBAL PASTE (CTRL+V) ============
+  function handleDirectPhotoPaste(e, blockIdx) {
+    e.preventDefault();
+    e.stopPropagation();
+    currentTargetBlockIndexForPhoto = blockIdx;
+
+    const clipboardData = e.clipboardData || window.clipboardData;
+    if (!clipboardData) return;
+
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      for (let i = 0; i < clipboardData.files.length; i++) {
+        const file = clipboardData.files[i];
+        if (file.type && file.type.startsWith('image/')) {
+          processImageFile(file, blockIdx);
+          return;
+        }
+      }
+    }
+
+    if (clipboardData.items && clipboardData.items.length > 0) {
+      for (let i = 0; i < clipboardData.items.length; i++) {
+        const item = clipboardData.items[i];
+        if (item.type && item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            processImageFile(file, blockIdx);
+            return;
+          }
+        }
+      }
+    }
+
+    if (window.showToast) window.showToast('Tidak ada gambar di clipboard. Copy gambar terlebih dahulu lalu tekan Ctrl+V di sini.', 'warning');
+  }
+
+  document.addEventListener('paste', function(e) {
+    const clipboardData = e.clipboardData || window.clipboardData;
+    if (!clipboardData) return;
+
+    let imageFile = null;
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      for (let i = 0; i < clipboardData.files.length; i++) {
+        if (clipboardData.files[i].type && clipboardData.files[i].type.startsWith('image/')) {
+          imageFile = clipboardData.files[i];
+          break;
+        }
+      }
+    }
+
+    if (!imageFile && clipboardData.items && clipboardData.items.length > 0) {
+      for (let i = 0; i < clipboardData.items.length; i++) {
+        if (clipboardData.items[i].type && clipboardData.items[i].type.indexOf('image') !== -1) {
+          imageFile = clipboardData.items[i].getAsFile();
+          break;
+        }
+      }
+    }
+
+    if (imageFile) {
+      e.preventDefault();
+
+      // Jika Edit Modal sedang terbuka, tempel ke form Edit
+      const modalEdit = document.getElementById('modalEditPenerimaan');
+      if (modalEdit && modalEdit.style.display === 'flex') {
+        processEditImageFile(imageFile);
+        return;
+      }
+
+      // Jika Form Input sedang aktif
+      const formEl = document.getElementById('penerimaanFormContainer');
+      if (formEl && formEl.style.display !== 'none') {
+        let targetIdx = currentTargetBlockIndexForPhoto || 0;
+        if (document.activeElement) {
+          const card = document.activeElement.closest('.prod-block-card');
+          if (card && card.dataset.blockIndex !== undefined) {
+            targetIdx = parseInt(card.dataset.blockIndex, 10);
+          }
+        }
+        processImageFile(imageFile, targetIdx);
+      }
+    }
+  });
+
+  function hapusFotoBlock(blockIdx, event) {
+    if (event) event.stopPropagation();
+    if (FORM_PRODUCT_BLOCKS[blockIdx]) {
+      FORM_PRODUCT_BLOCKS[blockIdx].foto_url = '';
+      updateBlockPhotoDOM(blockIdx);
+    }
+  }
+
+  // ============ WEBCAM LIVE CAPTURE (DESKTOP) ============
+  function openWebcamModal() {
+    const modal = document.getElementById('webcamCaptureModal');
+    const video = document.getElementById('webcamVideoEl');
+    if (!modal || !video) return;
+
+    modal.style.display = 'flex';
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => {
+          activeWebcamStream = stream;
+          video.srcObject = stream;
+        })
+        .catch(err => {
+          if (window.showToast) window.showToast('Tidak dapat mengakses webcam: ' + err.message, 'danger');
+          closeWebcamModal();
+          const fileIn = document.getElementById('globalGalleryFileInput');
+          if (fileIn) fileIn.click();
+        });
+    } else {
+      const fileIn = document.getElementById('globalGalleryFileInput');
+      if (fileIn) fileIn.click();
+    }
+  }
+
+  function closeWebcamModal() {
+    const modal = document.getElementById('webcamCaptureModal');
+    const video = document.getElementById('webcamVideoEl');
+    if (modal) modal.style.display = 'none';
+
+    if (activeWebcamStream) {
+      activeWebcamStream.getTracks().forEach(track => track.stop());
+      activeWebcamStream = null;
+    }
+    if (video) video.srcObject = null;
+  }
+
+  function capturePhotoFromWebcam() {
+    const video = document.getElementById('webcamVideoEl');
+    if (!video) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+
+    // Cek apakah dipanggil saat Edit Modal terbuka
+    const modalEdit = document.getElementById('modalEditPenerimaan');
+    if (modalEdit && modalEdit.style.display === 'flex') {
+      updateEditPhotoPreviewDOM(dataUrl);
+    } else if (FORM_PRODUCT_BLOCKS[currentTargetBlockIndexForPhoto]) {
+      FORM_PRODUCT_BLOCKS[currentTargetBlockIndexForPhoto].foto_url = dataUrl;
+      updateBlockPhotoDOM(currentTargetBlockIndexForPhoto);
+    }
+    closeWebcamModal();
+  }
+
+  // ============ RESET & SUBMIT BATCH PENERIMAAN ============
+  function resetFormPenerimaan() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('inPenerimaanTanggal').value = today;
+    document.getElementById('inPenerimaanSuratJalan').value = '';
+    document.getElementById('inPenerimaanCatatanGlobal').value = '';
+    pilihKategoriCompact('Lokal CMT');
+    FORM_PRODUCT_BLOCKS = [];
+    tambahBlokProduk();
+  }
+
+  function submitBatchPenerimaan(btn) {
+    const tanggal = document.getElementById('inPenerimaanTanggal').value;
+    const kategori = document.getElementById('inPenerimaanKategori').value;
+    const noSuratJalan = document.getElementById('inPenerimaanSuratJalan').value.trim();
+    const catatanGlobal = document.getElementById('inPenerimaanCatatanGlobal').value.trim();
+
+    if (!noSuratJalan) {
+      if (window.showToast) window.showToast('Nomor Surat Jalan wajib diisi!', 'warning');
+      document.getElementById('inPenerimaanSuratJalan').focus();
+      return;
+    }
+
+    if (FORM_PRODUCT_BLOCKS.length === 0) {
+      if (window.showToast) window.showToast('Minimal harus ada 1 Kode Produk.', 'warning');
+      return;
+    }
+
+    // Validasi tiap blok
+    for (let i = 0; i < FORM_PRODUCT_BLOCKS.length; i++) {
+      const b = FORM_PRODUCT_BLOCKS[i];
+      if (!b.kode_produksi) {
+        if (window.showToast) window.showToast(`Produk #${i + 1}: Kode Produksi wajib diisi!`, 'warning');
+        return;
+      }
+      if (!b.variants || b.variants.length === 0) {
+        if (window.showToast) window.showToast(`Produk #${i + 1} (${b.kode_produksi}): Minimal harus ada 1 varian (warna & size)!`, 'warning');
+        return;
+      }
+      for (let j = 0; j < b.variants.length; j++) {
+        const v = b.variants[j];
+        if (!v.warna) {
+          if (window.showToast) window.showToast(`Produk #${i + 1} (${b.kode_produksi}) Baris #${j + 1}: Warna wajib diisi!`, 'warning');
+          return;
+        }
+      }
+    }
+
+    const payload = {
+      tanggal: tanggal,
+      kategori: kategori,
+      no_surat_jalan: noSuratJalan,
+      keterangan: catatanGlobal,
+      produk_list: FORM_PRODUCT_BLOCKS
+    };
+
+    if (btn && window.setButtonLoading) window.setButtonLoading(btn, true, 'MENYIMPAN KE SUPABASE...');
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (res && res.success) {
+          if (window.showToast) window.showToast(res.message || 'Laporan kedatangan barang berhasil disimpan! 🚀', 'success');
+          resetFormPenerimaan();
+          switchPenerimaanTab('riwayat');
+          muatDataPenerimaan(true);
+        } else {
+          if (window.showToast) window.showToast(res ? res.message : 'Gagal menyimpan data ke database', 'danger');
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (window.showToast) window.showToast('Error server: ' + err.message, 'danger');
+      })
+      .simpanPenerimaanProduksi(TOKEN, payload);
+  }
+
+  // ============ MUAT & RENDER DATA RIWAYAT DARI SUPABASE ============
+  function muatDataPenerimaan(force) {
+    const tbody = document.getElementById('penerimaanTableBody');
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 35px; color: var(--text-muted); font-style: italic;">⏳ Mengambil data penerimaan terbaru dari Supabase Cloud...</td></tr>';
+    }
+
+    const kategori = document.getElementById('filterPenerimaanKategori') ? document.getElementById('filterPenerimaanKategori').value : 'ALL';
+    const startDate = document.getElementById('filterPenerimaanStart') ? document.getElementById('filterPenerimaanStart').value : '';
+    const endDate = document.getElementById('filterPenerimaanEnd') ? document.getElementById('filterPenerimaanEnd').value : '';
+    const keyword = document.getElementById('searchPenerimaan') ? document.getElementById('searchPenerimaan').value : '';
+
+    const filters = {
+      kategori: kategori,
+      startDate: startDate,
+      endDate: endDate,
+      keyword: keyword,
+      limit: 500
+    };
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          PENERIMAAN_DATA = res.data || [];
+          penerimaanCurrentPage = 1;
+          renderPenerimaanTable();
+          updateKpiPenerimaan(PENERIMAAN_DATA);
+        } else {
+          if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--danger); padding: 30px;">' + (res ? res.message : 'Gagal memuat data') + '</td></tr>';
+          }
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (tbody) {
+          tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--danger); padding: 30px;">Error koneksi: ' + err.message + '</td></tr>';
+        }
+      })
+      .getPenerimaanProduksiList(TOKEN, filters);
+  }
+
+  function filterDataPenerimaanLokal() {
+    renderPenerimaanTable();
+  }
+
+  function resetFilterPenerimaan() {
+    if (document.getElementById('searchPenerimaan')) document.getElementById('searchPenerimaan').value = '';
+    if (document.getElementById('filterPenerimaanKategori')) document.getElementById('filterPenerimaanKategori').value = 'ALL';
+    if (document.getElementById('filterPenerimaanStart')) document.getElementById('filterPenerimaanStart').value = '';
+    if (document.getElementById('filterPenerimaanEnd')) document.getElementById('filterPenerimaanEnd').value = '';
+    muatDataPenerimaan(true);
+  }
+
+  function updateKpiPenerimaan(list) {
+    let totalItems = list.length;
+    let totalQty = 0;
+    let totalLokal = 0;
+    let totalKargo = 0;
+
+    list.forEach(r => {
+      const q = parseInt(r.qty, 10) || 1;
+      totalQty += q;
+      const kat = String(r.kategori || '').toLowerCase();
+      if (kat.includes('lokal')) totalLokal += q;
+      else if (kat.includes('kargo')) totalKargo += q;
+    });
+
+    const elTotal = document.getElementById('kpiPenerimaanTotal');
+    const elQty = document.getElementById('kpiPenerimaanQty');
+    const elLokal = document.getElementById('kpiPenerimaanLokal');
+    const elKargo = document.getElementById('kpiPenerimaanKargo');
+
+    if (elTotal) elTotal.textContent = totalItems.toLocaleString('id-ID');
+    if (elQty) elQty.textContent = totalQty.toLocaleString('id-ID');
+    if (elLokal) elLokal.textContent = totalLokal.toLocaleString('id-ID') + ' pcs';
+    if (elKargo) elKargo.textContent = totalKargo.toLocaleString('id-ID') + ' pcs';
+  }
+
+  function renderPenerimaanTable() {
+    const tbody = document.getElementById('penerimaanTableBody');
+    const infoEl = document.getElementById('penerimaanPaginationInfo');
+    const countBadge = document.getElementById('penerimaanTotalCount');
+    const pageIndicator = document.getElementById('penerimaanPageIndicator');
+    if (!tbody) return;
+
+    const keyword = (document.getElementById('searchPenerimaan') ? document.getElementById('searchPenerimaan').value : '').toLowerCase().trim();
+
+    let filtered = PENERIMAAN_DATA;
+    if (keyword) {
+      filtered = filtered.filter(r => {
+        const combined = (
+          String(r.kode_produksi || '') + ' ' +
+          String(r.no_surat_jalan || '') + ' ' +
+          String(r.warna || '') + ' ' +
+          String(r.size || '') + ' ' +
+          String(r.keterangan || '') + ' ' +
+          String(r.operator || '')
+        ).toLowerCase();
+        return combined.includes(keyword);
+      });
+    }
+
+    if (countBadge) countBadge.textContent = `${filtered.length.toLocaleString('id-ID')} Baris Data`;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 35px; color: var(--text-muted);">Tidak ada data kedatangan barang yang sesuai filter.</td></tr>';
+      if (infoEl) infoEl.textContent = 'Menampilkan 0 dari 0 data';
+      if (pageIndicator) pageIndicator.textContent = '1 / 1';
+      return;
+    }
+
+    const totalPages = Math.ceil(filtered.length / penerimaanPageSize) || 1;
+    if (penerimaanCurrentPage > totalPages) penerimaanCurrentPage = totalPages;
+    if (penerimaanCurrentPage < 1) penerimaanCurrentPage = 1;
+
+    const startIdx = (penerimaanCurrentPage - 1) * penerimaanPageSize;
+    const pageData = filtered.slice(startIdx, startIdx + penerimaanPageSize);
+
+    let html = '';
+    pageData.forEach((row, idx) => {
+      const globalIdx = startIdx + idx;
+      const isKargo = String(row.kategori || '').toLowerCase().includes('kargo');
+      const katBadge = isKargo
+        ? '<span class="badge-kategori-kargo">🚚 KARGO</span>'
+        : '<span class="badge-kategori-lokal">🏭 LOKAL CMT</span>';
+
+      let fotoHtml = '<span style="color: var(--text-dim); font-size: 11px;">-</span>';
+      if (row.foto_url) {
+        fotoHtml = `<img src="${row.foto_url}" class="table-foto-thumb" onclick="openPhotoLightbox('${escapeHtml(row.foto_url)}', '${escapeHtml(row.kode_produksi)}', '${escapeHtml(row.no_surat_jalan)}', '${escapeHtml(row.warna)}', '${escapeHtml(row.size)}', '${row.qty}')" title="Klik perbesar foto">`;
+      }
+
+      html += `<tr>
+        <td style="padding-left: 10px; font-weight: 600; color: var(--text-muted); font-size: 11.5px; white-space: nowrap;">${formatTanggalIndo(row.tanggal_penerimaan)}</td>
+        <td style="text-align: center;">${katBadge}</td>
+        <td style="padding-left: 8px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(row.no_surat_jalan || '-')}"><span class="badge-sku">${escapeHtml(row.no_surat_jalan || '-')}</span></td>
+        <td style="text-align: center;">${fotoHtml}</td>
+        <td style="padding-left: 8px; font-weight: 800; color: var(--primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(row.kode_produksi || '-')}">${escapeHtml(row.kode_produksi || '-')}</td>
+        <td style="padding-left: 8px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(row.warna || '-')}">${escapeHtml(row.warna || '-')}</td>
+        <td style="text-align: center;"><span class="badge-size">${escapeHtml(row.size || '-')}</span></td>
+        <td style="text-align: center; font-weight: 800; color: var(--text);">${row.qty || 1}</td>
+        <td style="padding-left: 8px; font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(row.keterangan || '-')}">${escapeHtml(row.keterangan || '-')}</td>
+        <td style="padding-left: 8px; font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(row.operator || '-')}">${escapeHtml(row.operator || '-')}</td>
+        <td style="text-align: center; white-space: nowrap; padding: 4px 4px;">
+          <button type="button" class="btn-action-mini edit" onclick="openEditPenerimaanModal(${globalIdx})" title="Edit data penerimaan ini">✏️ Edit</button>
+          <button type="button" class="btn-action-mini delete" onclick="konfirmasiHapusPenerimaan(${globalIdx})" title="Hapus data penerimaan ini">🗑️</button>
+        </td>
+      </tr>`;
+    });
+
+    tbody.innerHTML = html;
+    if (infoEl) infoEl.textContent = `Menampilkan ${startIdx + 1} - ${Math.min(startIdx + penerimaanPageSize, filtered.length)} dari ${filtered.length} data`;
+    if (pageIndicator) pageIndicator.textContent = `${penerimaanCurrentPage} / ${totalPages}`;
+  }
+
+  function changePenerimaanPage(delta) {
+    penerimaanCurrentPage += delta;
+    renderPenerimaanTable();
+  }
+
+  // ============ EDIT & HAPUS MODAL CONTROLLERS (PER SURAT JALAN / BATCH) ============
+  let editBatchItems = [];
+  let currentEditItemPhotoIdx = -1;
+  let currentHapusPayload = null;
+
+  function openEditPenerimaanModal(rowIndexOrData) {
+    let targetRow = null;
+    if (typeof rowIndexOrData === 'number') {
+      targetRow = PENERIMAAN_DATA[rowIndexOrData];
+    } else {
+      targetRow = rowIndexOrData;
+    }
+    if (!targetRow) return;
+
+    const noSJ = String(targetRow.no_surat_jalan || '').trim().toUpperCase();
+    const tgl = targetRow.tanggal_penerimaan || '';
+    const kat = targetRow.kategori || 'Lokal CMT';
+    const catatan = targetRow.keterangan || '';
+
+    document.getElementById('editPenerimaanOrigSJ').value = noSJ;
+    document.getElementById('editInTanggal').value = tgl;
+    document.getElementById('editInKategori').value = kat;
+    document.getElementById('editInSuratJalan').value = noSJ;
+    document.getElementById('editInCatatanGlobal').value = catatan;
+
+    // Kumpulkan SEMUA item yang berada dalam 1 Surat Jalan yang sama (Per Penerimaan)
+    let matchingRows = [];
+    if (noSJ && noSJ !== '-' && noSJ !== 'DEFAULT') {
+      matchingRows = PENERIMAAN_DATA.filter(r => String(r.no_surat_jalan || '').trim().toUpperCase() === noSJ);
+    }
+    if (matchingRows.length === 0) {
+      matchingRows = [targetRow];
+    }
+
+    editBatchItems = matchingRows.map(r => ({
+      id: r.id || '',
+      sheet_row: r.sheet_row || '',
+      kode_produksi: r.kode_produksi || '',
+      warna: r.warna || '',
+      size: r.size || 'Default',
+      qty: parseInt(r.qty, 10) || 1,
+      foto_url: r.foto_url || '',
+      keterangan: r.keterangan || '',
+      created_at: r.created_at || ''
+    }));
+
+    renderEditBatchItemsTable();
+
+    const modal = document.getElementById('modalEditPenerimaan');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeEditPenerimaanModal() {
+    const modal = document.getElementById('modalEditPenerimaan');
+    if (modal) modal.style.display = 'none';
+    editBatchItems = [];
+    currentEditItemPhotoIdx = -1;
+  }
+
+  function renderEditBatchItemsTable() {
+    const tbody = document.getElementById('editBatchTableBody');
+    const badge = document.getElementById('editBatchCountBadge');
+    const summary = document.getElementById('editBatchLiveSummary');
+    if (!tbody) return;
+
+    let totalQty = 0;
+    let html = '';
+
+    editBatchItems.forEach((it, idx) => {
+      const q = parseInt(it.qty, 10) || 0;
+      totalQty += q;
+
+      let fotoThumb = '<div style="font-size:16px;">📷</div>';
+      if (it.foto_url) {
+        fotoThumb = `<img src="${it.foto_url}" style="width:100%; height:100%; object-fit:cover; border-radius:4px;" title="Klik ganti foto">`;
+      }
+
+      html += `<tr>
+        <td style="text-align:center; padding:4px;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
+            <div style="width:44px; height:44px; border:1px dashed var(--border); border-radius:var(--radius-sm); overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--bg-surface); cursor:pointer;" onclick="triggerGaleriEditItem(${idx})" title="Klik untuk upload / ganti foto">
+              ${fotoThumb}
+            </div>
+            <div style="display:flex; gap:3px;">
+              <button type="button" class="btn btn-secondary" style="height:18px; width:20px; padding:0; font-size:9px;" onclick="triggerKameraEditItem(${idx})" title="Kamera">📷</button>
+              <button type="button" class="btn btn-secondary" style="height:18px; width:20px; padding:0; font-size:9px;" onclick="triggerGaleriEditItem(${idx})" title="Upload">📁</button>
+              ${it.foto_url ? `<button type="button" class="btn btn-secondary" style="height:18px; width:20px; padding:0; font-size:9px; color:var(--danger);" onclick="hapusFotoEditItem(${idx})" title="Hapus foto">✕</button>` : ''}
+            </div>
+          </div>
+        </td>
+        <td style="padding:4px 6px;">
+          <input type="text" class="search-input compact-input" style="width:100%; font-weight:800; color:var(--primary); text-transform:uppercase;" value="${escapeHtml(it.kode_produksi)}" onchange="updateEditBatchField(${idx}, 'kode_produksi', this.value)" placeholder="KODE PRODUKSI">
+        </td>
+        <td style="padding:4px 6px;">
+          <input type="text" class="search-input compact-input" style="width:100%; font-weight:700; text-transform:uppercase;" value="${escapeHtml(it.warna)}" onchange="updateEditBatchField(${idx}, 'warna', this.value)" placeholder="Warna">
+        </td>
+        <td style="padding:4px 6px;">
+          <input type="text" list="sizeOptionsList" class="search-input compact-input" style="width:100%; text-align:center; font-weight:700;" value="${escapeHtml(it.size || 'Default')}" onchange="updateEditBatchField(${idx}, 'size', this.value)">
+        </td>
+        <td style="padding:4px 6px;">
+          <input type="number" min="1" class="search-input compact-input" style="width:100%; text-align:center; font-weight:800;" value="${it.qty || 1}" onchange="updateEditBatchField(${idx}, 'qty', this.value)">
+        </td>
+        <td style="padding:4px 6px;">
+          <input type="text" class="search-input compact-input" style="width:100%; font-size:11px;" value="${escapeHtml(it.keterangan || '')}" onchange="updateEditBatchField(${idx}, 'keterangan', this.value)" placeholder="Catatan opsional...">
+        </td>
+        <td style="text-align:center; padding:4px;">
+          <button type="button" class="btn btn-secondary" style="height:28px; width:28px; padding:0; font-size:12px; color:var(--danger); border-color:rgba(239,68,68,0.3);" onclick="hapusItemEditBatch(${idx})" title="Hapus baris item ini">🗑️</button>
+        </td>
+      </tr>`;
+    });
+
+    tbody.innerHTML = html;
+    if (badge) badge.textContent = `${editBatchItems.length} Item`;
+    if (summary) summary.innerHTML = `Total: <b>${editBatchItems.length} Item</b> &bull; <b style="color:var(--primary); font-size:12.5px;">${totalQty.toLocaleString('id-ID')} Pcs</b>`;
+  }
+
+  function updateEditBatchField(idx, field, value) {
+    if (!editBatchItems[idx]) return;
+    if (field === 'kode_produksi' || field === 'warna') {
+      editBatchItems[idx][field] = String(value || '').trim().toUpperCase();
+    } else if (field === 'qty') {
+      editBatchItems[idx][field] = parseInt(value, 10) || 1;
+      const summary = document.getElementById('editBatchLiveSummary');
+      let totalQty = 0;
+      editBatchItems.forEach(it => totalQty += (parseInt(it.qty, 10) || 0));
+      if (summary) summary.innerHTML = `Total: <b>${editBatchItems.length} Item</b> &bull; <b style="color:var(--primary); font-size:12.5px;">${totalQty.toLocaleString('id-ID')} Pcs</b>`;
+    } else {
+      editBatchItems[idx][field] = String(value || '').trim();
+    }
+  }
+
+  function tambahItemEditBatch() {
+    // Sinkronisasi data dari DOM input sebelum menambah baris
+    syncEditBatchDOMState();
+    editBatchItems.push({
+      id: '',
+      sheet_row: '',
+      kode_produksi: '',
+      warna: '',
+      size: 'Default',
+      qty: 1,
+      foto_url: '',
+      keterangan: ''
+    });
+    renderEditBatchItemsTable();
+  }
+
+  function hapusItemEditBatch(idx) {
+    if (editBatchItems.length <= 1) {
+      if (window.showToast) window.showToast('Minimal harus ada 1 item dalam penerimaan ini.', 'warning');
+      return;
+    }
+    syncEditBatchDOMState();
+    editBatchItems.splice(idx, 1);
+    renderEditBatchItemsTable();
+  }
+
+  function syncEditBatchDOMState() {
+    const tbody = document.getElementById('editBatchTableBody');
+    if (!tbody) return;
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach((tr, idx) => {
+      if (!editBatchItems[idx]) return;
+      const inputs = tr.querySelectorAll('input');
+      if (inputs.length >= 5) {
+        editBatchItems[idx].kode_produksi = inputs[0].value.trim().toUpperCase();
+        editBatchItems[idx].warna = inputs[1].value.trim().toUpperCase();
+        editBatchItems[idx].size = inputs[2].value.trim() || 'Default';
+        editBatchItems[idx].qty = parseInt(inputs[3].value, 10) || 1;
+        editBatchItems[idx].keterangan = inputs[4].value.trim();
+      }
+    });
+  }
+
+  function triggerKameraEditItem(idx) {
+    currentEditItemPhotoIdx = idx;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      const camIn = document.getElementById('globalCameraFileInput');
+      if (camIn) {
+        camIn.onchange = function() {
+          if (this.files && this.files.length > 0) {
+            processEditBatchImageFile(this.files[0], currentEditItemPhotoIdx);
+            this.value = '';
+          }
+        };
+        camIn.click();
+      }
+    } else {
+      openWebcamModal();
+    }
+  }
+
+  function triggerGaleriEditItem(idx) {
+    currentEditItemPhotoIdx = idx;
+    const fileIn = document.getElementById('globalGalleryFileInput');
+    if (fileIn) {
+      fileIn.onchange = function() {
+        if (this.files && this.files.length > 0) {
+          processEditBatchImageFile(this.files[0], currentEditItemPhotoIdx);
+          this.value = '';
+        }
+      };
+      fileIn.click();
+    }
+  }
+
+  function hapusFotoEditItem(idx) {
+    if (editBatchItems[idx]) {
+      editBatchItems[idx].foto_url = '';
+      renderEditBatchItemsTable();
+    }
+  }
+
+  function processEditBatchImageFile(file, targetIdx) {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      if (window.showToast) window.showToast('Berkas harus berupa gambar (JPG/PNG).', 'warning');
+      return;
+    }
+    if (window.showToast) window.showToast('Memproses foto...', 'info');
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 900;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.78);
+        if (targetIdx >= 0 && editBatchItems[targetIdx]) {
+          editBatchItems[targetIdx].foto_url = compressedDataUrl;
+          renderEditBatchItemsTable();
+          if (window.showToast) window.showToast(`✓ Foto item #${targetIdx + 1} berhasil dimuat!`, 'success');
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function saveEditPenerimaan(btn) {
+    syncEditBatchDOMState();
+
+    const origSJ = document.getElementById('editPenerimaanOrigSJ').value;
+    const tanggal = document.getElementById('editInTanggal').value;
+    const kategori = document.getElementById('editInKategori').value;
+    const noSuratJalan = document.getElementById('editInSuratJalan').value.trim().toUpperCase();
+    const catatanGlobal = document.getElementById('editInCatatanGlobal').value.trim();
+
+    if (!noSuratJalan) {
+      if (window.showToast) window.showToast('Nomor Surat Jalan wajib diisi!', 'warning');
+      return;
+    }
+    if (!tanggal) {
+      if (window.showToast) window.showToast('Tanggal Penerimaan wajib diisi!', 'warning');
+      return;
+    }
+    if (editBatchItems.length === 0) {
+      if (window.showToast) window.showToast('Minimal harus ada 1 item produk!', 'warning');
+      return;
+    }
+
+    for (let i = 0; i < editBatchItems.length; i++) {
+      const it = editBatchItems[i];
+      if (!it.kode_produksi) {
+        if (window.showToast) window.showToast(`Baris #${i + 1}: Kode Produksi wajib diisi!`, 'warning');
+        return;
+      }
+      if (!it.qty || it.qty < 1) {
+        if (window.showToast) window.showToast(`Baris #${i + 1}: Qty harus minimal 1 pcs!`, 'warning');
+        return;
+      }
+    }
+
+    const payload = {
+      orig_no_surat_jalan: origSJ,
+      tanggal: tanggal,
+      kategori: kategori,
+      no_surat_jalan: noSuratJalan,
+      keterangan: catatanGlobal,
+      items: editBatchItems
+    };
+
+    if (btn && window.setButtonLoading) window.setButtonLoading(btn, true, 'MENYIMPAN PERUBAHAN...');
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (res && res.success) {
+          if (window.showToast) window.showToast(res.message || 'Data penerimaan berhasil diperbarui! ✨', 'success');
+          closeEditPenerimaanModal();
+          muatDataPenerimaan(true);
+        } else {
+          if (window.showToast) window.showToast(res ? res.message : 'Gagal menyimpan perubahan', 'danger');
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (window.showToast) window.showToast('Error server: ' + err.message, 'danger');
+      })
+      .updateBatchPenerimaanProduksi(TOKEN, payload);
+  }
+
+  function hapusSeluruhPenerimaanDariEditModal() {
+    const origSJ = document.getElementById('editPenerimaanOrigSJ').value;
+    if (!origSJ) return;
+    closeEditPenerimaanModal();
+    konfirmasiHapusPenerimaan({ no_surat_jalan: origSJ, isBatchSJ: true });
+  }
+
+  function konfirmasiHapusPenerimaan(rowIndexOrData) {
+    let targetRow = null;
+    if (typeof rowIndexOrData === 'number') {
+      targetRow = PENERIMAAN_DATA[rowIndexOrData];
+    } else {
+      targetRow = rowIndexOrData;
+    }
+    if (!targetRow) return;
+
+    const noSJ = String(targetRow.no_surat_jalan || '').trim().toUpperCase();
+    const matchingRows = (noSJ && noSJ !== '-') ? PENERIMAAN_DATA.filter(r => String(r.no_surat_jalan || '').trim().toUpperCase() === noSJ) : [targetRow];
+    let totalQty = 0;
+    matchingRows.forEach(r => totalQty += (parseInt(r.qty, 10) || 0));
+
+    currentHapusPayload = {
+      id: targetRow.id,
+      sheet_row: targetRow.sheet_row,
+      no_surat_jalan: noSJ,
+      kode_produksi: targetRow.kode_produksi,
+      warna: targetRow.warna,
+      size: targetRow.size,
+      qty: targetRow.qty,
+      isBatchSJ: matchingRows.length > 1 || targetRow.isBatchSJ,
+      batchCount: matchingRows.length,
+      batchQty: totalQty
+    };
+
+    const card = document.getElementById('hapusPenerimaanSummaryCard');
+    if (card) {
+      if (matchingRows.length > 1 || targetRow.isBatchSJ) {
+        card.innerHTML = `
+          <div><b>No Surat Jalan:</b> <span class="badge-sku" style="font-size:12px;">${escapeHtml(noSJ || '-')}</span></div>
+          <div><b>Total Item dalam Surat Jalan:</b> <b style="color:var(--primary);">${matchingRows.length} Baris Produk</b></div>
+          <div><b>Total Kuantitas:</b> <span style="font-weight: 800; color: var(--danger); font-size: 13px;">${totalQty.toLocaleString('id-ID')} pcs</span></div>
+          <div style="margin-top:6px; font-size:11px; color:var(--text-muted);">Apakah Anda ingin menghapus seluruh surat jalan ini atau hanya 1 item baris terpilih?</div>
+        `;
+      } else {
+        card.innerHTML = `
+          <div><b>No Surat Jalan:</b> ${escapeHtml(targetRow.no_surat_jalan || '-')} (${escapeHtml(targetRow.kategori || '-')})</div>
+          <div><b>Kode Produk:</b> <span style="color: var(--primary); font-weight: 800;">${escapeHtml(targetRow.kode_produksi || '-')}</span></div>
+          <div><b>Warna / Size:</b> ${escapeHtml(targetRow.warna || '-')} / <b>${escapeHtml(targetRow.size || '-')}</b></div>
+          <div><b>Jumlah Qty:</b> <span style="font-weight: 800; color: var(--danger);">${targetRow.qty || 1} pcs</span></div>
+          <div><b>Tanggal:</b> ${formatTanggalIndo(targetRow.tanggal_penerimaan)}</div>
+        `;
+      }
+    }
+
+    const modal = document.getElementById('modalHapusPenerimaan');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeHapusPenerimaanModal() {
+    const modal = document.getElementById('modalHapusPenerimaan');
+    if (modal) modal.style.display = 'none';
+    currentHapusPayload = null;
+  }
+
+  function eksekusiHapusPenerimaan(btn) {
+    if (!currentHapusPayload) return;
+
+    if (btn && window.setButtonLoading) window.setButtonLoading(btn, true, 'MENGHAPUS...');
+
+    // Jika target adalah seluruh Surat Jalan (Batch)
+    if (currentHapusPayload.isBatchSJ && currentHapusPayload.no_surat_jalan) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+          if (res && res.success) {
+            if (window.showToast) window.showToast(res.message || 'Seluruh data surat jalan berhasil dihapus! 🗑️', 'success');
+            closeHapusPenerimaanModal();
+            muatDataPenerimaan(true);
+          } else {
+            if (window.showToast) window.showToast(res ? res.message : 'Gagal menghapus data', 'danger');
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+          if (window.showToast) window.showToast('Error server: ' + err.message, 'danger');
+        })
+        .hapusBatchPenerimaanProduksi(TOKEN, currentHapusPayload.no_surat_jalan);
+      return;
+    }
+
+    // Hapus single row item
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (res && res.success) {
+          if (window.showToast) window.showToast(res.message || 'Data berhasil dihapus! 🗑️', 'success');
+          closeHapusPenerimaanModal();
+          muatDataPenerimaan(true);
+        } else {
+          if (window.showToast) window.showToast(res ? res.message : 'Gagal menghapus data', 'danger');
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (window.showToast) window.showToast('Error server: ' + err.message, 'danger');
+      })
+      .hapusPenerimaanProduksi(TOKEN, currentHapusPayload);
+  }
+
+  // ============ PHOTO LIGHTBOX PREVIEW ============
+  function openPhotoLightbox(fotoUrl, kode, noSj, warna, size, qty) {
+    const modal = document.getElementById('penerimaanLightboxModal');
+    const img = document.getElementById('lightboxImg');
+    const title = document.getElementById('lightboxTitle');
+    const details = document.getElementById('lightboxDetails');
+    const dlBtn = document.getElementById('lightboxDownloadBtn');
+
+    if (!modal || !img) return;
+
+    img.src = fotoUrl;
+    if (title) title.textContent = `Foto: ${kode} (${warna || '-'})`;
+    if (details) details.innerHTML = `<b>Kode:</b> ${kode} &bull; <b>Warna:</b> ${warna || '-'} &bull; <b>Size:</b> ${size || '-'} &bull; <b>Qty:</b> ${qty || '-'} pcs`;
+    if (dlBtn) {
+      dlBtn.href = fotoUrl;
+      dlBtn.download = `Foto_${kode}_${warna}.jpg`;
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closePhotoLightbox() {
+    const modal = document.getElementById('penerimaanLightboxModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  // ============ EXPORT CSV ============
+  function exportPenerimaanCsv() {
+    if (!PENERIMAAN_DATA || PENERIMAAN_DATA.length === 0) {
+      if (window.showToast) window.showToast('Tidak ada data untuk diexport', 'warning');
+      return;
+    }
+
+    const headers = ["Tanggal Penerimaan", "Kategori", "No Surat Jalan", "Kode Produksi", "Warna", "Size", "Qty", "Catatan", "Operator"];
+    const rows = [headers];
+
+    PENERIMAAN_DATA.forEach(r => {
+      rows.push([
+        r.tanggal_penerimaan || '',
+        r.kategori || '',
+        r.no_surat_jalan || '',
+        r.kode_produksi || '',
+        r.warna || '',
+        r.size || '',
+        r.qty || 1,
+        r.keterangan || '',
+        r.operator || ''
+      ]);
+    });
+
+    let csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.map(x => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Laporan_Kedatangan_Barang_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function formatTanggalIndo(tglStr) {
+    if (!tglStr) return '-';
+    try {
+      const parts = String(tglStr).split('T')[0].split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+    } catch(e) {}
+    return tglStr;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Expose function global ke window agar selalu dapat dipanggil dari mana pun
+  window.switchPenerimaanTab = switchPenerimaanTab;
+  window.initPenerimaanView = initPenerimaanView;
+  window.muatDataPenerimaan = muatDataPenerimaan;
+  window.exportPenerimaanCsv = exportPenerimaanCsv;
+  window.tambahBlokProduk = tambahBlokProduk;
+  window.hapusBlokProduk = hapusBlokProduk;
+  window.tambahVariantRow = tambahVariantRow;
+  window.hapusVariantRow = hapusVariantRow;
+  window.pilihKategoriCompact = pilihKategoriCompact;
+  window.submitBatchPenerimaan = submitBatchPenerimaan;
+  window.resetFormPenerimaan = resetFormPenerimaan;
+  window.openEditPenerimaanModal = openEditPenerimaanModal;
+  window.closeEditPenerimaanModal = closeEditPenerimaanModal;
+  window.saveEditPenerimaan = saveEditPenerimaan;
+  window.konfirmasiHapusPenerimaan = konfirmasiHapusPenerimaan;
+  window.closeHapusPenerimaanModal = closeHapusPenerimaanModal;
+  window.eksekusiHapusPenerimaan = eksekusiHapusPenerimaan;
+  window.triggerKameraEdit = triggerKameraEdit;
+  window.triggerGaleriEdit = triggerGaleriEdit;
+  window.hapusFotoEdit = hapusFotoEdit;
+  window.handleDirectPhotoPasteEdit = handleDirectPhotoPasteEdit;
+  window.handlePhotoDragOverEdit = handlePhotoDragOverEdit;
+  window.handlePhotoDragLeaveEdit = handlePhotoDragLeaveEdit;
+  window.handlePhotoDropEdit = handlePhotoDropEdit;
+</script>
+
+<!-- HIDDEN INPUTS & DATALIST -->
+<input type="file" id="globalCameraFileInput" accept="image/*" capture="environment" style="display: none;" onchange="handleGlobalPhotoSelected(this)">
+<input type="file" id="globalGalleryFileInput" accept="image/*" style="display: none;" onchange="handleGlobalPhotoSelected(this)">
+
+<datalist id="sizeOptionsList">
+  <option value="XS"></option>
+  <option value="S"></option>
+  <option value="M"></option>
+  <option value="L"></option>
+  <option value="XL"></option>
+  <option value="XXL"></option>
+  <option value="3XL"></option>
+  <option value="ALL SIZE"></option>
+  <option value="FREE SIZE"></option>
+  <option value="Default"></option>
+</datalist>

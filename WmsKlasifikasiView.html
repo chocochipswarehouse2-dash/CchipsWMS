@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+      --primary: #ff7a00;
+      --primary-hover: #e06c00;
+      --primary-light: rgba(255, 122, 0, 0.1);
+      --success: #22c55e;
+      --success-light: rgba(34, 197, 94, 0.1);
+      --info: #3b82f6;
+      --info-light: rgba(59, 130, 246, 0.1);
+      --warning: #f59e0b;
+      --warning-light: rgba(245, 158, 11, 0.1);
+      --danger: #ef4444;
+      --danger-light: rgba(239, 68, 68, 0.1);
+      --sidebar-width: 250px;
+    }
+
+    [data-theme="light"] {
+      --bg-body: #f4f6fa;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --bg-input: #f8fafc;
+      --border-color: #e8ecf2;
+      --border-subtle: #f1f5f9;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+      --card-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.08);
+      --table-hover: #f8fafc;
+    }
+
+    [data-theme="dark"] {
+      --bg-body: #090d16;
+      --bg-sidebar: #0f172a;
+      --bg-card: #131d31;
+      --bg-input: #0b1120;
+      --border-color: #1e293b;
+      --border-subtle: #1e293b;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      --card-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.6);
+      --table-hover: rgba(255, 255, 255, 0.03);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-main) !important;
+    }
+
+    body {
+      background: var(--bg-body);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      transition: background 0.25s ease, color 0.25s ease;
+      overflow-x: hidden;
+    }
+
+    /* ========================================================
+       1. LEFT SIDEBAR LAYOUT
+       ======================================================== */
+    .app-sidebar {
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 16px;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      transition: all 0.25s ease;
+    }
+
+    .brand-logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 10px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 20px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #ff7a00, #ff9e40);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 18px;
+      box-shadow: 0 4px 12px rgba(255, 122, 0, 0.35);
+    }
+
+    .brand-name {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: var(--text-main);
+    }
+
+    .brand-name span { color: var(--primary); }
+
+    /* USER PILL */
+    .user-profile-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      margin-bottom: 24px;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #60a5fa);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .user-info {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .user-name {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    .user-role {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* MENU ITEMS */
+    .nav-menu-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .nav-item-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .nav-item-link:hover {
+      color: var(--text-main);
+      background: var(--table-hover);
+    }
+
+    .nav-item-link.active {
+      color: var(--primary);
+      background: var(--primary-light);
+      font-weight: 700;
+    }
+
+    .nav-item-link.active::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 10%;
+      height: 80%;
+      width: 4px;
+      background: var(--primary);
+      border-radius: 0 4px 4px 0;
+    }
+
+    .nav-icon {
+      font-size: 16px;
+      width: 20px;
+      text-align: center;
+    }
+
+    .logout-btn-wrap {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* ========================================================
+       2. MAIN CONTENT AREA
+       ======================================================== */
+    .app-main {
+      flex: 1;
+      padding: 24px 32px;
+      max-width: calc(100vw - var(--sidebar-width));
+      overflow-y: auto;
+    }
+
+    /* TOP HEADER BAR */
+    .top-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .page-title-wrap h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.5px;
+    }
+
+    .page-title-wrap p {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .top-actions-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-input-top {
+      height: 42px;
+      width: 280px;
+      padding: 0 16px 0 38px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .search-input-top:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.15);
+    }
+
+    .search-icon-pos {
+      position: absolute;
+      left: 14px;
+      top: 12px;
+      font-size: 14px;
+      color: var(--text-dim);
+    }
+
+    .btn-circle-action {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+      box-shadow: var(--card-shadow);
+    }
+
+    .btn-circle-action:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary-action {
+      height: 42px;
+      padding: 0 20px;
+      border-radius: var(--radius-lg);
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(255, 122, 0, 0.35);
+    }
+
+    .btn-primary-action:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    /* ========================================================
+       3. KPI TOP CARDS (SALES / INVENTORY ACTIVITY)
+       ======================================================== */
+    .kpi-row-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--card-shadow);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--card-shadow-hover);
+      border-color: var(--primary);
+    }
+
+    .kpi-stat-card.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary), var(--card-shadow-hover);
+    }
+
+    .kpi-stat-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .kpi-stat-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .kpi-stat-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+      color: var(--text-muted);
+    }
+
+    .kpi-stat-number {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .kpi-stat-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .kpi-stat-bar-bg {
+      width: 100%;
+      height: 4px;
+      background: var(--border-subtle);
+      border-radius: 2px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .kpi-stat-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.6s ease;
+    }
+
+    /* ========================================================
+       4. SECTION 2: 2-COLUMN ANALYTICS CARDS (DONUT + ACTIVITY)
+       ======================================================== */
+    .dashboard-grid-2 {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 1200px) {
+      .dashboard-grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .content-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--card-shadow);
+    }
+
+    .content-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .content-card-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .content-card-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* DONUT CHART COMPONENT */
+    .donut-analytics-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .donut-chart-container {
+      position: relative;
+      width: 150px;
+      height: 150px;
+    }
+
+    .donut-center-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .donut-center-val {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1;
+    }
+
+    .donut-center-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .donut-legend-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 180px;
+    }
+
+    .donut-legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .legend-val {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* PROSES LANJUTAN LIST */
+    .process-tab-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .proc-pill-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-lg);
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      background: var(--bg-input);
+      color: var(--text-muted);
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .proc-pill-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .process-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .process-item-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      transition: all 0.15s;
+    }
+
+    .process-item-row:hover {
+      border-color: var(--border-color);
+      background: var(--table-hover);
+    }
+
+    /* ========================================================
+       5. SECTION 3: AREA & RAK LOKASI GRID
+       ======================================================== */
+    .loc-grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+      gap: 10px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .loc-grid-card {
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .loc-grid-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 122, 0, 0.12);
+    }
+
+    .loc-grid-name {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .loc-grid-qty {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 2px 7px;
+      border-radius: var(--radius-sm);
+    }
+
+    /* ========================================================
+       6. SECTION 4: DETAILED TABLE VIEW
+       ======================================================== */
+    .table-container-saas {
+      width: 100%;
+      overflow-x: auto;
+      max-height: 520px;
+      overflow-y: auto;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+    }
+
+    table.saas-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      background: var(--bg-card);
+    }
+
+    table.saas-table th {
+      background: var(--bg-input);
+      font-weight: 700;
+      color: var(--text-muted);
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    table.saas-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-main);
+      vertical-align: middle;
+      transition: background 0.15s;
+    }
+
+    table.saas-table tbody tr:hover td {
+      background: var(--table-hover);
+    }
+
+    .badge-cat {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 10.5px;
+      font-weight: 700;
+    }
+
+    .badge-cat-A { background: rgba(255, 122, 0, 0.12); color: #ff7a00; }
+    .badge-cat-B { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+    .badge-cat-C { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
+    .badge-cat-D { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+    .badge-cat-E { background: rgba(100, 116, 139, 0.12); color: var(--text-muted); }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      body { flex-direction: column; }
+      .app-sidebar { width: 100%; min-width: 100%; height: auto; position: static; }
+      .app-main { max-width: 100%; padding: 16px; }
+      .search-input-top { width: 100%; }
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <!-- ========================================================
+       1. LEFT SIDEBAR NAVIGATION
+       ======================================================== -->
+  <aside class="app-sidebar">
+    <div class="brand-logo-wrap">
+      <div class="brand-icon">📦</div>
+      <div class="brand-name">WMS <span>CHOCOCHIPS</span></div>
+    </div>
+
+    <!-- USER PILL -->
+    <div class="user-profile-card">
+      <div class="user-avatar" id="avatarInitial">C</div>
+      <div class="user-info">
+        <div class="user-name"><?= username ?></div>
+        <div class="user-role">Role: <?= akses ?></div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR NAV LINKS -->
+    <nav class="nav-menu-list">
+      <a class="nav-item-link active" onclick="navigasiKe('klasifikasi')">
+        <span class="nav-icon">📊</span>
+        <span>Monitoring & Klasifikasi</span>
+      </a>
+      <a class="nav-item-link" onclick="navigasiKe('produk')">
+        <span class="nav-icon">📦</span>
+        <span>Inventory</span>
+      </a>
+      <a class="nav-item-link" onclick="navigasiKe('fulfillment')">
+        <span class="nav-icon">🔄</span>
+        <span>Fulfillment Refill</span>
+      </a>
+      <a class="nav-item-link" onclick="navigasiKe('peminjaman')">
+        <span class="nav-icon">📋</span>
+        <span>Peminjaman SPS</span>
+      </a>
+      <a class="nav-item-link" onclick="navigasiKe('logproduk')">
+        <span class="nav-icon">📑</span>
+        <span>Log Produk</span>
+      </a>
+      <a class="nav-item-link" onclick="navigasiKe('logmutasi')">
+        <span class="nav-icon">🔄</span>
+        <span>Log Mutasi</span>
+      </a>
+      <a class="nav-item-link" onclick="navigasiKe('updatedatabase')">
+        <span class="nav-icon">💾</span>
+        <span>Update Database</span>
+      </a>
+      <a class="nav-item-link" onclick="navigasiKe('stockopname')">
+        <span class="nav-icon">📝</span>
+        <span>Stock Opname</span>
+      </a>
+    </nav>
+
+    <!-- LOGOUT -->
+    <div class="logout-btn-wrap">
+      <a class="nav-item-link" style="color:var(--danger);" onclick="logoutSession()">
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ========================================================
+       2. MAIN CONTENT VIEW
+       ======================================================== -->
+  <main class="app-main">
+    
+    <!-- TOP HEADER BAR -->
+    <header class="top-header-bar">
+      <div class="page-title-wrap">
+        <h1>Dashboard Monitoring & Klasifikasi</h1>
+        <p>Ringkasan real-time analitik stok, klasifikasi kategori, lokasi rak, dan antrean proses.</p>
+      </div>
+
+      <div class="top-actions-wrap">
+        <div style="position:relative;">
+          <span class="search-icon-pos">🔍</span>
+          <input type="text" id="globalSearchInput" class="search-input-top" placeholder="Cari SKU / Produk / Lokasi..." oninput="handleSearch()">
+        </div>
+        <button class="btn-circle-action" id="btnThemeToggle" onclick="toggleTheme()" title="Ganti Tema">☀️</button>
+        <button class="btn-primary-action" onclick="muatDataDashboard(true)">
+          <span>🔄</span>
+          <span>Refresh Data</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI ROW: 5 KATEGORI PRODUK UTAMA -->
+    <section class="kpi-row-grid">
+      <!-- A. DRESS -->
+      <div class="kpi-stat-card" id="card-A" onclick="toggleCategoryFilter('A')">
+        <div class="kpi-stat-top">
+          <span class="kpi-stat-title">A. DRESS & SET</span>
+          <span class="kpi-stat-tag" style="color:#ff7a00;">👗 DRESS</span>
+        </div>
+        <div class="kpi-stat-number" id="qty-A">0</div>
+        <div class="kpi-stat-footer">
+          <span><b id="sku-A">0</b> SKU</span>
+          <span id="pct-A">0%</span>
+        </div>
+        <div class="kpi-stat-bar-bg"><div class="kpi-stat-bar-fill" id="bar-A" style="width:0%; background:#ff7a00;"></div></div>
+      </div>
+
+      <!-- B. BOTTOM -->
+      <div class="kpi-stat-card" id="card-B" onclick="toggleCategoryFilter('B')">
+        <div class="kpi-stat-top">
+          <span class="kpi-stat-title">B. BOTTOM</span>
+          <span class="kpi-stat-tag" style="color:#3b82f6;">👖 PANTS</span>
+        </div>
+        <div class="kpi-stat-number" id="qty-B">0</div>
+        <div class="kpi-stat-footer">
+          <span><b id="sku-B">0</b> SKU</span>
+          <span id="pct-B">0%</span>
+        </div>
+        <div class="kpi-stat-bar-bg"><div class="kpi-stat-bar-fill" id="bar-B" style="width:0%; background:#3b82f6;"></div></div>
+      </div>
+
+      <!-- C. TOP -->
+      <div class="kpi-stat-card" id="card-C" onclick="toggleCategoryFilter('C')">
+        <div class="kpi-stat-top">
+          <span class="kpi-stat-title">C. TOP & OUTER</span>
+          <span class="kpi-stat-tag" style="color:#22c55e;">👚 TOP</span>
+        </div>
+        <div class="kpi-stat-number" id="qty-C">0</div>
+        <div class="kpi-stat-footer">
+          <span><b id="sku-C">0</b> SKU</span>
+          <span id="pct-C">0%</span>
+        </div>
+        <div class="kpi-stat-bar-bg"><div class="kpi-stat-bar-fill" id="bar-C" style="width:0%; background:#22c55e;"></div></div>
+      </div>
+
+      <!-- D. SALE -->
+      <div class="kpi-stat-card" id="card-D" onclick="toggleCategoryFilter('D')">
+        <div class="kpi-stat-top">
+          <span class="kpi-stat-title">D. SALE & SC</span>
+          <span class="kpi-stat-tag" style="color:#ef4444;">🏷️ DS100</span>
+        </div>
+        <div class="kpi-stat-number" id="qty-D">0</div>
+        <div class="kpi-stat-footer">
+          <span><b id="sku-D">0</b> SKU</span>
+          <span id="pct-D">0%</span>
+        </div>
+        <div class="kpi-stat-bar-bg"><div class="kpi-stat-bar-fill" id="bar-D" style="width:0%; background:#ef4444;"></div></div>
+      </div>
+
+      <!-- E. PACKAGING -->
+      <div class="kpi-stat-card" id="card-E" onclick="toggleCategoryFilter('E')">
+        <div class="kpi-stat-top">
+          <span class="kpi-stat-title">PACKAGING & ACC</span>
+          <span class="kpi-stat-tag">📦 BAG</span>
+        </div>
+        <div class="kpi-stat-number" id="qty-E">0</div>
+        <div class="kpi-stat-footer">
+          <span><b id="sku-E">0</b> SKU</span>
+          <span id="pct-E">0%</span>
+        </div>
+        <div class="kpi-stat-bar-bg"><div class="kpi-stat-bar-fill" id="bar-E" style="width:0%; background:var(--text-muted);"></div></div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: 2-COLUMN SPLIT (DONUT CHART & PROSES LANJUTAN) -->
+    <section class="dashboard-grid-2">
+      
+      <!-- KIRI: DONUT CHART PROPORSI STOK -->
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title">Proporsi Stok Kategori</div>
+            <div class="content-card-subtitle">Distribusi persentase kuantitas fisik per kategori</div>
+          </div>
+          <span style="font-size:12px; font-weight:700; color:var(--primary);" id="totalPcsBadge">0 Pcs</span>
+        </div>
+
+        <div class="donut-analytics-wrap">
+          <div class="donut-chart-container">
+            <svg viewBox="0 0 36 36" style="width:100%; height:100%; transform: rotate(-90deg);">
+              <!-- Background circle -->
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border-subtle)" stroke-width="4.5" />
+              <!-- Segments -->
+              <path id="donut-A" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ff7a00" stroke-width="4.5" stroke-dasharray="0, 100" />
+              <path id="donut-B" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#3b82f6" stroke-width="4.5" stroke-dasharray="0, 100" />
+              <path id="donut-C" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#22c55e" stroke-width="4.5" stroke-dasharray="0, 100" />
+              <path id="donut-D" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ef4444" stroke-width="4.5" stroke-dasharray="0, 100" />
+            </svg>
+            <div class="donut-center-text">
+              <div class="donut-center-val" id="donutTotalCount">0</div>
+              <div class="donut-center-lbl">TOTAL SKU</div>
+            </div>
+          </div>
+
+          <div class="donut-legend-list">
+            <div class="donut-legend-item">
+              <span><span class="legend-dot" style="background:#ff7a00;"></span>Dress & Set</span>
+              <span class="legend-val" id="leg-val-A">0%</span>
+            </div>
+            <div class="donut-legend-item">
+              <span><span class="legend-dot" style="background:#3b82f6;"></span>Bottom</span>
+              <span class="legend-val" id="leg-val-B">0%</span>
+            </div>
+            <div class="donut-legend-item">
+              <span><span class="legend-dot" style="background:#22c55e;"></span>Top & Outer</span>
+              <span class="legend-val" id="leg-val-C">0%</span>
+            </div>
+            <div class="donut-legend-item">
+              <span><span class="legend-dot" style="background:#ef4444;"></span>Sale & SC</span>
+              <span class="legend-val" id="leg-val-D">0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KANAN: ANTREAN PROSES LANJUTAN (CUCI / PERMAK / DEFECT) -->
+      <div class="content-card">
+        <div class="content-card-header">
+          <div>
+            <div class="content-card-title">Antrean Proses Lanjutan</div>
+            <div class="content-card-subtitle">Tracking barang butuh penanganan Cuci (CC), Permak (PMK), Defect (DF)</div>
+          </div>
+          <span style="font-size:12px; font-weight:700; color:var(--danger);" id="procHeaderBadge">0 Pcs</span>
+        </div>
+
+        <div class="process-tab-row">
+          <button class="proc-pill-btn active" onclick="setProcessTab('ALL', this)">Semua (<span id="cnt-all">0</span>)</button>
+          <button class="proc-pill-btn" onclick="setProcessTab('CUCI', this)">🧼 Cuci (<span id="cnt-cuci">0</span>)</button>
+          <button class="proc-pill-btn" onclick="setProcessTab('PERMAK', this)">🪡 Permak (<span id="cnt-permak">0</span>)</button>
+          <button class="proc-pill-btn" onclick="setProcessTab('DEFECT', this)">⚠️ Defect (<span id="cnt-defect">0</span>)</button>
+        </div>
+
+        <div class="process-items-list" id="processListContainer">
+          <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:12px;">Memuat antrean...</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- SECTION 3: MONITORING LOKASI RAK GUDANG -->
+    <section class="content-card" style="margin-bottom:24px;">
+      <div class="content-card-header">
+        <div>
+          <div class="content-card-title">Monitoring Lokasi Rak & Gudang</div>
+          <div class="content-card-subtitle">Titik penyimpanan fisik rak dan jumlah kuantitas tersimpan</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="locSearchInput" placeholder="Filter rak..." style="height:32px; padding:0 10px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:var(--bg-input); font-size:11.5px; color:var(--text-main);" oninput="renderLokasiCards()">
+          <span style="font-size:12px; color:var(--text-muted); font-weight:600;" id="locTotalBadge">0 Lokasi</span>
+        </div>
+      </div>
+
+      <div class="loc-grid-container" id="locGridContainer">
+        <div style="color:var(--text-muted); font-size:12px; padding:10px;">Memuat lokasi...</div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: TABEL DETAIL PRODUK -->
+    <section class="content-card">
+      <div class="content-card-header">
+        <div>
+          <div class="content-card-title">Daftar Rinci Produk Terklasifikasi</div>
+          <div class="content-card-subtitle" id="tableFilterStatus">Menampilkan seluruh data produk</div>
+        </div>
+        <span style="font-size:12px; font-weight:700; color:var(--text-muted);" id="tableCountBadge">0 Produk</span>
+      </div>
+
+      <div class="table-container-saas">
+        <table class="saas-table">
+          <thead>
+            <tr>
+              <th style="width:110px;">KATEGORI</th>
+              <th>PRODUK</th>
+              <th style="width:60px; text-align:center;">SIZE</th>
+              <th style="width:140px;">CODE / SKU</th>
+              <th>LOKASI FISIK RAK</th>
+              <th style="width:85px; text-align:center;">FISIK MAP</th>
+              <th style="width:85px; text-align:center;">DP MAP</th>
+              <th style="width:90px; text-align:center;">TOTAL FISIK</th>
+            </tr>
+          </thead>
+          <tbody id="detailTableBody">
+            <tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">Memuat data produk...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="loadMoreSection" style="text-align:center; padding-top:16px; display:none;">
+        <button class="btn-primary-action" style="margin:0 auto; background:var(--bg-input); color:var(--text-main); border:1px solid var(--border-color); box-shadow:none;" onclick="loadMore()">
+          ⬇️ Tampilkan Lebih Banyak
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================
+       LOGIKA JAVASCRIPT
+       ======================================================== -->
+  <script>
+    const TOKEN = "<?= token ?>";
+    const EXEC_URL = "<?= execUrl ?>";
+    const AKSES = "<?= akses ?>";
+
+    // ============ THEME MANAGER ============
+    function initTheme() {
+      const saved = localStorage.getItem('wms_theme') || 'dark';
+      document.body.setAttribute('data-theme', saved);
+      document.getElementById('btnThemeToggle').textContent = (saved === 'dark') ? '☀️' : '🌙';
+    }
+
+    function toggleTheme() {
+      const curr = document.body.getAttribute('data-theme') || 'dark';
+      const next = (curr === 'dark') ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', next);
+      localStorage.setItem('wms_theme', next);
+      document.getElementById('btnThemeToggle').textContent = (next === 'dark') ? '☀️' : '🌙';
+    }
+    initTheme();
+
+    // ============ USER AVATAR ============
+    try {
+      const u = "<?= username ?>".trim();
+      if (u) document.getElementById('avatarInitial').textContent = u.charAt(0).toUpperCase();
+    } catch(e) {}
+
+    // ============ NAVIGASI ============
+    function navigasiKe(page) {
+      if (page === 'klasifikasi') return;
+      window.top.location.href = EXEC_URL + '?token=' + encodeURIComponent(TOKEN) + '&page=' + encodeURIComponent(page);
+    }
+
+    function logoutSession() {
+      google.script.run.withSuccessHandler(function() {
+        try { sessionStorage.clear(); } catch(e) {}
+        window.top.location.href = EXEC_URL;
+      }).logoutWmsSession(TOKEN);
+    }
+
+    // ============ KLASIFIKASI KATEGORI ============
+    function klasifikasiItem(item) {
+      const nama = (item.produk || '').toLowerCase();
+      const sku = (item.sku || '').toLowerCase();
+      const cat = (item.category || '').toLowerCase();
+
+      // D. SALE & SC
+      if (sku.startsWith('ds100') || sku.startsWith('ds40') || sku.startsWith('sc') || 
+          nama.includes('special condition') || nama.includes('clearance') || nama.includes('sale') || cat.includes('sale')) {
+        return { code: 'D', name: 'D. SALE & SC', label: 'D - SALE', tagClass: 'badge-cat-D', color: '#ef4444' };
+      }
+
+      // E. PACKAGING & ACC
+      if (nama.includes('paperbag') || nama.includes('plastic') || nama.includes('plastik') || 
+          nama.includes('belt') || nama.includes('acc') || nama.includes('gift') || nama.includes('box') ||
+          sku.startsWith('pb-') || sku.startsWith('acc-') || cat.includes('access') || cat.includes('pack')) {
+        return { code: 'E', name: 'PACKAGING & ACC', label: 'PACKAGING', tagClass: 'badge-cat-E', color: '#64748b' };
+      }
+
+      // B. BOTTOM
+      if (nama.includes('pants') || nama.includes('skirt') || nama.includes('skort') || 
+          nama.includes('culotte') || nama.includes('shorts') || nama.includes('bottom') || 
+          nama.includes('jeans') || nama.includes('trouser') || cat.includes('bottom') || cat.includes('pant') || cat.includes('skirt')) {
+        return { code: 'B', name: 'B. BOTTOM', label: 'B - BOTTOM', tagClass: 'badge-cat-B', color: '#3b82f6' };
+      }
+
+      // A. DRESS & SET
+      if (nama.includes('dress') || nama.includes('jumpsuit') || nama.includes('one set') || 
+          nama.includes('set') || nama.includes('romper') || nama.includes('gown') || 
+          cat.includes('dress') || cat.includes('jumpsuit') || cat.includes('set')) {
+        return { code: 'A', name: 'A. DRESS & SET', label: 'A - DRESS', tagClass: 'badge-cat-A', color: '#ff7a00' };
+      }
+
+      // C. TOP & OUTER (Default Apparel)
+      return { code: 'C', name: 'C. TOP & OUTER', label: 'C - TOP', tagClass: 'badge-cat-C', color: '#22c55e' };
+    }
+
+    // ============ STATE DATA ============
+    let ALL_DATA = [];
+    let FILTERED_ITEMS = [];
+    let ACTIVE_CAT = 'ALL';
+    let ACTIVE_PROC = 'ALL';
+    let SEARCH_KW = '';
+    let RENDER_COUNT = 50;
+    const CACHE_KEY = 'wms_cache_inventory_v35';
+
+    function muatDataDashboard(force) {
+      if (!force) {
+        try {
+          const cached = localStorage.getItem(CACHE_KEY);
+          if (cached) {
+            const raw = JSON.parse(cached);
+            if (Array.isArray(raw) && raw.length > 0) parseAndRender(raw);
+          }
+        } catch(e) {}
+      }
+
+      google.script.run.withSuccessHandler(function(res) {
+        if (!res.success) return;
+        const raw = res.data || [];
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(raw)); } catch(e) {}
+        parseAndRender(raw);
+      }).getWmsProdukCompact(TOKEN);
+    }
+
+    function parseAndRender(rawList) {
+      ALL_DATA = [];
+      let stats = {
+        A: { sku: 0, qty: 0 },
+        B: { sku: 0, qty: 0 },
+        C: { sku: 0, qty: 0 },
+        D: { sku: 0, qty: 0 },
+        E: { sku: 0, qty: 0 }
+      };
+
+      let locMap = {};
+      let procList = [];
+      let totalPcsGlobal = 0;
+
+      rawList.forEach(function(r) {
+        if (!r) return;
+        const sku = String(r.k || r.sku || '');
+        const prod = String(r.p || r.produk || sku);
+        const sz = String(r.s || r.size || '-');
+        const locs = Array.isArray(r.l) ? r.l : (Array.isArray(r.locList) ? r.locList : []);
+        const f = r.f || {};
+        const d = r.d || {};
+
+        let parsedLocs = [];
+        let totalFisik = 0;
+
+        locs.forEach(function(lItem) {
+          let lStr = '', q = 0;
+          if (typeof lItem === 'object' && lItem !== null) {
+            lStr = String(lItem.lokasi || '').trim().toUpperCase();
+            q = Number(lItem.qty) || 0;
+          } else {
+            const parts = String(lItem || '').split(':');
+            lStr = String(parts[0] || '').trim().toUpperCase();
+            q = Number(parts[1]) || 0;
+          }
+
+          if (lStr && q > 0) {
+            parsedLocs.push({ loc: lStr, qty: q });
+            totalFisik += q;
+            locMap[lStr] = (locMap[lStr] || 0) + q;
+
+            // Proses Lanjutan
+            if (lStr.startsWith('CC')) {
+              procList.push({ tipe: 'CUCI', loc: lStr, qty: q, prod: prod, sz: sz, sku: sku });
+            } else if (lStr.startsWith('PMK')) {
+              procList.push({ tipe: 'PERMAK', loc: lStr, qty: q, prod: prod, sz: sz, sku: sku });
+            } else if (lStr.startsWith('DF')) {
+              procList.push({ tipe: 'DEFECT', loc: lStr, qty: q, prod: prod, sz: sz, sku: sku });
+            }
+          }
+        });
+
+        const mapFisik = Number(f['MAP'] || f['Gudang Utama'] || f['Warehouse'] || 0);
+        const mapDp = Number(d['MAP'] || d['Gudang Utama'] || d['Marketplace'] || 0);
+        if (totalFisik === 0 && mapFisik > 0) totalFisik = mapFisik;
+
+        const kat = klasifikasiItem({ produk: prod, sku: sku, category: r.c || '' });
+
+        stats[kat.code].sku++;
+        stats[kat.code].qty += totalFisik;
+        totalPcsGlobal += totalFisik;
+
+        ALL_DATA.push({
+          sku: sku,
+          produk: prod,
+          size: sz,
+          kat: kat,
+          locs: parsedLocs,
+          mapFisik: mapFisik,
+          mapDp: mapDp,
+          totalFisik: totalFisik
+        });
+      });
+
+      window.GLOBAL_LOC_MAP = locMap;
+      window.GLOBAL_PROC_LIST = procList;
+
+      // Update KPI Top Cards
+      const totalAllPcs = totalPcsGlobal || 1;
+      ['A', 'B', 'C', 'D', 'E'].forEach(function(k) {
+        document.getElementById('qty-' + k).textContent = stats[k].qty.toLocaleString();
+        document.getElementById('sku-' + k).textContent = stats[k].sku.toLocaleString();
+        const p = Math.round((stats[k].qty / totalAllPcs) * 100);
+        document.getElementById('pct-' + k).textContent = p + '%';
+        document.getElementById('bar-' + k).style.width = p + '%';
+      });
+
+      // Update Donut Chart
+      updateDonutChart(stats, totalAllPcs);
+
+      // Render Components
+      renderProcessList();
+      renderLokasiCards();
+      renderTable();
+    }
+
+    // ============ DONUT CHART SVG ============
+    function updateDonutChart(stats, totalPcs) {
+      document.getElementById('donutTotalCount').textContent = ALL_DATA.length.toLocaleString();
+      document.getElementById('totalPcsBadge').textContent = totalPcs.toLocaleString() + ' Pcs Fisik';
+
+      const pA = Math.round((stats.A.qty / totalPcs) * 100);
+      const pB = Math.round((stats.B.qty / totalPcs) * 100);
+      const pC = Math.round((stats.C.qty / totalPcs) * 100);
+      const pD = Math.round((stats.D.qty / totalPcs) * 100);
+
+      document.getElementById('leg-val-A').textContent = pA + '% (' + stats.A.qty.toLocaleString() + ')';
+      document.getElementById('leg-val-B').textContent = pB + '% (' + stats.B.qty.toLocaleString() + ')';
+      document.getElementById('leg-val-C').textContent = pC + '% (' + stats.C.qty.toLocaleString() + ')';
+      document.getElementById('leg-val-D').textContent = pD + '% (' + stats.D.qty.toLocaleString() + ')';
+
+      let offA = 0;
+      let offB = pA;
+      let offC = pA + pB;
+      let offD = pA + pB + pC;
+
+      setDonutSegment('donut-A', pA, offA);
+      setDonutSegment('donut-B', pB, offB);
+      setDonutSegment('donut-C', pC, offC);
+      setDonutSegment('donut-D', pD, offD);
+    }
+
+    function setDonutSegment(id, pct, offset) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.setAttribute('stroke-dasharray', pct + ', 100');
+      el.setAttribute('stroke-dashoffset', -offset);
+    }
+
+    // ============ PROSES LANJUTAN ============
+    function setProcessTab(tab, btn) {
+      ACTIVE_PROC = tab;
+      document.querySelectorAll('.proc-pill-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderProcessList();
+    }
+
+    function renderProcessList() {
+      const list = window.GLOBAL_PROC_LIST || [];
+      let cCuci = 0, cPermak = 0, cDefect = 0, totalPcs = 0;
+
+      list.forEach(function(item) {
+        totalPcs += item.qty;
+        if (item.tipe === 'CUCI') cCuci += item.qty;
+        if (item.tipe === 'PERMAK') cPermak += item.qty;
+        if (item.tipe === 'DEFECT') cDefect += item.qty;
+      });
+
+      document.getElementById('cnt-all').textContent = totalPcs;
+      document.getElementById('cnt-cuci').textContent = cCuci;
+      document.getElementById('cnt-permak').textContent = cPermak;
+      document.getElementById('cnt-defect').textContent = cDefect;
+      document.getElementById('procHeaderBadge').textContent = totalPcs.toLocaleString() + ' Pcs';
+
+      const filtered = list.filter(function(i) {
+        if (ACTIVE_PROC === 'ALL') return true;
+        return i.tipe === ACTIVE_PROC;
+      });
+
+      const container = document.getElementById('processListContainer');
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:12px;">Tidak ada antrean dalam kategori ini.</div>';
+        return;
+      }
+
+      let html = '';
+      filtered.slice(0, 30).forEach(function(i) {
+        let badgeStyle = 'background:rgba(59,130,246,0.15); color:#3b82f6;';
+        let icon = '🧼';
+        if (i.tipe === 'PERMAK') { badgeStyle = 'background:rgba(245,158,11,0.15); color:#f59e0b;'; icon = '🪡'; }
+        if (i.tipe === 'DEFECT') { badgeStyle = 'background:rgba(239,68,68,0.15); color:#ef4444;'; icon = '⚠️'; }
+
+        html += '<div class="process-item-row">' +
+          '<div style="display:flex; align-items:center; gap:10px; flex:1; overflow:hidden;">' +
+            '<span style="padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; ' + badgeStyle + '">' + icon + ' ' + i.tipe + '</span>' +
+            '<div style="font-weight:700; font-size:12px; color:var(--text-main); white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">' + i.prod + '</div>' +
+          '</div>' +
+          '<div style="display:flex; align-items:center; gap:12px;">' +
+            '<span style="font-size:11px; font-weight:600; color:var(--text-muted);">' + i.sz + '</span>' +
+            '<span style="font-size:11px; font-weight:700; color:var(--primary); background:var(--primary-light); padding:1px 6px; border-radius:4px;">' + i.loc + '</span>' +
+            '<span style="font-size:12px; font-weight:800; color:var(--text-main); min-width:24px; text-align:right;">' + i.qty + '</span>' +
+          '</div>' +
+        '</div>';
+      });
+
+      container.innerHTML = html;
+    }
+
+    // ============ LOKASI RAK CARDS ============
+    function renderLokasiCards() {
+      const container = document.getElementById('locGridContainer');
+      const kw = (document.getElementById('locSearchInput').value || '').trim().toUpperCase();
+      const map = window.GLOBAL_LOC_MAP || {};
+      const keys = Object.keys(map).sort();
+
+      const filtered = keys.filter(k => !kw || k.includes(kw));
+      document.getElementById('locTotalBadge').textContent = filtered.length + ' Lokasi Aktif';
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:12px; padding:10px;">Tidak ada lokasi yang cocok.</div>';
+        return;
+      }
+
+      let html = '';
+      filtered.forEach(function(loc) {
+        html += '<div class="loc-grid-card" onclick="filterByRak(\'' + loc + '\')">' +
+          '<span class="loc-grid-name">📍 ' + loc + '</span>' +
+          '<span class="loc-grid-qty">' + map[loc].toLocaleString() + '</span>' +
+        '</div>';
+      });
+
+      container.innerHTML = html;
+    }
+
+    function filterByRak(loc) {
+      document.getElementById('globalSearchInput').value = loc;
+      SEARCH_KW = loc.toLowerCase();
+      RENDER_COUNT = 50;
+      renderTable();
+    }
+
+    // ============ DETAILED TABLE ============
+    function toggleCategoryFilter(cat) {
+      if (ACTIVE_CAT === cat) {
+        ACTIVE_CAT = 'ALL';
+        document.querySelectorAll('.kpi-stat-card').forEach(c => c.classList.remove('active'));
+        document.getElementById('tableFilterStatus').textContent = 'Menampilkan seluruh data produk';
+      } else {
+        ACTIVE_CAT = cat;
+        document.querySelectorAll('.kpi-stat-card').forEach(c => c.classList.remove('active'));
+        const card = document.getElementById('card-' + cat);
+        if (card) card.classList.add('active');
+        document.getElementById('tableFilterStatus').textContent = 'Filter Aktif: Kategori ' + cat + ' (Klik ulang kartu untuk reset)';
+      }
+      RENDER_COUNT = 50;
+      renderTable();
+    }
+
+    function handleSearch() {
+      SEARCH_KW = (document.getElementById('globalSearchInput').value || '').trim().toLowerCase();
+      RENDER_COUNT = 50;
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('detailTableBody');
+      const kw = SEARCH_KW;
+      const cat = ACTIVE_CAT;
+
+      const filtered = ALL_DATA.filter(function(item) {
+        if (cat !== 'ALL' && item.kat.code !== cat) return false;
+        if (kw) {
+          const locStr = item.locs.map(l => l.loc).join(' ').toLowerCase();
+          const comb = (item.produk + ' ' + item.sku + ' ' + locStr).toLowerCase();
+          if (!comb.includes(kw)) return false;
+        }
+        return true;
+      });
+
+      document.getElementById('tableCountBadge').textContent = 'Menampilkan ' + Math.min(RENDER_COUNT, filtered.length) + ' dari ' + filtered.length + ' Produk';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data produk yang cocok.</td></tr>';
+        document.getElementById('loadMoreSection').style.display = 'none';
+        return;
+      }
+
+      let rows = '';
+      filtered.slice(0, RENDER_COUNT).forEach(function(item) {
+        let locChips = '';
+        if (item.locs.length > 0) {
+          locChips = item.locs.map(l => '<span style="display:inline-block; font-size:10.5px; font-weight:700; background:var(--bg-input); border:1px solid var(--border-color); padding:2px 6px; border-radius:4px; margin:1px 2px; color:var(--primary);">📍 ' + l.loc + ' (' + l.qty + ')</span>').join('');
+        } else {
+          locChips = '<span style="color:var(--text-dim); font-size:11px;">-</span>';
+        }
+
+        rows += '<tr>' +
+          '<td><span class="badge-cat ' + item.kat.tagClass + '">' + item.kat.label + '</span></td>' +
+          '<td style="font-weight:700; color:var(--text-main);">' + item.produk + '</td>' +
+          '<td style="text-align:center; font-weight:700;">' + item.size + '</td>' +
+          '<td style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted);">' + item.sku + '</td>' +
+          '<td>' + locChips + '</td>' +
+          '<td style="text-align:center; font-weight:800; color:var(--primary);">' + (item.mapFisik || '<span style="opacity:0.25;">·</span>') + '</td>' +
+          '<td style="text-align:center; font-weight:600; color:var(--text-muted);">' + (item.mapDp || '<span style="opacity:0.25;">·</span>') + '</td>' +
+          '<td style="text-align:center; font-weight:800; color:var(--text-main);">' + (item.totalFisik || '<span style="opacity:0.25;">·</span>') + '</td>' +
+        '</tr>';
+      });
+
+      tbody.innerHTML = rows;
+      document.getElementById('loadMoreSection').style.display = (filtered.length > RENDER_COUNT) ? 'block' : 'none';
+    }
+
+    function loadMore() {
+      RENDER_COUNT += 50;
+      renderTable();
+    }
+
+    // Initial Load
+    muatDataDashboard(false);
+  </script>
+</body>
+</html>

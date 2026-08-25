@@ -1,0 +1,15 @@
+# Ignore backup folders, documentation, and build configs
+_backup_*/**
+_backup_*
+.git/**
+node_modules/**
+*.md
+package.json
+package-lock.json
+frontend/**
+WMS Mini/**
+deploy.js
+scratch*
+scratch/**
+
+

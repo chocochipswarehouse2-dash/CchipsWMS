@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --radius: 8px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --input-bg: #0d1117;
+      --text: #c9d1d9;
+      --muted: #8b949e;
+      --primary: #f39c12;
+      --primary-hover: #e08e0b;
+      --danger: #f85149;
+      --danger-hover: #da3633;
+      --success: #2ea043;
+      --success-hover: #238636;
+      --table-hover: rgba(255, 255, 255, 0.03);
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    [data-theme="light"] {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --border: #d0d7de;
+      --input-bg: #ffffff;
+      --text: #24292f;
+      --muted: #57606a;
+      --primary: #b45309;
+      --primary-hover: #92400e;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --success: #16a34a;
+      --success-hover: #15803d;
+      --table-hover: rgba(0, 0, 0, 0.02);
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    * { 
+      box-sizing: border-box; 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; 
+    }
+    
+    code, pre, .mono {
+      font-family: 'JetBrains Mono', monospace !important;
+    }
+    
+    b, strong, th, .btn, button { font-weight: 600 !important; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px 24px 40px;
+      text-transform: uppercase;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .header-bar {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      padding: 4px 4px 16px 4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+    }
+
+    .header-title::before {
+      content: "WMS · ";
+      color: var(--primary);
+    }
+
+    .header-user {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    select, input[type="file"], input[type="text"] {
+      height: 42px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      background: var(--input-bg);
+      color: var(--text);
+      outline: none;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    input[type="file"] {
+      padding: 8px 12px;
+      height: auto;
+      cursor: pointer;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.18);
+    }
+
+    .tool-select {
+      min-width: 160px;
+      color: var(--primary);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 42px;
+      padding: 0 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid transparent;
+      text-decoration: none;
+      transition: all 0.2s;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary { background: var(--primary); color: #fff; width: 100%; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: var(--danger-hover); }
+
+    .btn-secondary { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+    .btn-logout { margin-left: auto; }
+
+    @media (max-width: 650px) {
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .btn-logout { margin-left: 0; }
+    }
+
+    .alert-box {
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .alert-warning {
+      background: rgba(243, 156, 18, 0.12);
+      border: 1px solid var(--primary);
+      color: var(--primary);
+    }
+
+    .alert-info {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .card-box {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .toast {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      display: none;
+    }
+    .toast.show { display: block; }
+    .toast.ok { background: rgba(46, 160, 67, 0.15); color: var(--success); border: 1px solid var(--success); }
+    .toast.err { background: rgba(248, 81, 73, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <div class="wrap">
+    <div class="header-bar">
+      <div class="header-title">UPDATE DATABASE MASTER</div>
+      <div class="header-user">LOGIN SEBAGAI: <?= username ?></div>
+    </div>
+
+    <div class="toolbar">
+      <select id="menuPage" class="tool-select" onchange="navigasiMenu(this)"></select>
+      <button type="button" id="btnToggleTheme" class="btn btn-secondary" onclick="toggleTheme()">☀️ LIGHT MODE</button>
+      <button type="button" id="btnLogout" class="btn btn-danger btn-logout" onclick="logoutSession()">LOGOUT</button>
+    </div>
+
+    <div class="alert-box alert-warning">
+      ⚠️ <b>PERHATIAN:</b> PROSES INI AKAN <b>MENGGANTIKAN SELURUH DATA</b> DI SHEET "DATA" DENGAN DATA DARI CSV YANG DIUPLOAD. PASTIKAN FORMAT FILE BENAR.
+    </div>
+
+    <div class="card-box">
+      <div id="ringkasanSaatIni" style="font-size: 12px; color: var(--primary); font-weight:700; margin-bottom: 14px;">
+        MEMUAT STATUS DATABASE SAAT INI...
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px;">
+          📄 PILIH FILE CSV (BISA PILIH LEBIH DARI 1 FILE SEKALIGUS)
+        </label>
+        <input type="file" id="fileImport" accept=".csv" multiple>
+      </div>
+
+      <div id="previewArea" style="display: none; margin-bottom: 16px; font-size: 12px; color: var(--success); font-weight: 700;">
+        <span id="previewCount">0</span>
+      </div>
+
+      <div id="progressArea" style="display: none; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px;">
+          <span id="progressStatus">MENGUPLOAD KE SUPABASE...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div style="width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+          <div id="progressBarFill" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.2s ease;"></div>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary" id="btnImport" disabled>
+        <span id="importLabel">⚡ PROSES CEPAT KE SUPABASE &amp; SHEET</span>
+      </button>
+
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+
+  <script>
+    const TOKEN = "<?= token ?>";
+    const EXEC_URL = "<?= execUrl ?>";
+    const AKSES = "<?= akses ?>";
+    const SUPABASE_URL = "<?= supabaseUrl ?>";
+    const SUPABASE_ANON_KEY = "<?= supabaseAnonKey ?>";
+    let PARSED_HEADER = [];
+    let PARSED_ROWS = [];
+
+    // ============ THEME MANAGER ============
+    function initTheme() {
+      const savedTheme = localStorage.getItem('wms_theme') || 'dark';
+      document.body.setAttribute('data-theme', savedTheme);
+      updateThemeButtonText(savedTheme);
+    }
+
+    function updateThemeButtonText(theme) {
+      const btn = document.getElementById('btnToggleTheme');
+      if (!btn) return;
+      btn.innerHTML = (theme === 'dark') ? '☀️ LIGHT MODE' : '🌙 DARK MODE';
+    }
+
+    function toggleTheme() {
+      const currentTheme = document.body.getAttribute('data-theme') || 'dark';
+      const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', newTheme);
+      localStorage.setItem('wms_theme', newTheme);
+      updateThemeButtonText(newTheme);
+    }
+    initTheme();
+
+    // ============ NAV BAR TERPUSAT ============
+    const MENU_WMS_LIST = [
+      { value: "produk", label: "INVENTORY", akses: "Produk" },
+      { value: "klasifikasi", label: "MONITORING & KLASIFIKASI", akses: "All" },
+      { value: "penerimaanproduksi", label: "PENERIMAAN PRODUKSI", akses: "All" },
+      { value: "fulfillment", label: "FULFILLMENT REFILL", akses: "Fulfillment" },
+      { value: "peminjaman", label: "PEMINJAMAN", akses: "Peminjaman" },
+      { value: "logproduk", label: "LOG PRODUK", akses: "All" },
+      { value: "logmutasi", label: "LOG MUTASI", akses: "All" },
+      { value: "updatedatabase", label: "UPDATE DATABASE", akses: "All" },
+      { value: "stockopname", label: "STOCK OPNAME", akses: "All" }
+    ];
+
+    function bisaAksesMenuWms(kode) {
+      if (typeof AKSES === "undefined" || !AKSES) return true;
+      const roles = String(AKSES).split(',').map(r => r.trim());
+      return roles.includes("All") || roles.includes(kode);
+    }
+
+    function isiNavDropdownWms(halamanAktif) {
+      const select = document.getElementById('menuPage');
+      if (!select) return;
+      select.innerHTML = '';
+      MENU_WMS_LIST.forEach(function (m) {
+        if (!bisaAksesMenuWms(m.akses)) return;
+        const opt = document.createElement('option');
+        opt.value = m.value;
+        opt.textContent = m.label;
+        if (m.value === halamanAktif) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+    isiNavDropdownWms('updatedatabase');
+
+    function navigasiMenu(select) {
+      const val = select.value;
+      if (val && val !== 'updatedatabase') {
+        window.top.location.href = EXEC_URL + '?token=' + encodeURIComponent(TOKEN) + '&page=' + encodeURIComponent(val);
+      }
+    }
+
+    function logoutSession() {
+      google.script.run.withSuccessHandler(function() {
+        try { sessionStorage.clear(); } catch(e) {}
+        window.top.location.href = EXEC_URL;
+      }).logoutWmsSession(TOKEN);
+    }
+
+    function showToast(success, message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast show ' + (success ? 'ok' : 'err');
+      setTimeout(function () { toast.classList.remove('show'); }, success ? 6000 : 8000);
+    }
+
+    // ============ MUAT RINGKASAN DATA SAAT INI ============
+    function muatRingkasan() {
+      google.script.run.withSuccessHandler(function (res) {
+        const el = document.getElementById('ringkasanSaatIni');
+        if (!res.success) {
+          el.textContent = res.message;
+          return;
+        }
+        el.innerHTML = 'STATUS DATABASE: <b>' + res.jumlahBaris + '</b> PRODUK DI SHEET "DATA" &amp; SUPABASE CLOUD.';
+      }).withFailureHandler(function (err) {
+        document.getElementById('ringkasanSaatIni').textContent = 'GAGAL MEMUAT INFO: ' + err.message;
+      }).getWmsUpdateDatabaseRingkasan(TOKEN);
+    }
+    muatRingkasan();
+
+    // ============ PARSE CSV ============
+    function parseCsvLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { inQuotes = !inQuotes; continue; }
+        if (ch === ',' && !inQuotes) { result.push(current); current = ''; continue; }
+        current += ch;
+      }
+      result.push(current);
+      return result.map(function (s) { return s.trim(); });
+    }
+
+    function bacaFileSebagaiTeks(file) {
+      return new Promise(function (resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function (evt) { resolve(evt.target.result); };
+        reader.onerror = function () { reject(new Error('GAGAL BACA FILE ' + file.name)); };
+        reader.readAsText(file, 'UTF-8');
+      });
+    }
+
+    document.getElementById('fileImport').addEventListener('change', function (e) {
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
+
+      document.getElementById('previewArea').style.display = 'block';
+      document.getElementById('previewCount').textContent = 'MEMBACA FILE...';
+
+      Promise.all(files.map(bacaFileSebagaiTeks)).then(function (isiSemuaFile) {
+        let headerGabungan = null;
+        let rowsGabungan = [];
+
+        isiSemuaFile.forEach(function (text) {
+          const lines = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ''; });
+          if (lines.length < 1) return;
+
+          const headerFileIni = parseCsvLine(lines[0]);
+          if (!headerGabungan) headerGabungan = headerFileIni;
+
+          lines.slice(1).forEach(function (line) {
+            const cols = parseCsvLine(line);
+            const adaIsi = cols.some(function (c) { return c !== ''; });
+            if (adaIsi) rowsGabungan.push(cols);
+          });
+        });
+
+        if (!headerGabungan || rowsGabungan.length === 0) {
+          showToast(false, 'FILE CSV KOSONG ATAU TIDAK VALID.');
+          document.getElementById('previewArea').style.display = 'none';
+          document.getElementById('btnImport').disabled = true;
+          return;
+        }
+
+        PARSED_HEADER = headerGabungan;
+        PARSED_ROWS = rowsGabungan;
+        document.getElementById('previewCount').textContent =
+          '✅ TERBACA ' + PARSED_ROWS.length + ' BARIS DARI ' + files.length + ' FILE. SIAP DIPROSES KILAT.';
+        document.getElementById('btnImport').disabled = false;
+      }).catch(function (err) {
+        showToast(false, 'GAGAL MEMBACA FILE: ' + err.message);
+        document.getElementById('previewArea').style.display = 'none';
+      });
+    });
+
+    // ============ PROSES UPDATE CEPAT SUPABASE + BACKGROUND SHEET ============
+    document.getElementById('btnImport').addEventListener('click', async function () {
+      if (PARSED_ROWS.length === 0) {
+        showToast(false, 'BELUM ADA FILE CSV YANG DIPILIH.');
+        return;
+      }
+
+      if (!confirm('TINDAKAN INI AKAN MEMPERBARUI DATABASE SUPABASE & SHEET DATA SECARA KILAT. LANJUTKAN?')) return;
+
+      const btn = document.getElementById('btnImport');
+      btn.disabled = true;
+      document.getElementById('importLabel').innerHTML = '<span class="spinner"></span> SEDANG MENGUPLOAD KE SUPABASE...';
+
+      const progressArea = document.getElementById('progressArea');
+      const progressFill = document.getElementById('progressBarFill');
+      const progressStatus = document.getElementById('progressStatus');
+      const progressPercent = document.getElementById('progressPercent');
+      progressArea.style.display = 'block';
+
+      // Cari indeks kolom
+      const headerLower = PARSED_HEADER.map(h => String(h || '').trim().toLowerCase());
+      let idxSku = headerLower.indexOf('code');
+      if (idxSku === -1) idxSku = headerLower.indexOf('sku');
+      if (idxSku === -1) idxSku = 4;
+
+      let idxNama = headerLower.indexOf('product');
+      if (idxNama === -1) idxNama = 1;
+
+      let idxKat = headerLower.indexOf('category');
+      if (idxKat === -1) idxKat = 0;
+
+      let idxSize = headerLower.indexOf('variant');
+      if (idxSize === -1) idxSize = 3;
+
+      let idxPrice = headerLower.indexOf('price');
+      if (idxPrice === -1) idxPrice = 7;
+
+      // Filter & siapkan objek untuk Supabase
+      const skuSet = new Set();
+      const supabasePayload = [];
+
+      const CABANG_MAP = {
+        "inventory_lippo mall puri": "LMP", "inventory_mall kelapa gading": "MKG",
+        "inventory_by the sea pik": "BTS", "inventory_central park jakarta": "CPJ",
+        "inventory_ciputra world surabaya": "CWS", "inventory_living world tangerang": "LWS",
+        "inventory_deli park medan": "DPM", "inventory_paskal hyper square bandung": "PHB",
+        "inventory_pakuwon mall surabaya": "PMS", "inventory_neo soho jakarta": "NSJ",
+        "inventory_puri indah mall": "PIM", "inventory_sun plaza medan": "SPM",
+        "inventory_gaia pontianak": "GAIA", "inventory_gading serpong tangerang": "GST",
+        "inventory_la vela tangerang": "LVL", "inventory_website": "WEB",
+        "inventory_shopee": "SHP", "inventory_tokopedia": "TPD",
+        "inventory_tiktok": "TTK", "inventory_lazada": "LZD"
+      };
+
+      for (let i = 0; i < PARSED_ROWS.length; i++) {
+        const r = PARSED_ROWS[i];
+        const sku = String(r[idxSku] || '').trim().toUpperCase();
+        const nama = String(r[idxNama] || '').trim();
+        if (sku && nama && !skuSet.has(sku)) {
+          skuSet.add(sku);
+
+          const dealposChannels = {
+            "Gudang Utama": 0, "Barang Live": 0, "Sample Studio": 0,
+            "Permak / Cuci": 0, "Barang Cacat": 0, "WH": 0, "QC": 0, "GA": 0,
+            "Lainnya": 0, "cabang": {}
+          };
+
+          for (let c = 0; c < PARSED_HEADER.length; c++) {
+            const hLower = String(PARSED_HEADER[c] || '').trim().toLowerCase();
+            const qty = Number(r[c]) || 0;
+            if (hLower.startsWith('inventory_') && qty !== 0) {
+              if (hLower === 'inventory_marketplace') dealposChannels['Gudang Utama'] += qty;
+              else if (hLower === 'inventory_sample live') dealposChannels['Barang Live'] += qty;
+              else if (hLower === 'inventory_sample studio') dealposChannels['Sample Studio'] += qty;
+              else if (hLower === 'inventory_gudang permak') dealposChannels['Permak / Cuci'] += qty;
+              else if (hLower === 'inventory_diskon defect') dealposChannels['Barang Cacat'] += qty;
+              else if (hLower === 'inventory_warehouse') dealposChannels['WH'] += qty;
+              else if (hLower === 'inventory_gudang qc') dealposChannels['QC'] += qty;
+              else if (hLower === 'inventory_gudang awal') dealposChannels['GA'] += qty;
+              else {
+                const singkatan = CABANG_MAP[hLower];
+                if (singkatan) dealposChannels.cabang[singkatan] = qty;
+              }
+            }
+          }
+
+          supabasePayload.push({
+            sku: sku,
+            nama_produk: nama,
+            kategori: String(r[idxKat] || '').trim(),
+            size: String(r[idxSize] || '').trim(),
+            price: Number(r[idxPrice]) || 0,
+            dealpos_channels: dealposChannels
+          });
+        }
+      }
+
+      const totalItems = supabasePayload.length;
+      const CHUNK_SIZE = 1000;
+      const startTime = Date.now();
+      let uploaded = 0;
+
+      try {
+        for (let i = 0; i < totalItems; i += CHUNK_SIZE) {
+          const chunk = supabasePayload.slice(i, i + CHUNK_SIZE);
+          const res = await fetch(SUPABASE_URL + '/rest/v1/master_produk?on_conflict=sku', {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates,return=minimal'
+            },
+            body: JSON.stringify(chunk)
+          });
+
+          if (!res.ok) {
+            const errText = await res.text();
+            throw new Error('Supabase error: ' + errText);
+          }
+
+          uploaded += chunk.length;
+          const pct = Math.round((uploaded / totalItems) * 100);
+          progressFill.style.width = pct + '%';
+          progressPercent.textContent = pct + '%';
+          progressStatus.textContent = 'MENGUPLOAD: ' + uploaded.toLocaleString() + ' / ' + totalItems.toLocaleString() + ' SKU...';
+        }
+
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        progressStatus.textContent = '✅ SELESAI ' + totalItems.toLocaleString() + ' SKU DALAM ' + duration + 's!';
+        showToast(true, '⚡ KILAT: ' + totalItems.toLocaleString() + ' SKU TERSIMPAN KE SUPABASE DALAM ' + duration + ' DETIK! MENYINKRONKAN GOOGLE SHEET DI BACKGROUND...');
+
+        // Reset form UI
+        document.getElementById('fileImport').value = '';
+        document.getElementById('previewArea').style.display = 'none';
+        btn.disabled = true;
+        document.getElementById('importLabel').textContent = '⚡ PROSES CEPAT KE SUPABASE & SHEET';
+
+        // Trigger sinkronisasi Google Sheet di background
+        google.script.run.withSuccessHandler(function () {
+          muatRingkasan();
+        }).updateDatabaseCsv(TOKEN, PARSED_HEADER, PARSED_ROWS);
+
+      } catch (err) {
+        btn.disabled = false;
+        document.getElementById('importLabel').textContent = '⚡ PROSES CEPAT KE SUPABASE & SHEET';
+        showToast(false, 'GAGAL UPLOAD KE SUPABASE: ' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!-- ========================================================
+     MODUL VIEW: LOG MUTASI (SPA)
+     ======================================================== -->
+<section id="view-logmutasi" class="spa-view" style="display: none;">
+  <div class="data-section-card" style="margin-bottom: 20px;">
+    <div class="data-section-header">
+      <div class="section-title-wrap">
+        <span class="section-heading">🔄 LOG MUTASI PERPINDAHAN STOK</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="logMutasiSearchInput" class="search-input" style="width: 240px; height: 36px;" placeholder="Cari SKU / Produk / User..." oninput="handleLogMutasiSearch()">
+        <button class="btn btn-primary" onclick="muatDataLogMutasi(true)" title="Tarik data terbaru dari server">🔄 REFRESH</button>
+      </div>
+    </div>
+
+    <!-- FILTER TOOLBAR -->
+    <div style="padding: 14px 20px; background: var(--card-alt); border-bottom: 1px solid var(--border); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+      <select id="filterMutasiType" class="tool-select" onchange="handleLogMutasiFilterChange()">
+        <option value="">SEMUA TIPE MUTASI</option>
+        <option value="MUTASI">MUTASI ANTAR RAK</option>
+        <option value="ADJUSTMENT">ADJUSTMENT</option>
+        <option value="OPNAME">STOCK OPNAME</option>
+      </select>
+
+      <div style="font-size: 11.5px; color: var(--text-muted); margin-left: auto;" id="logMutasiSummaryCount">
+        Memuat data mutasi...
+      </div>
+    </div>
+
+    <!-- TABLE DATA -->
+    <div class="table-scroll-wrap">
+      <table class="unified-table" style="min-width: 1000px;">
+        <thead>
+          <tr>
+            <th style="width: 130px; text-align: left; padding-left: 12px;">TANGGAL</th>
+            <th style="width: 100px; text-align: center;">TIPE</th>
+            <th style="width: 140px; text-align: left; padding-left: 10px;">SKU</th>
+            <th style="text-align: left; padding-left: 12px;">NAMA PRODUK</th>
+            <th style="width: 60px; text-align: center;">SIZE</th>
+            <th style="width: 100px; text-align: center;">DARI (ASAL)</th>
+            <th style="width: 100px; text-align: center;">KE (TUJUAN)</th>
+            <th style="width: 70px; text-align: center;">QTY</th>
+            <th style="width: 110px; text-align: left; padding-left: 10px;">OPERATOR</th>
+            <th style="text-align: left; padding-left: 10px;">KETERANGAN</th>
+          </tr>
+        </thead>
+        <tbody id="logMutasiTableBody">
+          <tr><td colspan="10" style="text-align: center; padding: 30px; color: var(--text-muted);">Memuat riwayat log mutasi...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <div id="logMutasiPaginationFooter" style="padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); font-size: 12px; background: var(--bg-surface);">
+      <div id="logMutasiPaginationInfo" style="color: var(--text-muted); font-weight: 600;">SHOWING 0-0 OF 0 RECORDS</div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button id="btnMutasiPrev" class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 11.5px;" onclick="changeLogMutasiPage(-1)">◀ PREV</button>
+        <span id="logMutasiPageIndicator" style="font-weight: 700; color: var(--text); padding: 0 8px;">1 / 1</span>
+        <button id="btnMutasiNext" class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 11.5px;" onclick="changeLogMutasiPage(1)">NEXT ▶</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  let LOG_MUTASI_DATA = [];
+  let logMutasiCurrentPage = 1;
+  const logMutasiPageSize = 50;
+  let logMutasiTotalPages = 1;
+  let isLogMutasiInitialized = false;
+
+  function initLogMutasiView() {
+    if (!isLogMutasiInitialized) {
+      isLogMutasiInitialized = true;
+      muatDataLogMutasi(false);
+    }
+  }
+
+  function muatDataLogMutasi(force) {
+    const tbody = document.getElementById('logMutasiTableBody');
+    if (tbody && (!LOG_MUTASI_DATA || LOG_MUTASI_DATA.length === 0)) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:30px; color:var(--text-muted);">⏳ MEMUAT DATA LOG MUTASI...</td></tr>';
+    }
+
+    google.script.run.withSuccessHandler(function (res) {
+      if (!res.success) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--danger); padding:30px;">' + (res.message || 'Gagal memuat log mutasi') + '</td></tr>';
+        return;
+      }
+      LOG_MUTASI_DATA = res.data || [];
+      logMutasiCurrentPage = 1;
+      renderLogMutasiTable();
+    }).withFailureHandler(function (err) {
+      if (tbody && (!LOG_MUTASI_DATA || LOG_MUTASI_DATA.length === 0)) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--danger); padding:30px;">Error: ' + err.message + '</td></tr>';
+      }
+    }).getWmsLogMutasiData(TOKEN);
+  }
+  window.muatDataLogMutasi = muatDataLogMutasi;
+
+  function handleLogMutasiSearch() {
+    logMutasiCurrentPage = 1;
+    renderLogMutasiTable();
+  }
+
+  function handleLogMutasiFilterChange() {
+    logMutasiCurrentPage = 1;
+    renderLogMutasiTable();
+  }
+
+  function renderLogMutasiTable() {
+    const tbody = document.getElementById('logMutasiTableBody');
+    if (!tbody) return;
+
+    const keyword = (document.getElementById('logMutasiSearchInput').value || '').trim().toLowerCase();
+    const kataKunci = keyword.split(/\s+/).filter(Boolean);
+    const filterType = (document.getElementById('filterMutasiType').value || '').trim();
+
+    const filtered = LOG_MUTASI_DATA.filter(function (d) {
+      if (!d) return false;
+      if (filterType && String(d.type || '').toUpperCase().indexOf(filterType.toUpperCase()) === -1) return false;
+
+      const teksGabungan = (String(d.sku || '') + ' ' + String(d.namaProduk || '') + ' ' + String(d.asal || '') + ' ' + String(d.tujuan || '') + ' ' + String(d.operator || '') + ' ' + String(d.keterangan || '')).toLowerCase();
+      return kataKunci.length === 0 || kataKunci.every(function (kw) { return teksGabungan.indexOf(kw) > -1; });
+    });
+
+    const sumEl = document.getElementById('logMutasiSummaryCount');
+    if (sumEl) sumEl.textContent = `Total: ${filtered.length} log mutasi ditemukan`;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:30px; font-style:italic;">TIDAK ADA DATA LOG MUTASI YANG SESUAI FILTER.</td></tr>';
+      document.getElementById('logMutasiPaginationFooter').style.display = 'none';
+      return;
+    }
+
+    logMutasiTotalPages = Math.ceil(filtered.length / logMutasiPageSize);
+    if (logMutasiCurrentPage > logMutasiTotalPages) logMutasiCurrentPage = logMutasiTotalPages;
+    if (logMutasiCurrentPage < 1) logMutasiCurrentPage = 1;
+
+    const startIndex = (logMutasiCurrentPage - 1) * logMutasiPageSize;
+    const paginatedData = filtered.slice(startIndex, startIndex + logMutasiPageSize);
+
+    tbody.innerHTML = paginatedData.map(function (d) {
+      return '<tr>' +
+        '<td style="font-size:11.5px; color:var(--text-muted); padding-left:12px;">' + (d.tanggalStr || '-') + '</td>' +
+        '<td style="text-align:center;"><span class="badge-size" style="background:var(--primary-light); color:var(--primary);">' + (d.type || '-') + '</span></td>' +
+        '<td style="padding-left:10px;"><span class="badge-sku">' + (d.sku || '-') + '</span></td>' +
+        '<td style="font-weight:600; color:var(--text); padding-left:12px;">' + (d.namaProduk || '-') + '</td>' +
+        '<td style="text-align:center;"><span class="badge-size">' + (d.size || '-') + '</span></td>' +
+        '<td style="text-align:center; font-weight:700; color:var(--danger);">' + (d.asal || '-') + '</td>' +
+        '<td style="text-align:center; font-weight:700; color:var(--success);">' + (d.tujuan || '-') + '</td>' +
+        '<td style="text-align:center; font-weight:800; color:var(--text);">' + (d.qty || 0) + '</td>' +
+        '<td style="font-size:11.5px; padding-left:10px;">' + (d.operator || '-') + '</td>' +
+        '<td style="font-size:11.5px; color:var(--text-muted); padding-left:10px;">' + (d.keterangan || '-') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    const startRecord = startIndex + 1;
+    const endRecord = Math.min(startIndex + logMutasiPageSize, filtered.length);
+    document.getElementById('logMutasiPaginationInfo').textContent = `SHOWING ${startRecord}-${endRecord} OF ${filtered.length} RECORDS`;
+    document.getElementById('logMutasiPageIndicator').textContent = `${logMutasiCurrentPage} / ${logMutasiTotalPages}`;
+    
+    document.getElementById('btnMutasiPrev').disabled = (logMutasiCurrentPage <= 1);
+    document.getElementById('btnMutasiNext').disabled = (logMutasiCurrentPage >= logMutasiTotalPages);
+    document.getElementById('logMutasiPaginationFooter').style.display = 'flex';
+  }
+
+  function changeLogMutasiPage(direction) {
+    const newPage = logMutasiCurrentPage + direction;
+    if (newPage >= 1 && newPage <= logMutasiTotalPages) {
+      logMutasiCurrentPage = newPage;
+      renderLogMutasiTable();
+    }
+  }
+</script>

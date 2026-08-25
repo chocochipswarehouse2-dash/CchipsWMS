@@ -1,0 +1,103 @@
+<style>
+  :root {
+    --mocha: #7A3E42;
+    --rose-deep: #B85B5E;
+    --surface: #ffffff;
+    --background: #f8f9fa;
+    --border: #e5e7eb;
+    --ink: #1f2937;
+    --muted: #6b7280;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--background);
+    color: var(--ink);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Style Tombol Standar WMS */
+  .btn-wms-primary {
+    background: var(--mocha);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 13.5px;
+    transition: background 0.2s;
+  }
+  .btn-wms-primary:hover {
+    background: var(--rose-deep);
+  }
+  .btn-wms-primary:disabled {
+    background: var(--muted);
+    cursor: not-allowed;
+  }
+
+  /* ========================================================
+     STANDARDIZED COMPACT SEGMENTED TABS (NAVIGASI SUB-PAGE)
+     ======================================================== */
+  .wms-segmented-tabs {
+    display: inline-flex;
+    background: var(--card-alt, #1a253a);
+    border: 1px solid var(--border, #232f48);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 3px;
+    user-select: none;
+    max-width: 100%;
+  }
+
+  .wms-segmented-tab-btn {
+    height: 32px;
+    padding: 0 14px;
+    font-size: 11.5px;
+    font-weight: 700;
+    border: none;
+    background: transparent;
+    color: var(--text-muted, #94a3b8);
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .wms-segmented-tab-btn:hover {
+    color: var(--text, #e2e8f0);
+  }
+
+  .wms-segmented-tab-btn.active {
+    background: var(--card, #161f30);
+    color: var(--primary, #f59e0b);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+  }
+
+  @media (max-width: 768px) {
+    .wms-segmented-tabs {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+    .wms-segmented-tab-btn {
+      padding: 0 8px;
+      font-size: 11px;
+    }
+  }
+
+  @keyframes spin { 
+    0% { transform: rotate(0deg); } 
+    100% { transform: rotate(360deg); } 
+  }
+</style>

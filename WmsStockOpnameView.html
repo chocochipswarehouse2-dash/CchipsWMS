@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --radius: 8px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --input-bg: #0d1117;
+      --text: #c9d1d9;
+      --muted: #8b949e;
+      --primary: #f39c12;
+      --primary-hover: #e08e0b;
+      --danger: #f85149;
+      --danger-hover: #da3633;
+      --success: #2ea043;
+      --success-hover: #238636;
+      --table-hover: rgba(255, 255, 255, 0.03);
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    [data-theme="light"] {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --border: #d0d7de;
+      --input-bg: #ffffff;
+      --text: #24292f;
+      --muted: #57606a;
+      --primary: #b45309;
+      --primary-hover: #92400e;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --success: #16a34a;
+      --success-hover: #15803d;
+      --table-hover: rgba(0, 0, 0, 0.02);
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    * { box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace !important; }
+    b, strong, th, .tab-btn, .btn, button { font-weight: 600 !important; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px 24px 40px;
+      text-transform: uppercase;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 1300px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .header-top {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+    }
+
+    .header-top h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 0 0 6px 0;
+      color: var(--text);
+      letter-spacing: 1.5px;
+    }
+    
+    .header-top h1::before {
+      content: "WMS · ";
+      color: var(--primary);
+    }
+
+    .header-top p {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .nav-select {
+      background: var(--input-bg);
+      color: var(--primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      outline: none;
+      text-transform: uppercase;
+      height: 42px;
+    }
+    .nav-select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(243,156,18,0.18); }
+
+    .content-body {
+      padding: 24px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .tab-btn {
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 10px 18px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tab-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 700; }
+    
+    input, select { 
+      width: 100%; 
+      height: 42px;
+      padding: 0 14px; 
+      border: 1px solid var(--border); 
+      border-radius: var(--radius); 
+      font-size: 13px; 
+      margin-bottom: 16px; 
+      outline: none; 
+      background: var(--input-bg); 
+      color: var(--text); 
+      text-transform: uppercase;
+    }
+    
+    input::placeholder, select::placeholder { color: var(--muted); opacity: 0.6; }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(243,156,18,0.18); }
+
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 200px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 42px;
+      padding: 0 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    button.primary { background: var(--primary); color: #fff; border: none; width: 100%; font-size: 13px;}
+    button.primary:hover { background: var(--primary-hover); }
+
+    button.secondary { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); }
+    button.secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+    button.danger { background: var(--danger); color: #fff; border: none; padding: 8px 14px; font-size: 12px; border-radius: var(--radius); cursor: pointer; text-transform: uppercase; }
+    button.danger:hover { background: var(--danger-hover); }
+
+    button.approve { background: var(--success); color: #fff; border: none; padding: 8px 14px; font-size: 12px; border-radius: var(--radius); cursor: pointer; text-transform: uppercase; }
+    button.approve:hover { background: var(--success-hover); }
+
+    .btn-add { background: var(--success); color: #fff; border: none; }
+    .btn-add:hover { background: var(--success-hover); color: #fff; }
+
+    h3 { color: var(--primary); text-transform: uppercase; font-size: 14px; letter-spacing: 1px; margin-top: 24px; margin-bottom: 12px;}
+
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; margin-top: 10px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;}
+    th, td { border: none; border-bottom: 1px solid var(--border); padding: 11px 14px; text-align: left; color: var(--text); }
+    th { background: var(--card); font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    tbody tr:hover { background-color: var(--table-hover); }
+
+    .selisih-plus { color: var(--success); font-weight: 600; }
+    .selisih-minus { color: var(--danger); font-weight: 600; }
+
+    .msg { font-size: 12px; padding: 12px 14px; border-radius: var(--radius); margin-bottom: 16px; font-weight: 700; }
+    .msg.ok { background: rgba(46, 160, 67, 0.15); color: var(--success); border: 1px solid var(--success); }
+    .msg.err { background: rgba(248, 81, 73, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+
+    .keranjang-item { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; font-size: 13px; background: var(--input-bg); }
+    .keranjang-item .info { flex: 1; }
+    
+    .qty-sistem-badge { background: var(--card); color: var(--primary); border-radius: var(--radius); padding: 6px 14px; font-size: 12px; display: inline-block; font-weight: 700; border: 1px solid var(--border); text-transform: uppercase; }
+    .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 0; font-style: italic; }
+    .bulk-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .spinner-inline {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: currentColor;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <div class="wrap">
+    <!-- Header Top / Toolbar -->
+    <div class="header-top">
+      <h1>Stock Opname & Adjustment</h1>
+      <p>LOGIN SEBAGAI: <?= username ?></p>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <select class="nav-select" id="navSelectWms" onchange="navigasiMenu(this)"></select>
+        <button type="button" id="btnToggleTheme" class="btn btn-secondary" onclick="toggleTheme()">☀️ LIGHT MODE</button>
+      </div>
+      <div>
+        <button type="button" class="btn btn-danger" onclick="logout()" style="background: var(--danger); color: #fff; border: none;">LOGOUT</button>
+      </div>
+    </div>
+
+    <div class="content-body">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="opname">INPUT OPNAME</button>
+        <button class="tab-btn" data-tab="manual">ADJUSTMENT MANUAL</button>
+        <button class="tab-btn" data-tab="approval">APPROVAL <span id="badgePending"></span></button>
+      </div>
+
+      <div id="msgBox"></div>
+
+      <!-- TAB: INPUT OPNAME -->
+      <div class="tab-content active" id="tab-opname">
+        <div class="row">
+          <div>
+            <label>SKU</label>
+            <input list="listSku" id="opnameSku" placeholder="Ketik / pilih SKU">
+            <datalist id="listSku"></datalist>
+          </div>
+          <div>
+            <label>Lokasi</label>
+            <input list="listLokasi" id="opnameLokasi" placeholder="Ketik / pilih lokasi">
+            <datalist id="listLokasi"></datalist>
+          </div>
+          <div>
+            <label>Qty Fisik (hasil hitung)</label>
+            <input type="number" id="opnameQty" placeholder="0">
+          </div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <span class="qty-sistem-badge" id="qtySistemBadge">Qty sistem: -</span>
+        </div>
+        <button class="btn btn-add" onclick="tambahKeKeranjang()">+ TAMBAH KE SESI</button>
+
+        <h3>Item dalam sesi ini</h3>
+        <div id="keranjangList"><div class="empty">BELUM ADA ITEM DITAMBAHKAN</div></div>
+        <button class="btn primary" id="btnSubmitSesiOpname" style="margin-top:16px;" onclick="submitSesi()">SUBMIT SESI OPNAME</button>
+
+        <!-- FITUR MASSAL CSV -->
+        <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <h3>Upload Massal (CSV)</h3>
+          <p style="color: var(--muted); font-size: 13px; margin: 0 0 16px;">Download template atau export data stok saat ini, isi kolom Qty Fisik, lalu upload ke dalam sesi ini.</p>
+
+          <div class="bulk-bar">
+            <button class="btn secondary" onclick="downloadTemplateCsv()">DOWNLOAD TEMPLATE KOSONG</button>
+            <button class="btn secondary" onclick="exportStockCsv()">EXPORT DATA STOK (SISTEM)</button>
+          </div>
+
+          <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
+            <input type="file" id="csvFileInput" accept=".csv" style="margin-bottom:0; flex:1;">
+            <button class="btn btn-add" onclick="importCsv()">UPLOAD & TAMBAH</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: ADJUSTMENT MANUAL -->
+      <div class="tab-content" id="tab-manual">
+        <div class="row">
+          <div>
+            <label>SKU</label>
+            <input list="listSku" id="manualSku" placeholder="Ketik / pilih SKU">
+          </div>
+          <div>
+            <label>Lokasi</label>
+            <input list="listLokasi" id="manualLokasi" placeholder="Ketik / pilih lokasi">
+          </div>
+          <div>
+            <label>Qty Adjustment (+/-)</label>
+            <input type="number" id="manualDelta" placeholder="misal 5 atau -3">
+          </div>
+        </div>
+        <label>Alasan (wajib diisi)</label>
+        <input type="text" id="manualAlasan" placeholder="misal: barang rusak ditemukan saat opname">
+        <button class="btn btn-add" onclick="tambahKeKeranjangManual()">+ TAMBAH KE SESI</button>
+
+        <h3>Item dalam sesi adjustment ini</h3>
+        <div id="manualKeranjangList"><div class="empty">BELUM ADA ITEM DITAMBAHKAN</div></div>
+        <button class="btn primary" id="btnSubmitManualBulk" style="margin-top:16px;" onclick="submitManualBulk()">SUBMIT SEMUA ADJUSTMENT MANUAL</button>
+
+        <!-- FITUR MASSAL CSV UTK ADJUSTMENT MANUAL -->
+        <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <h3>Upload Massal (CSV)</h3>
+          <p style="color: var(--muted); font-size: 13px; margin: 0 0 16px;">Download template, isi kolom SKU/Lokasi/Delta/Alasan, lalu upload ke dalam sesi adjustment ini.</p>
+
+          <div class="bulk-bar">
+            <button class="btn secondary" onclick="downloadTemplateManualCsv()">DOWNLOAD TEMPLATE KOSONG</button>
+            <button class="btn secondary" onclick="exportStockCsvManual()">EXPORT DATA STOK (REFERENSI)</button>
+          </div>
+
+          <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
+            <input type="file" id="csvFileInputManual" accept=".csv" style="margin-bottom:0; flex:1;">
+            <button class="btn btn-add" onclick="importCsvManual()">UPLOAD & TAMBAH</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: APPROVAL -->
+      <div class="tab-content" id="tab-approval">
+        <div class="bulk-bar" style="justify-content: space-between; align-items: center;">
+          <button class="btn secondary" onclick="muatPending()">REFRESH</button>
+          <div style="display: flex; gap: 10px;">
+            <button id="btnApproveMassal" class="approve" onclick="prosesAksiMassal('approve')">APPROVE TERPILIH</button>
+            <button id="btnRejectMassal" class="danger" onclick="prosesAksiMassal('reject')">REJECT TERPILIH</button>
+          </div>
+        </div>
+        <div id="pendingList"><div class="empty">MEMUAT...</div></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let isProcessing = false;
+  let isSubmittingOpname = false;
+  let isSubmittingManual = false;
+
+  let produkList = [];
+  let lokasiList = [];
+  let keranjang = [];
+  let manualKeranjang = [];
+  const token = "<?= token ?>";
+  const akses = "<?= akses ?>";
+
+  function showMsg(text, ok) {
+    document.getElementById('msgBox').innerHTML =
+      '<div class="msg ' + (ok ? 'ok' : 'err') + '">' + text + '</div>';
+  }
+
+  function setBtnLoading(btnId, isLoading, loadingLabel, normalLabel) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.disabled = isLoading;
+    btn.innerHTML = isLoading
+      ? '<span class="spinner-inline"></span> ' + loadingLabel
+      : normalLabel;
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'approval') muatPending();
+    });
+  });
+
+  google.script.run.withSuccessHandler(function (res) {
+    if (!res.success) { showMsg(res.message, false); return; }
+    produkList = res.produkList || [];
+    lokasiList = res.lokasiList || [];
+    const dlSku = document.getElementById('listSku');
+    produkList.forEach(function (p) {
+      const opt = document.createElement('option');
+      opt.value = p.sku;
+      opt.label = p.produk + (p.size ? (' - ' + p.size) : '');
+      dlSku.appendChild(opt);
+    });
+    const dlLok = document.getElementById('listLokasi');
+    lokasiList.forEach(function (l) {
+      const opt = document.createElement('option');
+      opt.value = l;
+      dlLok.appendChild(opt);
+    });
+  }).withFailureHandler(function (err) {
+    showMsg('Gagal memuat data awal: ' + err.message, false);
+  }).getWmsStockOpnameInitData(token);
+
+  document.getElementById('opnameSku').addEventListener('change', cekQtySistem);
+  document.getElementById('opnameLokasi').addEventListener('change', cekQtySistem);
+
+  function cekQtySistem() {
+    const sku = document.getElementById('opnameSku').value.trim();
+    const lokasi = document.getElementById('opnameLokasi').value.trim();
+    if (!sku || !lokasi) return;
+    document.getElementById('qtySistemBadge').innerText = 'Qty sistem: mengecek...';
+    google.script.run.withSuccessHandler(function (res) {
+      if (res.success) {
+        document.getElementById('qtySistemBadge').innerText = 'Qty sistem: ' + res.qtySistem;
+      }
+    }).getWmsQtySistem(token, sku, lokasi);
+  }
+
+  function tambahKeKeranjang() {
+    const sku = document.getElementById('opnameSku').value.trim().toUpperCase();
+    const lokasi = document.getElementById('opnameLokasi').value.trim();
+    const qtyFisik = Number(document.getElementById('opnameQty').value);
+
+    if (!sku) { showMsg('SKU wajib diisi.', false); return; }
+    if (!lokasi) { showMsg('Lokasi wajib diisi.', false); return; }
+    if (isNaN(qtyFisik) || document.getElementById('opnameQty').value === '') {
+      showMsg('Qty fisik wajib diisi angka.', false); return;
+    }
+
+    const dupIdx = keranjang.findIndex(item => item.sku === sku && item.lokasi === lokasi);
+    if (dupIdx !== -1) {
+      keranjang[dupIdx].qtyFisik = qtyFisik;
+      showMsg(`SKU ${sku} di lokasi ${lokasi} diperbarui menjadi ${qtyFisik} pcs.`, true);
+    } else {
+      keranjang.push({ sku: sku, lokasi: lokasi, qtyFisik: qtyFisik });
+    }
+
+    renderKeranjang();
+    document.getElementById('opnameQty').value = '';
+    document.getElementById('qtySistemBadge').innerText = 'Qty sistem: -';
+    document.getElementById('opnameSku').focus();
+  }
+
+  function hapusItem(idx) {
+    keranjang.splice(idx, 1);
+    renderKeranjang();
+  }
+
+  function renderKeranjang() {
+    const container = document.getElementById('keranjangList');
+    if (keranjang.length === 0) {
+      container.innerHTML = '<div class="empty">BELUM ADA ITEM DITAMBAHKAN</div>';
+      return;
+    }
+    let html = '';
+    keranjang.forEach(function (item, idx) {
+      html += '<div class="keranjang-item">' +
+        '<div class="info"><b>' + item.sku + '</b> &bull; Lokasi: ' + item.lokasi + ' &bull; Qty Fisik: ' + item.qtyFisik + '</div>' +
+        '<button class="danger" onclick="hapusItem(' + idx + ')">HAPUS</button>' +
+        '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function submitSesi() {
+    if (isSubmittingOpname) return;
+    if (keranjang.length === 0) { showMsg('Keranjang opname kosong.', false); return; }
+
+    isSubmittingOpname = true;
+    setBtnLoading('btnSubmitSesiOpname', true, 'MEMPROSES SESI...', 'SUBMIT SESI OPNAME');
+
+    google.script.run.withSuccessHandler(function (res) {
+      isSubmittingOpname = false;
+      setBtnLoading('btnSubmitSesiOpname', false, '', 'SUBMIT SESI OPNAME');
+      if (res.success) {
+        showMsg('Sesi opname ' + res.sessionId + ' berhasil diajukan (' + res.count + ' item).', true);
+        keranjang = [];
+        renderKeranjang();
+      } else {
+        showMsg(res.message, false);
+      }
+    }).withFailureHandler(function (err) {
+      isSubmittingOpname = false;
+      setBtnLoading('btnSubmitSesiOpname', false, '', 'SUBMIT SESI OPNAME');
+      showMsg('Gagal submit sesi: ' + err.message, false);
+    }).submitWmsStockOpnameSesi(token, keranjang);
+  }
+
+  function tambahKeKeranjangManual() {
+    const sku = document.getElementById('manualSku').value.trim().toUpperCase();
+    const lokasi = document.getElementById('manualLokasi').value.trim();
+    const delta = Number(document.getElementById('manualDelta').value);
+    const alasan = document.getElementById('manualAlasan').value.trim();
+
+    if (!sku) { showMsg('SKU wajib diisi.', false); return; }
+    if (!lokasi) { showMsg('Lokasi wajib diisi.', false); return; }
+    if (!delta || isNaN(delta)) { showMsg('Qty adjustment tidak boleh 0 atau kosong.', false); return; }
+    if (!alasan) { showMsg('Alasan wajib diisi.', false); return; }
+
+    const dupIdx = manualKeranjang.findIndex(item => item.sku === sku && item.lokasi === lokasi);
+    if (dupIdx !== -1) {
+      manualKeranjang[dupIdx].deltaQty = delta;
+      manualKeranjang[dupIdx].alasan = alasan;
+      showMsg(`Adjustment ${sku} di ${lokasi} diperbarui (${delta > 0 ? '+' + delta : delta}).`, true);
+    } else {
+      manualKeranjang.push({ sku: sku, lokasi: lokasi, deltaQty: delta, alasan: alasan });
+    }
+
+    renderKeranjangManual();
+    document.getElementById('manualDelta').value = '';
+    document.getElementById('manualAlasan').value = '';
+    document.getElementById('manualSku').focus();
+  }
+
+  function hapusManualItem(idx) {
+    manualKeranjang.splice(idx, 1);
+    renderKeranjangManual();
+  }
+
+  function renderKeranjangManual() {
+    const container = document.getElementById('manualKeranjangList');
+    if (manualKeranjang.length === 0) {
+      container.innerHTML = '<div class="empty">BELUM ADA ITEM DITAMBAHKAN</div>';
+      return;
+    }
+    let html = '';
+    manualKeranjang.forEach(function (item, idx) {
+      const cls = item.deltaQty > 0 ? 'selisih-plus' : 'selisih-minus';
+      const sign = item.deltaQty > 0 ? '+' : '';
+      const prodObj = produkList.find(p => p.sku === item.sku);
+      const nama = prodObj ? prodObj.produk : item.sku;
+      html += '<div class="keranjang-item">' +
+        '<div class="info"><div style="font-weight:700; color:var(--text); margin-bottom:2px;">' + nama + '</div>' +
+        '<b>' + item.sku + '</b> &bull; Lokasi: <b>' + item.lokasi + '</b>' +
+        ' &bull; Adjustment: <span class="' + cls + '">' + sign + item.deltaQty + '</span>' +
+        '<br><small style="color:var(--muted)">Alasan: ' + item.alasan + '</small></div>' +
+        '<button class="danger" onclick="hapusManualItem(' + idx + ')">HAPUS</button>' +
+        '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function submitManualBulk() {
+    if (isSubmittingManual) return;
+    if (manualKeranjang.length === 0) { showMsg('Keranjang adjustment manual kosong.', false); return; }
+
+    isSubmittingManual = true;
+    setBtnLoading('btnSubmitManualBulk', true, 'MEMPROSES PENGAJUAN...', 'SUBMIT SEMUA ADJUSTMENT MANUAL');
+
+    google.script.run.withSuccessHandler(function (res) {
+      isSubmittingManual = false;
+      setBtnLoading('btnSubmitManualBulk', false, '', 'SUBMIT SEMUA ADJUSTMENT MANUAL');
+      if (res.success) {
+        showMsg(`Berhasil mengajukan ${res.successCount} adjustment manual untuk approval.`, true);
+        manualKeranjang = [];
+        renderKeranjangManual();
+      } else {
+        showMsg(res.message, false);
+      }
+    }).withFailureHandler(function (err) {
+      isSubmittingManual = false;
+      setBtnLoading('btnSubmitManualBulk', false, '', 'SUBMIT SEMUA ADJUSTMENT MANUAL');
+      showMsg('Gagal submit adjustment: ' + err.message, false);
+    }).submitWmsAdjustmentManualBulk(token, manualKeranjang);
+  }
+
+  function muatPending() {
+    document.getElementById('pendingList').innerHTML = '<div class="empty">MEMUAT DATA PENDING...</div>';
+    google.script.run.withSuccessHandler(function (res) {
+      if (!res.success) {
+        document.getElementById('pendingList').innerHTML = '<div class="empty">' + res.message + '</div>';
+        return;
+      }
+      renderPending(res.data || []);
+    }).withFailureHandler(function (err) {
+      document.getElementById('pendingList').innerHTML = '<div class="empty">GAGAL MEMUAT: ' + err.message + '</div>';
+    }).getWmsPendingAdjustments(token);
+  }
+
+  function renderPending(list) {
+    const badge = document.getElementById('badgePending');
+    badge.innerText = list.length > 0 ? '(' + list.length + ')' : '';
+
+    if (list.length === 0) {
+      document.getElementById('pendingList').innerHTML = '<div class="empty">TIDAK ADA ADJUSTMENT YANG MENUNGGU APPROVAL.</div>';
+      return;
+    }
+
+    let html = '<table><thead><tr>' +
+      '<th style="width:30px;"><input type="checkbox" id="checkAllPending" onchange="toggleSelectAll(this)"></th>' +
+      '<th>Timestamp</th><th>Produk / SKU</th><th>Lokasi</th><th>Tipe</th>' +
+      '<th>Qty Sistem</th><th>Qty Fisik</th><th>Delta</th><th>Alasan</th><th>PIC</th><th>Aksi</th>' +
+      '</tr></thead><tbody>';
+
+    list.forEach(function (item) {
+      const cls = item.deltaQty > 0 ? 'selisih-plus' : 'selisih-minus';
+      const sign = item.deltaQty > 0 ? '+' : '';
+      const tgl = item.timestamp ? new Date(item.timestamp).toLocaleString('id-ID') : '-';
+      const prodObj = produkList.find(p => p.sku === item.sku);
+      const nama = item.namaProduk || (prodObj ? prodObj.produk : item.sku);
+      html += '<tr>' +
+        '<td><input type="checkbox" class="cb-pending" value="' + item.id + '"></td>' +
+        '<td>' + tgl + '</td>' +
+        '<td><div style="font-weight:700; font-size:12px;">' + nama + '</div><small style="color:var(--primary); font-weight:700;">' + item.sku + '</small></td>' +
+        '<td>' + item.lokasi + '</td>' +
+        '<td>' + item.tipe + '</td>' +
+        '<td>' + item.qtySistem + '</td>' +
+        '<td>' + (item.qtyFisik !== '' ? item.qtyFisik : '-') + '</td>' +
+        '<td class="' + cls + '">' + sign + item.deltaQty + '</td>' +
+        '<td>' + item.alasan + '</td>' +
+        '<td>' + item.pic + '</td>' +
+        '<td>' +
+          '<div style="display:flex; gap:6px;">' +
+            '<button class="approve" onclick="aksiApproval(\'' + item.id + '\', \'approve\')">✓</button>' +
+            '<button class="danger" onclick="aksiApproval(\'' + item.id + '\', \'reject\')">✕</button>' +
+          '</div>' +
+        '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    document.getElementById('pendingList').innerHTML = html;
+  }
+
+  function toggleSelectAll(master) {
+    document.querySelectorAll('.cb-pending').forEach(cb => cb.checked = master.checked);
+  }
+
+  function getSelectedPendingIds() {
+    const ids = [];
+    document.querySelectorAll('.cb-pending:checked').forEach(cb => ids.push(cb.value));
+    return ids;
+  }
+
+  function aksiApproval(id, aksi) {
+    if (isProcessing) return;
+    const alasanReject = aksi === 'reject' ? (prompt('Alasan penolakan (opsional):') || '') : '';
+    isProcessing = true;
+    showMsg('Memproses approval...', true);
+
+    google.script.run.withSuccessHandler(function (res) {
+      isProcessing = false;
+      showMsg(res.message, res.success);
+      if (res.success) muatPending();
+    }).withFailureHandler(function (err) {
+      isProcessing = false;
+      showMsg('Gagal: ' + err.message, false);
+    }).prosesWmsApproval(token, id, aksi, alasanReject);
+  }
+
+  function prosesAksiMassal(aksi) {
+    if (isProcessing) return;
+    const ids = getSelectedPendingIds();
+    if (ids.length === 0) {
+      alert('PILIH MINIMAL SATU DATA YANG INGIN DIPROSES!');
+      return;
+    }
+
+    const konfirmasi = confirm(`Yakin ingin ${aksi.toUpperCase()} ${ids.length} data terpilih?`);
+    if (!konfirmasi) return;
+
+    let alasanReject = '';
+    if (aksi === 'reject') {
+      alasanReject = prompt('Alasan penolakan massal (opsional):') || '';
+    }
+
+    isProcessing = true;
+    const btnApprove = document.getElementById('btnApproveMassal');
+    const btnReject = document.getElementById('btnRejectMassal');
+    btnApprove.disabled = true;
+    btnReject.disabled = true;
+    if (aksi === 'approve') btnApprove.innerHTML = '<span class="spinner-inline"></span> MEMPROSES...';
+    if (aksi === 'reject') btnReject.innerHTML = '<span class="spinner-inline"></span> MEMPROSES...';
+
+    google.script.run.withSuccessHandler(function (res) {
+      isProcessing = false;
+      btnApprove.disabled = false;
+      btnReject.disabled = false;
+      btnApprove.innerHTML = 'APPROVE TERPILIH';
+      btnReject.innerHTML = 'REJECT TERPILIH';
+
+      showMsg(res.message, res.success);
+      if (res.success) muatPending();
+    }).withFailureHandler(function (err) {
+      isProcessing = false;
+      btnApprove.disabled = false;
+      btnReject.disabled = false;
+      btnApprove.innerHTML = 'APPROVE TERPILIH';
+      btnReject.innerHTML = 'REJECT TERPILIH';
+      showMsg('Gagal memproses massal: ' + err.message, false);
+    }).prosesWmsApprovalBulk(token, ids, aksi, alasanReject);
+  }
+
+  function initTheme() {
+    const savedTheme = localStorage.getItem('wms_theme') || 'dark';
+    document.body.setAttribute('data-theme', savedTheme);
+    updateThemeButtonText(savedTheme);
+  }
+
+  function updateThemeButtonText(theme) {
+    const btn = document.getElementById('btnToggleTheme');
+    if (!btn) return;
+    btn.innerHTML = (theme === 'dark') ? '☀️ LIGHT MODE' : '🌙 DARK MODE';
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.body.getAttribute('data-theme') || 'dark';
+    const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+    document.body.setAttribute('data-theme', newTheme);
+    localStorage.setItem('wms_theme', newTheme);
+    updateThemeButtonText(newTheme);
+  }
+  initTheme();
+
+  const MENU_WMS_LIST = [
+    { value: "produk", label: "INVENTORY", akses: "Produk" },
+    { value: "klasifikasi", label: "MONITORING & KLASIFIKASI", akses: "All" },
+    { value: "penerimaanproduksi", label: "PENERIMAAN PRODUKSI", akses: "All" },
+    { value: "fulfillment", label: "FULFILLMENT REFILL", akses: "Fulfillment" },
+    { value: "peminjaman", label: "PEMINJAMAN", akses: "Peminjaman" },
+    { value: "logproduk", label: "LOG PRODUK", akses: "All" },
+    { value: "logmutasi", label: "LOG MUTASI", akses: "All" },
+    { value: "updatedatabase", label: "UPDATE DATABASE", akses: "All" },
+    { value: "stockopname", label: "STOCK OPNAME", akses: "All" }
+  ];
+
+  function bisaAksesMenuWms(kode) {
+    if (typeof akses === "undefined" || !akses) return true;
+    const roles = String(akses).split(',').map(function(r) { return r.trim(); });
+    return roles.includes("All") || roles.includes(kode);
+  }
+
+  function isiNavDropdownWms(halamanAktif) {
+    const select = document.getElementById('navSelectWms');
+    if (!select) return;
+    select.innerHTML = '';
+    MENU_WMS_LIST.forEach(function (m) {
+      if (!bisaAksesMenuWms(m.akses)) return;
+      const opt = document.createElement('option');
+      opt.value = m.value;
+      opt.textContent = m.label;
+      if (m.value === halamanAktif) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+  isiNavDropdownWms('stockopname');
+
+  function navigasiMenu(select) {
+    const val = select.value;
+    if (val && val !== 'stockopname') {
+      window.top.location.href = "<?= execUrl ?>?token=" + encodeURIComponent(token) + "&page=" + encodeURIComponent(val);
+    }
+  }
+
+  function logout() {
+    google.script.run.logoutWmsSession(token);
+    try { sessionStorage.clear(); } catch(e) {}
+    window.top.location.href = "<?= execUrl ?>";
+  }
+
+  function downloadCsvBrowser(csvStr, filename) {
+    const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
+
+  function downloadTemplateCsv() {
+    const csv = "SKU,Lokasi,Qty Fisik\n";
+    downloadCsvBrowser(csv, "Template_Opname.csv");
+  }
+
+  function exportStockCsv() {
+    showMsg('Sedang menyiapkan file export...', true);
+    google.script.run.withSuccessHandler(function (res) {
+      if (res.success) {
+        downloadCsvBrowser(res.csvData, "Export_Stok_Opname.csv");
+        showMsg('File export berhasil diunduh.', true);
+      } else {
+        showMsg(res.message, false);
+      }
+    }).withFailureHandler(function (err) {
+      showMsg('Gagal export: ' + err.message, false);
+    }).getWmsStockExportCsv(token);
+  }
+
+  function importCsv() {
+    const fileInput = document.getElementById('csvFileInput');
+    if (!fileInput.files.length) {
+      showMsg('Silakan pilih file CSV terlebih dahulu.', false);
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/);
+      let addedCount = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+
+        const row = barisCsvKeArray(lines[i]);
+
+        if (row.length >= 3) {
+          const sku = row[0].trim().toUpperCase();
+          const lokasi = row[1].trim();
+          const qtyFisik = Number(row[2].trim());
+
+          if (sku && lokasi && !isNaN(qtyFisik) && row[2].trim() !== "") {
+            keranjang.push({ sku: sku, lokasi: lokasi, qtyFisik: qtyFisik });
+            addedCount++;
+          }
+        }
+      }
+
+      if (addedCount > 0) {
+        showMsg(`Berhasil menambahkan ${addedCount} item dari CSV ke sesi.`, true);
+        renderKeranjang();
+      } else {
+        showMsg('Tidak ada data valid yang bisa dibaca. Pastikan format: SKU, Lokasi, Qty Fisik.', false);
+      }
+
+      fileInput.value = '';
+    };
+
+    reader.onerror = function() {
+      showMsg('Gagal membaca file CSV.', false);
+    };
+
+    reader.readAsText(file);
+  }
+
+  function downloadTemplateManualCsv() {
+    const csv = "SKU,Lokasi,Delta,Alasan\n";
+    downloadCsvBrowser(csv, "Template_Adjustment_Manual.csv");
+  }
+
+  function exportStockCsvManual() {
+    showMsg('Sedang menyiapkan file export...', true);
+    google.script.run.withSuccessHandler(function (res) {
+      if (res.success) {
+        downloadCsvBrowser(res.csvData, "Export_Stok_Referensi.csv");
+        showMsg('File export berhasil diunduh.', true);
+      } else {
+        showMsg(res.message, false);
+      }
+    }).withFailureHandler(function (err) {
+      showMsg('Gagal export: ' + err.message, false);
+    }).getWmsStockExportCsv(token);
+  }
+
+  function importCsvManual() {
+    const fileInput = document.getElementById('csvFileInputManual');
+    if (!fileInput.files.length) {
+      showMsg('Silakan pilih file CSV terlebih dahulu.', false);
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/);
+      let addedCount = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+
+        const row = barisCsvKeArray(lines[i]);
+
+        if (row.length >= 4) {
+          const sku = row[0].trim().toUpperCase();
+          const lokasi = row[1].trim();
+          const delta = Number(row[2].trim());
+          const alasan = row[3].trim();
+
+          if (sku && lokasi && !isNaN(delta) && delta !== 0 && alasan) {
+            const dupIdx = manualKeranjang.findIndex(item => item.sku === sku && item.lokasi === lokasi);
+            if (dupIdx !== -1) {
+              manualKeranjang[dupIdx].deltaQty = delta;
+              manualKeranjang[dupIdx].alasan = alasan;
+            } else {
+              manualKeranjang.push({ sku: sku, lokasi: lokasi, deltaQty: delta, alasan: alasan });
+            }
+            addedCount++;
+          }
+        }
+      }
+
+      if (addedCount > 0) {
+        showMsg(`Berhasil menambahkan/memperbarui ${addedCount} item dari CSV ke sesi adjustment manual.`, true);
+        renderKeranjangManual();
+      } else {
+        showMsg('Tidak ada data valid yang bisa dibaca.', false);
+      }
+
+      fileInput.value = '';
+    };
+
+    reader.onerror = function () {
+      showMsg('Gagal membaca file CSV.', false);
+    };
+
+    reader.readAsText(file);
+  }
+
+  function barisCsvKeArray(text) {
+    const re_valid = /^\s*(?:'[^'\\]*(?:\\[\s\S][^'\\]*)*'|"[^"\\]*(?:\\[\s\S][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\s\S][^'\\]*)*'|"[^"\\]*(?:\\[\s\S][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
+    const re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\s\S][^'\\]*)*)'|"([^"\\]*(?:\\[\s\S][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
+    if (!re_valid.test(text)) return [];
+    const a = [];
+    text.replace(re_value, function(m0, m1, m2, m3) {
+      if      (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
+      else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
+      else if (m3 !== undefined) a.push(m3);
+      return '';
+    });
+    if (/,\s*$/.test(text)) a.push('');
+    return a;
+  }
+</script>
+</body>
+</html>

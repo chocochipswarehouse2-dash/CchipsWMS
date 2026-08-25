@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --grad-start: #C98A8F;
+      --grad-end: #9B5A5E;
+      --rose: #EC7FA0;
+      --rose-deep: #7A3E42;
+      --mocha: #3A2A28;
+      --ink: #1A1312;
+      --muted: #5C4A48;
+      --border: #D6C5C1;
+      --bg: #FBF3EF;
+      --card: #ffffff;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace !important; }
+    b, strong, th, .unified-btn, .header h1, .section-head .title { font-weight: 600 !important; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      padding: 20px 2vw 60px;
+    }
+
+    .wrap { width: 100%; max-width: 1200px; margin: 0 auto; }
+
+    .header {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(160deg, #FDF1F1, #FFFFFF 70%);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 30px 24px 26px;
+      color: var(--mocha);
+      text-align: center;
+    }
+
+    .header .ornament {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      opacity: 0.28;
+    }
+
+    .header .logo { position: relative; height: 64px; margin-bottom: 8px; }
+
+    .header h1 {
+      position: relative;
+      margin: 0 0 4px;
+      font-family: "Playfair Display", Georgia, serif;
+      font-style: italic;
+      font-size: 23px;
+      font-weight: 700;
+      color: var(--mocha);
+    }
+
+    .header p { position: relative; margin: 0; font-size: 12.5px; color: var(--muted); }
+
+    .card {
+      background: var(--card);
+      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(31, 35, 51, 0.08);
+    }
+
+    .top-controls {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .unified-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 44px;
+      padding: 0 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--mocha);
+      background: #fff;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .unified-btn:hover { background: #fdf1f1; border-color: var(--grad-start); }
+    .unified-btn.active { background: linear-gradient(135deg, var(--grad-start), var(--grad-end)); color: #fff; border-color: transparent; }
+
+    .popup-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99; }
+    .popup-menu {
+      display: none;
+      position: absolute;
+      top: 54px; right: 0;
+      width: 260px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(31, 35, 51, 0.15);
+      padding: 16px;
+      z-index: 100;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .popup-menu.show, .popup-overlay.show { display: flex; }
+    .popup-menu label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .popup-menu select { width: 100%; height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 13.5px; background: #fafbfc; color: var(--ink); outline: none; }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="wrap">
+    <div class="header">
+      <!-- Ornament SVG yang sama persis -->
+      <svg class="ornament" viewBox="0 0 700 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(95,95)">
+          <path d="M0,-78 q9,-11 -9,-11" fill="none" stroke="#C98A8F" stroke-width="1.4"/>
+          <line x1="0" y1="-78" x2="0" y2="-68" stroke="#C98A8F" stroke-width="1.4"/>
+          <path d="M-18,-62 Q0,-50 18,-62 L24,-56 L13,-8 Q46,14 46,66 L-46,66 Q-46,14 -13,-8 L-24,-56 Z" fill="none" stroke="#C98A8F" stroke-width="1.5"/>
+          <line x1="-30" y1="-8" x2="30" y2="-8" stroke="#C98A8F" stroke-width="1" stroke-dasharray="2 4"/>
+        </g>
+        <line x1="0" y1="160" x2="700" y2="160" stroke="#C98A8F" stroke-width="1" stroke-dasharray="4 6"/>
+      </svg>
+      <h1>Fulfillment Refill</h1>
+      <p>Halo, <?= username ?></p>
+    </div>
+
+    <div class="card">
+      <!-- TOMBOL MENU POPUP (Navigasi Antar Halaman) -->
+      <div class="top-controls">
+        <button type="button" class="unified-btn" onclick="toggleMenu()">
+          ⚙️ Menu
+        </button>
+
+        <div class="popup-overlay" id="popupOverlay" onclick="toggleMenu()"></div>
+        <div class="popup-menu" id="popupMenu">
+          <label>Navigasi Halaman</label>
+          <select id="menuPage" class="unified-btn active" onchange="navigasiMenu(this)" style="text-align: left; background: #fff; color: var(--mocha); border-color: var(--border);">
+            <option value="produk">🏷️ Inventory</option>
+            <option value="fulfillment" selected>📦 Fulfillment</option>
+            <? if (typeof akses !== 'undefined' && (akses === "All" || akses === "Peminjaman")) { ?>
+            <option value="peminjaman">👜 Peminjaman</option>
+            <? } ?>
+            <? if (typeof akses !== 'undefined' && akses === "All") { ?>
+            <option value="logproduk">📋 Log Produk</option>
+            <option value="logmutasi">🚚 Log Mutasi</option>
+            <option value="updatedatabase">🔄 Update Database</option>
+            <option value="stockopname">📦 Stock Opname</option>
+            <? } ?>
+          </select>
+        </div>
+      </div>
+
+      <!-- KONTEN UTAMA FULFILLMENT -->
+      <div style="max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: #fafbfc;">
+        <h2 style="color: var(--mocha); margin-top: 0; font-size: 16px;">Cetak Surat Jalan Refill (Multi-CSV)</h2>
+        <p style="color: var(--muted); font-size: 12.5px; margin-bottom: 20px; line-height: 1.5;">
+          Pilih satu atau beberapa file CSV Transfer Order untuk digabungkan dan dicetak Surat Jalannya secara otomatis.
+        </p>
+
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-weight: 600; font-size: 12px; color: var(--ink); margin-bottom: 8px;">Pilih File CSV:</label>
+          <input type="file" id="csvFileInput" multiple accept=".csv" style="width: 100%; padding: 10px; border: 1px dashed var(--border); border-radius: 8px; background: #fff; font-size: 13px; box-sizing: border-box;">
+        </div>
+
+        <button id="btnProcessFulfillment" onclick="handleProcessFulfillment()" class="unified-btn active" style="width: 100%;">
+          Proses & Cetak PDF Surat Jalan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TOKEN = "<?= token ?>";
+    const EXEC_URL = "<?= execUrl ?>";
+
+    function toggleMenu() {
+      document.getElementById('popupMenu').classList.toggle('show');
+      document.getElementById('popupOverlay').classList.toggle('show');
+    }
+
+    function navigasiMenu(select) {
+      const val = select.value;
+      if (val && val !== 'fulfillment') {
+        window.top.location.href = EXEC_URL + '?token=' + encodeURIComponent(TOKEN) + '&page=' + encodeURIComponent(val);
+      }
+    }
+
+    function handleProcessFulfillment() {
+      const fileInput = document.getElementById('csvFileInput');
+      const files = fileInput.files;
+
+      if (files.length === 0) {
+        alert("Silakan pilih minimal 1 file CSV terlebih dahulu.");
+        return;
+      }
+
+      const btn = document.getElementById('btnProcessFulfillment');
+      btn.disabled = true;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = `<span style="display:inline-block; animation:spin 1s linear infinite; margin-right:6px;">⏳</span> Sedang Memproses Data...`;
+
+      let readCount = 0;
+      let csvTextList = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          csvTextList.push(e.target.result);
+          readCount++;
+
+          if (readCount === files.length) {
+            google.script.run
+              .withSuccessHandler(res => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+
+                if (!res.success) {
+                  alert("Gagal: " + res.message);
+                  return;
+                }
+                openPdfPopup(res.pdfData);
+              })
+              .withFailureHandler(err => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                alert("Terjadi kesalahan sistem: " + err.message);
+              })
+              .processRefillCsvFilesToPdf(csvTextList);
+          }
+        };
+        reader.readAsText(files[i]);
+      }
+    }
+
+    function openPdfPopup(base64PdfData) {
+      var win = window.open();
+      if (!win) {
+        alert("Pop-up diblokir oleh browser! Izinkan pop-up untuk situs ini agar PDF dapat tercetak.");
+        return;
+      }
+      win.document.write(
+        `<html><head><title>Cetak Surat Jalan Refill</title></head>` +
+        `<body style="margin:0;">` +
+        `<iframe src="${base64PdfData}" style="width:100%; height:100%; border:none;"></iframe>` +
+        `</body></html>`
+      );
+      setTimeout(() => { win.print(); }, 1200);
+    }
+  </script>
+</body>
+</html>

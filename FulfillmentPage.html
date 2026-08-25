@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --radius: 8px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --input-bg: #0d1117;
+      --text: #c9d1d9;
+      --muted: #8b949e;
+      --primary: #f39c12;
+      --primary-hover: #e08e0b;
+      --danger: #f85149;
+      --danger-hover: #da3633;
+      --success: #2ea043;
+      --success-hover: #238636;
+      --table-hover: rgba(255, 255, 255, 0.03);
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    [data-theme="light"] {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --border: #d0d7de;
+      --input-bg: #ffffff;
+      --text: #24292f;
+      --muted: #57606a;
+      --primary: #b45309;
+      --primary-hover: #92400e;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --success: #16a34a;
+      --success-hover: #15803d;
+      --table-hover: rgba(0, 0, 0, 0.02);
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    * { 
+      box-sizing: border-box; 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; 
+    }
+    
+    code, pre, .mono {
+      font-family: 'JetBrains Mono', monospace !important;
+    }
+    
+    b, strong, th, .btn, button { font-weight: 600 !important; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px 24px 40px;
+      text-transform: uppercase;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .header-bar {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      padding: 4px 4px 16px 4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+    }
+
+    .header-title::before {
+      content: "WMS · ";
+      color: var(--primary);
+    }
+
+    .header-user {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    select, input[type="file"], input[type="text"] {
+      height: 42px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      background: var(--input-bg);
+      color: var(--text);
+      outline: none;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    input[type="file"] {
+      padding: 8px 12px;
+      height: auto;
+      cursor: pointer;
+    }
+
+    select:focus, input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.18);
+    }
+
+    .tool-select {
+      min-width: 160px;
+      color: var(--primary);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 42px;
+      padding: 0 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid transparent;
+      text-decoration: none;
+      transition: all 0.2s;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary { background: var(--primary); color: #fff; width: 100%; font-size: 13px;}
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: var(--danger-hover); }
+
+    .btn-secondary { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+    .btn-logout { margin-left: auto; }
+
+    @media (max-width: 650px) {
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .btn-logout { margin-left: 0; }
+    }
+
+    .card-box {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .box-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+
+    .box-desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .toast {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      display: none;
+    }
+    .toast.show { display: block; }
+    .toast.ok { background: rgba(46, 160, 67, 0.15); color: var(--success); border: 1px solid var(--success); }
+    .toast.err { background: rgba(248, 81, 73, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <div class="wrap">
+    <div class="header-bar">
+      <div class="header-title">FULFILLMENT REFILL</div>
+      <div class="header-user">LOGIN SEBAGAI: <?= username ?></div>
+    </div>
+
+    <div class="toolbar">
+      <select id="menuPage" class="tool-select" onchange="navigasiMenu(this)"></select>
+      <button type="button" id="btnToggleTheme" class="btn btn-secondary" onclick="toggleTheme()">☀️ LIGHT MODE</button>
+      <button type="button" id="btnLogout" class="btn btn-danger btn-logout" onclick="logoutSession()">LOGOUT</button>
+    </div>
+
+    <div class="card-box">
+      <div class="box-title">📄 CETAK SURAT JALAN REFILL (MULTI-CSV)</div>
+      <div class="box-desc">
+        PILIH SATU ATAU BEBERAPA FILE CSV TRANSFER ORDER UNTUK DIGABUNGKAN DAN DICETAK SURAT JALANNYA SECARA OTOMATIS.
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px;">
+          PILIH FILE CSV TRANSFER ORDER:
+        </label>
+        <input type="file" id="csvFileInput" multiple accept=".csv">
+      </div>
+
+      <button id="btnProcessFulfillment" type="button" onclick="handleProcessFulfillment()" class="btn btn-primary">
+        <span id="processLabel">🖨️ PROSES &amp; CETAK PDF SURAT JALAN</span>
+      </button>
+
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+
+  <script>
+    const TOKEN = "<?= token ?>";
+    const EXEC_URL = "<?= execUrl ?>";
+    const AKSES = "<?= akses ?>";
+
+    // ============ THEME MANAGER ============
+    function initTheme() {
+      const savedTheme = localStorage.getItem('wms_theme') || 'dark';
+      document.body.setAttribute('data-theme', savedTheme);
+      updateThemeButtonText(savedTheme);
+    }
+
+    function updateThemeButtonText(theme) {
+      const btn = document.getElementById('btnToggleTheme');
+      if (!btn) return;
+      btn.innerHTML = (theme === 'dark') ? '☀️ LIGHT MODE' : '🌙 DARK MODE';
+    }
+
+    function toggleTheme() {
+      const currentTheme = document.body.getAttribute('data-theme') || 'dark';
+      const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', newTheme);
+      localStorage.setItem('wms_theme', newTheme);
+      updateThemeButtonText(newTheme);
+    }
+    initTheme();
+
+    // ============ NAV BAR TERPUSAT ============
+    const MENU_WMS_LIST = [
+      { value: "produk", label: "INVENTORY", akses: "Produk" },
+      { value: "klasifikasi", label: "MONITORING & KLASIFIKASI", akses: "All" },
+      { value: "penerimaanproduksi", label: "PENERIMAAN PRODUKSI", akses: "All" },
+      { value: "fulfillment", label: "FULFILLMENT REFILL", akses: "Fulfillment" },
+      { value: "peminjaman", label: "PEMINJAMAN", akses: "Peminjaman" },
+      { value: "logproduk", label: "LOG PRODUK", akses: "All" },
+      { value: "logmutasi", label: "LOG MUTASI", akses: "All" },
+      { value: "updatedatabase", label: "UPDATE DATABASE", akses: "All" },
+      { value: "stockopname", label: "STOCK OPNAME", akses: "All" }
+    ];
+
+    function bisaAksesMenuWms(kode) {
+      if (typeof AKSES === "undefined" || !AKSES) return true;
+      const roles = String(AKSES).split(',').map(r => r.trim());
+      return roles.includes("All") || roles.includes(kode);
+    }
+
+    function isiNavDropdownWms(halamanAktif) {
+      const select = document.getElementById('menuPage');
+      if (!select) return;
+      select.innerHTML = '';
+      MENU_WMS_LIST.forEach(function (m) {
+        if (!bisaAksesMenuWms(m.akses)) return;
+        const opt = document.createElement('option');
+        opt.value = m.value;
+        opt.textContent = m.label;
+        if (m.value === halamanAktif) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+    isiNavDropdownWms('fulfillment');
+
+    function navigasiMenu(select) {
+      const val = select.value;
+      if (val && val !== 'fulfillment') {
+        window.top.location.href = EXEC_URL + '?token=' + encodeURIComponent(TOKEN) + '&page=' + encodeURIComponent(val);
+      }
+    }
+
+    function logoutSession() {
+      google.script.run.withSuccessHandler(function() {
+        try { sessionStorage.clear(); } catch(e) {}
+        window.top.location.href = EXEC_URL;
+      }).logoutWmsSession(TOKEN);
+    }
+
+    function showToast(ok, msg) {
+      const el = document.getElementById('toast');
+      el.className = 'toast show ' + (ok ? 'ok' : 'err');
+      el.textContent = msg;
+      setTimeout(function () { el.classList.remove('show'); }, 6000);
+    }
+
+    function handleProcessFulfillment(force = false) {
+      const fileInput = document.getElementById('csvFileInput');
+      const files = fileInput.files;
+
+      if (files.length === 0) {
+        showToast(false, "SILAKAN PILIH MINIMAL 1 FILE CSV TERLEBIH DAHULU.");
+        return;
+      }
+
+      const btn = document.getElementById('btnProcessFulfillment');
+      btn.disabled = true;
+      document.getElementById('processLabel').innerHTML = `<span class="spinner"></span> MEMPROSES DATA &amp; MEMBUAT PDF...`;
+
+      let readCount = 0;
+      let csvTextList = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          csvTextList.push(e.target.result);
+          readCount++;
+
+          if (readCount === files.length) {
+            google.script.run
+              .withSuccessHandler(res => {
+                btn.disabled = false;
+                document.getElementById('processLabel').textContent = "🖨️ PROSES & CETAK PDF SURAT JALAN";
+
+                if (!res.success && res.isDuplicate) {
+                  if (confirm(res.message)) {
+                    handleProcessFulfillment(true);
+                  }
+                  return;
+                }
+
+                if (!res.success) {
+                  showToast(false, "GAGAL: " + res.message);
+                  return;
+                }
+
+                showToast(true, "BERHASIL! MEMBUKA JENDELA CETAK...");
+                openPdfPopup(res.pdfData);
+              })
+              .withFailureHandler(err => {
+                btn.disabled = false;
+                document.getElementById('processLabel').textContent = "🖨️ PROSES & CETAK PDF SURAT JALAN";
+                showToast(false, "TERJADI KESALAHAN SISTEM: " + err.message);
+              })
+              .processRefillCsvFilesToPdf(csvTextList, force);
+          }
+        };
+        reader.readAsText(files[i]);
+      }
+    }
+
+    function openPdfPopup(base64PdfData) {
+      var win = window.open();
+      if (!win) {
+        alert("POP-UP DIBLOKIR OLEH BROWSER! IZINKAN POP-UP UNTUK SITUS INI AGAR PDF DAPAT TERCETAK.");
+        return;
+      }
+      win.document.write(
+        `<html><head><title>CETAK SURAT JALAN REFILL</title></head>` +
+        `<body style="margin:0;">` +
+        `<iframe src="${base64PdfData}" style="width:100%; height:100%; border:none;"></iframe>` +
+        `</body></html>`
+      );
+      setTimeout(() => { win.print(); }, 1200);
+    }
+  </script>
+</body>
+</html>
