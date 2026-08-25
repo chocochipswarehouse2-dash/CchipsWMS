@@ -1,7 +1,7 @@
 // ========================================================
-// WMS MINI API & BACKEND BRIDGE
+// WMS MINI API & BACKEND BRIDGE (v792)
 // Melayani komunikasi HTTP fetch() ke Google Apps Script
-// Menggantikan & mem-polyfill google.script.run
+// Menggantikan & mem-polyfill google.script.run secara transparan
 // ========================================================
 
 (function(window) {
@@ -14,7 +14,7 @@
       console.warn("[WMS API] URL Google Apps Script belum dikonfigurasi di js/config.js");
     }
 
-    const token = localStorage.getItem('wms_token') || sessionStorage.getItem('wms_token') || "";
+    const token = window.TOKEN || localStorage.getItem('wms_token') || sessionStorage.getItem('wms_token') || "";
 
     const requestBody = {
       action: action,
@@ -145,8 +145,6 @@
 
   // ========================================================
   // GOOGLE.SCRIPT.RUN COMPATIBILITY POLYFILL SHIM
-  // Memungkinkan pemanggilan lama tetap berjalan 100% mulus:
-  // google.script.run.withSuccessHandler(fn).withFailureHandler(fn).actionName(args)
   // ========================================================
   class ScriptRunBuilder {
     constructor() {
@@ -171,7 +169,6 @@
       return this.proxy;
     }
 
-    // Dynamic method invocation handler via Proxy
     static create() {
       const builder = new ScriptRunBuilder();
       builder.proxy = new Proxy(builder, {
@@ -183,49 +180,132 @@
             return target[propKey];
           }
 
-          // Return proxy function for any backend method name
           return function(...args) {
             let actionName = propKey;
             let payload = {};
 
-            // Normalisasi parameter sesuai fungsi backend
-            if (actionName === 'verifyWmsLogin') {
+            // 1. Normalisasi nama action & mapping payload
+            if (actionName === 'verifyWmsLogin' || actionName === 'verifyLogin') {
               actionName = 'verifyLogin';
               payload = { username: args[0], password: args[1] };
-            } else if (actionName === 'getWmsProdukCompact') {
+            } else if (actionName === 'getWmsProdukCompact' || actionName === 'getProdukCompact') {
               actionName = 'getProdukCompact';
-              payload = { force: args[1] };
-            } else if (actionName === 'logoutWmsSession') {
+              payload = { force: args[1] || (typeof args[0] === 'boolean' ? args[0] : false) };
+            } else if (actionName === 'logoutWmsSession' || actionName === 'logout') {
               actionName = 'logout';
-              payload = { token: args[0] };
-            } else if (actionName === 'getWmsQtySistem') {
+              payload = { token: args[0] || window.TOKEN };
+            } else if (actionName === 'getWmsQtySistem' || actionName === 'getQtySistem') {
               actionName = 'getQtySistem';
-              payload = { sku: args[0], lokasi: args[1] };
-            } else if (actionName === 'submitFormPeminjaman') {
+              payload = { sku: args[1] !== undefined ? args[1] : args[0], lokasi: args[2] !== undefined ? args[2] : args[1] };
+            } else if (actionName === 'submitFormPeminjaman' || actionName === 'submitPeminjaman') {
               actionName = 'submitPeminjaman';
               payload = args[0];
-            } else if (actionName === 'simpanPenerimaanProduksi') {
+            } else if (actionName === 'submitScanPeminjaman') {
+              actionName = 'submitScanPeminjaman';
+              payload = args[0];
+            } else if (actionName === 'kembalikanPeminjaman') {
+              actionName = 'kembalikanPeminjaman';
+              payload = args[0];
+            } else if (actionName === 'getPeminjamanInitData' || actionName === 'getProdukListForPeminjaman') {
+              actionName = 'getPeminjamanInitData';
+              payload = {};
+            } else if (actionName === 'getPenerimaanProduksiInitData' || actionName === 'getPenerimaanProduksiInit') {
+              actionName = 'getPenerimaanProduksiInitData';
+              payload = {};
+            } else if (actionName === 'getPenerimaanProduksiList') {
+              actionName = 'getPenerimaanProduksiList';
+              payload = (args.length > 1 && typeof args[1] === 'object') ? args[1] : (typeof args[0] === 'object' ? args[0] : {});
+            } else if (actionName === 'simpanPenerimaanProduksi' || actionName === 'submitPenerimaanProduksi') {
               actionName = 'submitPenerimaanProduksi';
               payload = args[0];
-            } else if (actionName === 'getWmsLogProdukData') {
+            } else if (actionName === 'updateBatchPenerimaanProduksi') {
+              actionName = 'updateBatchPenerimaanProduksi';
+              payload = args[0];
+            } else if (actionName === 'hapusBatchPenerimaanProduksi') {
+              actionName = 'hapusBatchPenerimaanProduksi';
+              payload = { no_surat_jalan: args[0] };
+            } else if (actionName === 'updatePenerimaanProduksi') {
+              actionName = 'updatePenerimaanProduksi';
+              payload = args[0];
+            } else if (actionName === 'hapusPenerimaanProduksi') {
+              actionName = 'hapusPenerimaanProduksi';
+              payload = typeof args[0] === 'object' ? args[0] : { id: args[0] };
+            } else if (actionName === 'getFulfillmentPickingLists' || actionName === 'getFulfillmentInit') {
+              actionName = 'getFulfillmentPickingLists';
+              payload = {};
+            } else if (actionName === 'simpanDanProsesMultiCsvRefill') {
+              actionName = 'simpanDanProsesMultiCsvRefill';
+              payload = { filePayloads: args[0], isDirectPrint: args[1], forceProcess: args[2] };
+            } else if (actionName === 'selesaiPickingFulfillment') {
+              actionName = 'selesaiPickingFulfillment';
+              payload = (args.length > 1 && typeof args[1] === 'object') ? args[1] : args[0];
+            } else if (actionName === 'tandaiSjSudahDicetak') {
+              actionName = 'tandaiSjSudahDicetak';
+              payload = { noSJ: args[1] !== undefined ? args[1] : args[0] };
+            } else if (actionName === 'hapusSjDariRefill') {
+              actionName = 'hapusSjDariRefill';
+              payload = { noSJ: args[1] !== undefined ? args[1] : args[0] };
+            } else if (actionName === 'cetakUlangSjRefill') {
+              actionName = 'cetakUlangSjRefill';
+              payload = { noSJ: args[1] !== undefined ? args[1] : args[0] };
+            } else if (actionName === 'prosesApprovalRefill') {
+              actionName = 'prosesApprovalRefill';
+              payload = args[0];
+            } else if (actionName === 'getWmsStockOpnameInitData' || actionName === 'getStockOpnameInit') {
+              actionName = 'getWmsStockOpnameInitData';
+              payload = {};
+            } else if (actionName === 'getWmsStockExportCsv') {
+              actionName = 'getWmsStockExportCsv';
+              payload = {};
+            } else if (actionName === 'submitSesiOpname' || actionName === 'submitStockOpname' || actionName === 'simpanHasilOpname') {
+              actionName = 'submitSesiOpname';
+              payload = (args.length > 1 && Array.isArray(args[1])) ? { items: args[1] } : (Array.isArray(args[0]) ? { items: args[0] } : args[0]);
+            } else if (actionName === 'submitAdjustmentManualBulk') {
+              actionName = 'submitAdjustmentManualBulk';
+              payload = (args.length > 1 && Array.isArray(args[1])) ? { items: args[1] } : (Array.isArray(args[0]) ? { items: args[0] } : args[0]);
+            } else if (actionName === 'getWmsAdjustmentPendingList') {
+              actionName = 'getWmsAdjustmentPendingList';
+              payload = {};
+            } else if (actionName === 'approveAdjustment') {
+              actionName = 'approveAdjustment';
+              payload = { rowIndex: args[1] !== undefined ? args[1] : args[0] };
+            } else if (actionName === 'rejectAdjustment') {
+              actionName = 'rejectAdjustment';
+              payload = { rowIndex: args[1] !== undefined ? args[1] : args[0] };
+            } else if (actionName === 'approveAdjustmentBulk') {
+              actionName = 'approveAdjustmentBulk';
+              payload = { rowIndexList: args[1] !== undefined ? args[1] : args[0] };
+            } else if (actionName === 'rejectAdjustmentBulk') {
+              actionName = 'rejectAdjustmentBulk';
+              payload = { rowIndexList: args[1] !== undefined ? args[1] : args[0] };
+            } else if (actionName === 'prosesApprovalAdjustment') {
+              actionName = 'prosesApprovalAdjustment';
+              payload = { rowIndexList: args[1] !== undefined ? args[1] : args[0], disetujui: args[2] !== undefined ? args[2] : args[1] };
+            } else if (actionName === 'getWmsLogProdukData' || actionName === 'getLogProduk') {
               actionName = 'getWmsLogProdukData';
-              payload = { token: args[0], sku: args[1], filters: args[2] };
-            } else if (actionName === 'getWmsLogMutasiData') {
-              actionName = 'getWmsLogMutasiData';
-              payload = { token: args[0], filters: args[1] };
+              payload = { sku: args[1] !== undefined ? args[1] : args[0], filters: args[2] !== undefined ? args[2] : (typeof args[1] === 'object' ? args[1] : {}) };
             } else if (actionName === 'getWmsLogProdukInitData') {
               actionName = 'getWmsLogProdukInitData';
-              payload = { token: args[0] };
+              payload = {};
+            } else if (actionName === 'getWmsLogMutasiData' || actionName === 'getLogMutasi') {
+              actionName = 'getWmsLogMutasiData';
+              payload = (args.length > 1 && typeof args[1] === 'object') ? args[1] : (typeof args[0] === 'object' ? args[0] : {});
             } else if (actionName === 'getWmsLogMutasiInitData') {
               actionName = 'getWmsLogMutasiInitData';
-              payload = { token: args[0] };
-            } else if (actionName === 'getWmsUserList') {
+              payload = {};
+            } else if (actionName === 'updateDatabaseCsv') {
+              actionName = 'updateDatabaseCsv';
+              payload = { csvData: args[0] };
+            } else if (actionName === 'bersihkanCacheProdukWms') {
+              actionName = 'bersihkanCacheProdukWms';
+              payload = {};
+            } else if (actionName === 'getWmsUserList' || actionName === 'getUserList') {
               actionName = 'getUserList';
-              payload = { token: args[0] };
-            } else if (actionName === 'saveWmsUser') {
+              payload = {};
+            } else if (actionName === 'saveWmsUser' || actionName === 'saveUser') {
               actionName = 'saveUser';
               payload = args[1] || args[0];
-            } else if (actionName === 'deleteWmsUser') {
+            } else if (actionName === 'deleteWmsUser' || actionName === 'deleteUser') {
               actionName = 'deleteUser';
               payload = { username: args[1] || args[0] };
             } else if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
@@ -254,7 +334,7 @@
     }
   }
 
-  // Create a proxy that spawns new proxies for every call/chain
+  // Create global proxy for window.google.script.run
   if (!window.google) window.google = {};
   if (!window.google.script) window.google.script = {};
   
@@ -262,13 +342,12 @@
     get(target, propKey) {
       const freshBuilderProxy = ScriptRunBuilder.create();
       if (typeof freshBuilderProxy[propKey] === 'function') {
-         return freshBuilderProxy[propKey];
+        return freshBuilderProxy[propKey];
       }
-      return freshBuilderProxy[propKey]; // This handles direct calls like google.script.run.myFunc()
+      return freshBuilderProxy[propKey];
     }
   });
 
-  // Expose Global Helper
   window.apiCall = apiCall;
 
 })(window);

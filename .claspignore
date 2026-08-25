@@ -2,14 +2,23 @@
 _backup_*/**
 _backup_*
 .git/**
+.github/**
 node_modules/**
 *.md
 package.json
 package-lock.json
-frontend/**
-WMS Mini/**
 deploy.js
 scratch*
 scratch/**
 
-
+# Ignore Frontend distribution files from Google Apps Script Backend
+frontend/**
+frontend
+index.html
+peminjaman.html
+penerimaanproduksi.html
+fulfillment.html
+css/**
+css
+js/**
+js

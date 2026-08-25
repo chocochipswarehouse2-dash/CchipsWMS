@@ -1,43 +1,16 @@
-/**
- * ========================================================
- * WMS MINI MASTER COMPILER & DEPLOYMENT SCRIPT (v792)
- * Sinkronisasi 100% Frontend GitHub = Frontend GAS (Acuan)
- * ========================================================
- */
-
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 const rootDir = __dirname;
 const frontendDir = path.join(rootDir, 'frontend');
-const DEPLOYMENT_ID = "AKfycbyFxfqoqJhrPJOioPxnmbGJTjTTAwli6b87lgOQCPFDOoCVt5EJg3NHZT56zI52rM63";
 
-function run(cmd, cwd = rootDir) {
-  console.log(`\n> [EXEC] ${cmd} (in ${cwd})`);
-  return execSync(cmd, { cwd, stdio: 'inherit' });
-}
-
-function readFileSafe(filePath) {
-  if (fs.existsSync(filePath)) {
-    return fs.readFileSync(filePath, 'utf8');
-  }
-  return '';
-}
-
-console.log('====================================================');
-console.log('  🚀 COMPILING WMS MINI FRONTEND (GAS -> GITHUB)');
-console.log('====================================================');
+console.log('=== MEMULAI COMPILATION FRONTEND WMS ===');
 
 // 1. Baca Master Shell WmsDashboard.html
-let masterShell = readFileSafe(path.join(rootDir, 'WmsDashboard.html'));
-if (!masterShell) {
-  console.error('❌ Error: WmsDashboard.html tidak ditemukan!');
-  process.exit(1);
-}
+let masterShell = fs.readFileSync(path.join(rootDir, 'WmsDashboard.html'), 'utf8');
 
 // 2. Baca Komponen Form Login
-const loginHtml = readFileSafe(path.join(rootDir, 'WmsLoginPage.html'));
+const loginHtml = fs.readFileSync(path.join(rootDir, 'WmsLoginPage.html'), 'utf8');
 let loginBody = '';
 const loginWrapMatch = loginHtml.match(/<div class="login-wrap">[\s\S]*?<\/div>\s*<\/form>\s*<\/div>/i) 
   || loginHtml.match(/<div class="login-wrap">[\s\S]*?<\/div>/i);
@@ -45,12 +18,11 @@ const loginWrapMatch = loginHtml.match(/<div class="login-wrap">[\s\S]*?<\/div>\
 if (loginWrapMatch) {
   loginBody = loginWrapMatch[0];
 } else {
-  // Fallback ekstrak body form
   const bodyMatch = loginHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
   loginBody = bodyMatch ? bodyMatch[1] : loginHtml;
 }
 
-// 3. Mapping Daftar Views yang di-include oleh GAS
+// 3. Mapping Daftar Views
 const viewFiles = {
   'ViewKlasifikasi': 'ViewKlasifikasi.html',
   'ViewFulfillment': 'ViewFulfillment.html',
@@ -65,14 +37,11 @@ const viewFiles = {
 
 // 4. Injeksi setiap View langsung ke posisi <?!= include('...') ?>
 for (const [viewTag, viewFileName] of Object.entries(viewFiles)) {
-  const viewContent = readFileSafe(path.join(rootDir, viewFileName));
-  const includeRegex = new RegExp(`<\\?!=\\s*include\\(['"]${viewTag}['"]\\);?\\s*\\?>`, 'g');
-  
-  if (viewContent) {
+  const viewFilePath = path.join(rootDir, viewFileName);
+  if (fs.existsSync(viewFilePath)) {
+    const viewContent = fs.readFileSync(viewFilePath, 'utf8');
+    const includeRegex = new RegExp(`<\\?!=\\s*include\\(['"]${viewTag}['"]\\);?\\s*\\?>`, 'g');
     masterShell = masterShell.replace(includeRegex, `\n<!-- === VIEW: ${viewTag} === -->\n${viewContent}\n`);
-  } else {
-    console.warn(`⚠️ Warning: File ${viewFileName} tidak ditemukan.`);
-    masterShell = masterShell.replace(includeRegex, '');
   }
 }
 
@@ -144,7 +113,7 @@ fs.copyFileSync(path.join(rootDir, 'js', 'config.js'), path.join(frontendDir, 'j
 fs.copyFileSync(path.join(rootDir, 'js', 'api.js'), path.join(frontendDir, 'js', 'api.js'));
 fs.copyFileSync(path.join(rootDir, 'js', 'auth.js'), path.join(frontendDir, 'js', 'auth.js'));
 
-// Tulis Halaman Root
+// Tulis Halaman Root & frontend/
 const pages = [
   { file: 'index.html', page: 'produk' },
   { file: 'peminjaman.html', page: 'peminjaman' },
@@ -156,7 +125,7 @@ for (const p of pages) {
   const content = buildPage(p.page);
   fs.writeFileSync(path.join(rootDir, p.file), content, 'utf8');
   fs.writeFileSync(path.join(frontendDir, p.file), content, 'utf8');
-  console.log(`✓ Generated ${p.file} (Default tab: ${p.page})`);
+  console.log(`✓ Berhasil generate ${p.file} (Default: ${p.page})`);
 }
 
-console.log('\n🎉 Build Selesai! Semua halaman Frontend GitHub 100% sama dengan Frontend GAS.');
+console.log('=== COMPILATION SUKSES! ===');

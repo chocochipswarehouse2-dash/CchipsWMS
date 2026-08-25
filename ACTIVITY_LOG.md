@@ -200,22 +200,26 @@ Seluruh antarmuka web WMS kini menggunakan desain seragam standar Antigravity:
 
 ---
 
-## [2026-08-24] - Master One-Click Build & Universal API Bridge Gateway v790
-- **Pembaruan & Perbaikan**:
-  1. **Master One-Click Build & Deploy Pipeline (`deploy.js`)**:
-     - Otomatisasi 3 langkah kompilasi frontend (CSS/JS modules/HTML injection), sinkronisasi backend ke Google Apps Script via Clasp, dan auto-push ke GitHub Pages (`origin/main`).
-     - Menghubungkan seluruh modul SPA (`Peminjaman`, `Penerimaan Produksi`, `Fulfillment Refill`, `Stock Opname`, `Log Produk`, `Log Mutasi`, `Update Database`, `Setting`) ke dalam single distribution bundle.
-  2. **Universal API Bridge Gateway (`ApiBridge.js`)**:
-     - Menyelaraskan seluruh dispatch action API dengan fungsi backend Google Apps Script:
-       - **Peminjaman SPS**: `getPeminjamanInitData`, `submitPeminjaman`, `submitScanPeminjaman`, `kembalikanPeminjaman`.
-       - **Penerimaan Produksi**: `getPenerimaanProduksiInitData`, `getPenerimaanProduksiList`, `simpanPenerimaanProduksi`, `updateBatchPenerimaanProduksi`, `hapusBatchPenerimaanProduksi`, `updatePenerimaanProduksi`, `hapusPenerimaanProduksi`.
-       - **Fulfillment & Refill**: `getFulfillmentPickingLists`, `simpanDanProsesMultiCsvRefill`, `selesaiPickingFulfillment`, `tandaiSjSudahDicetak`, `hapusSjDariRefill`, `cetakUlangSjRefill`.
-       - **Stock Opname & Adjustment**: `getWmsStockOpnameInitData`, `getWmsQtySistem`, `getWmsStockExportCsv`, `submitSesiOpname`, `submitAdjustmentManualBulk`, `getWmsAdjustmentPendingList`, `approveAdjustment`, `rejectAdjustment`, `approveAdjustmentBulk`, `rejectAdjustmentBulk`, `prosesApprovalAdjustment`.
-       - **Log & Update DB**: `getWmsLogMutasiData`, `getWmsLogMutasiInitData`, `getWmsLogProdukData`, `getWmsLogProdukInitData`, `updateDatabaseCsv`, `bersihkanCacheProdukWms`.
-  3. **CORS Resilience & GET Fallback**:
-     - Menambahkan parameter handling API via GET di [`Router.js`](file:///d:/GAS%20WMS%20Mini/Router.js) untuk fallback jika CORS POST terblokir oleh browser pengguna.
-- **Deployment Status**:
-  - **GAS Web App Deployment ID**: `AKfycbyFxfqoqJhrPJOioPxnmbGJTjTTAwli6b87lgOQCPFDOoCVt5EJg3NHZT56zI52rM63` versi **@790**.
-  - **GitHub Pages Live URLs**:
-    - Master Dashboard: https://chocochipswarehouse2-dash.github.io/CchipsWMS/index.html
-    - Peminjaman SPS: https://chocochipswarehouse2-dash.github.io/CchipsWMS/peminjaman.html
+## [2026-08-25] - Sinkronisasi Penuh Frontend GitHub = Frontend GAS (Acuan) v792
+- **Tujuan**:
+  - Menyelaraskan seluruh tampilan visual (UI/UX, CSS tema, font, layout responsif mobile & desktop) dan fungsi operasional Frontend GitHub Pages agar 100% identik dengan Frontend Google Apps Script (acuan utama).
+- **Perbaikan & Standarisasi**:
+  1. **Direct View Injection Architecture**:
+     - Menghapus pemisahan skrip modules yang memicu tabrakan variabel global (`SyntaxError`).
+     - Menyematkan seluruh komponen view (`ViewPeminjaman`, `ViewPenerimaanProduksi`, `ViewFulfillment`, `ViewStockOpname`, `ViewLogProduk`, `ViewLogMutasi`, `ViewUpdateDatabase`, `ViewSetting`, `ViewKlasifikasi`) langsung ke dalam `<main class="app-content">` persis seperti cara kerja rendering GAS.
+     - Menyematkan form login dari `WmsLoginPage.html` ke dalam kontainer `#loginScreen`.
+  2. **Enhanced API Bridge Polyfill (`js/api.js`)**:
+     - Proxy dinamis `google.script.run` yang secara transparan menangani seluruh pemanggilan method backend untuk 10 modul WMS.
+     - Auto-retry dengan GET Fallback jika request POST terkena CORS restriction.
+     - Direct Supabase Cloud Master Data Loader untuk response data instan <500ms.
+  3. **Seamless Authentication Controller (`js/auth.js`)**:
+     - Menjaga pengguna tetap berada di domain GitHub Pages setelah login tanpa ter-redirect keluar.
+     - Manajemen token sesi, sinkronisasi profil user di sidebar, dan routing dinamis `window.INITIAL_PAGE`.
+  4. **Proteksi Backend (`.claspignore`)**:
+     - Mengisolasi file-file statis frontend dari perintah `clasp push` agar backend Google Apps Script tetap bersih, aman, dan stabil.
+  5. **Generated Entry Points**:
+     - `index.html` (Default tab: `produk` / Master Inventory)
+     - `peminjaman.html` (Default tab: `peminjaman` / Form SPS & Live Stock)
+     - `penerimaanproduksi.html` (Default tab: `penerimaanproduksi` / Kedatangan Barang & Kargo)
+     - `fulfillment.html` (Default tab: `fulfillment` / Refill Multi-CSV & Surat Jalan)
+
