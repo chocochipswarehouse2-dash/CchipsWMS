@@ -380,3 +380,4 @@ function createJsonResponse(dataObj) {
   return ContentService.createTextOutput(JSON.stringify(dataObj || {}))
     .setMimeType(ContentService.MimeType.JSON);
 }
+// v793-clean

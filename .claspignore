@@ -8,6 +8,8 @@ node_modules/**
 package.json
 package-lock.json
 deploy.js
+build_frontend.js
+build_frontend.ps1
 scratch*
 scratch/**
 
