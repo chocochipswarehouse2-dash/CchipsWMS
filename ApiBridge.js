@@ -1,5 +1,5 @@
 /************************************************
- * FILE APIBRIDGE.GS (WMS MINI API GATEWAY v781)
+ * FILE APIBRIDGE.GS (WMS MINI API GATEWAY v793)
  * 
  * Gateway API untuk melayani request dari Frontend GitHub / Standalone Web Client
  * Format Request: POST/GET JSON { action: "namaAction", payload: {...}, token: "..." }
@@ -42,27 +42,32 @@ function handleWmsApiRequest(json) {
         if (typeof logoutWmsSession === "function") logoutWmsSession(token);
         return createJsonResponse({ success: true, message: "Logout berhasil" });
 
+      case "getWmsUsersList":
+      case "getUsersList":
       case "getUserList":
       case "getWmsUserList":
-        if (typeof getWmsUserList === "function") {
-          return createJsonResponse({ success: true, data: getWmsUserList(token) });
+        if (typeof getWmsUsersList === "function") {
+          return createJsonResponse(getWmsUsersList(token));
+        } else if (typeof getWmsUserList === "function") {
+          return createJsonResponse({ success: true, users: getWmsUserList(token), currentUser: session.username });
         }
-        return createJsonResponse({ success: false, message: "Fungsi getUserList tidak tersedia" });
+        return createJsonResponse({ success: false, message: "Fungsi getWmsUsersList tidak tersedia" });
 
-      case "saveUser":
       case "saveWmsUser":
+      case "saveUser":
         if (typeof saveWmsUser === "function") {
-          return createJsonResponse(saveWmsUser(token, payload));
+          const userData = payload.userData || payload;
+          return createJsonResponse(saveWmsUser(token, userData));
         }
-        return createJsonResponse({ success: false, message: "Fungsi saveUser tidak tersedia" });
+        return createJsonResponse({ success: false, message: "Fungsi saveWmsUser tidak tersedia" });
 
-      case "deleteUser":
       case "deleteWmsUser":
+      case "deleteUser":
         if (typeof deleteWmsUser === "function") {
           const userToDelete = payload.username || payload;
           return createJsonResponse(deleteWmsUser(token, userToDelete));
         }
-        return createJsonResponse({ success: false, message: "Fungsi deleteUser tidak tersedia" });
+        return createJsonResponse({ success: false, message: "Fungsi deleteWmsUser tidak tersedia" });
 
       // --- INVENTORY & DASHBOARD MASTER DATA ---
       case "getProdukCompact":
@@ -73,11 +78,21 @@ function handleWmsApiRequest(json) {
         }
         return createJsonResponse({ success: false, message: "Fungsi getProdukCompact tidak tersedia" });
 
+      case "getWmsProdukSearch":
+        if (typeof getWmsProdukSearch === "function") {
+          return createJsonResponse(getWmsProdukSearch(token, payload.keyword, payload.areaFilter, payload.limit));
+        }
+        return createJsonResponse({ success: false, message: "Fungsi getWmsProdukSearch tidak tersedia" });
+
       // --- PEMINJAMAN ---
       case "getPeminjamanInitData":
       case "getProdukListForPeminjaman":
         if (typeof getPeminjamanInitData === "function") {
-          return createJsonResponse(getPeminjamanInitData());
+          const initRes = getPeminjamanInitData();
+          if (initRes && typeof initRes === "object" && !initRes.hasOwnProperty("success")) {
+            initRes.success = true;
+          }
+          return createJsonResponse(initRes);
         }
         return createJsonResponse({ success: false, message: "Fungsi getPeminjamanInitData tidak tersedia" });
 
@@ -112,20 +127,23 @@ function handleWmsApiRequest(json) {
 
       case "getPenerimaanProduksiList":
         if (typeof getPenerimaanProduksiList === "function") {
-          return createJsonResponse(getPenerimaanProduksiList(token, payload));
+          const filterObj = payload.filters || payload;
+          return createJsonResponse(getPenerimaanProduksiList(token, filterObj));
         }
         return createJsonResponse({ success: false, message: "Fungsi getPenerimaanProduksiList tidak tersedia" });
 
       case "submitPenerimaanProduksi":
       case "simpanPenerimaanProduksi":
         if (typeof simpanPenerimaanProduksi === "function") {
-          return createJsonResponse(simpanPenerimaanProduksi(token, payload));
+          const dataToSave = payload.payload || payload;
+          return createJsonResponse(simpanPenerimaanProduksi(token, dataToSave));
         }
         return createJsonResponse({ success: false, message: "Fungsi simpanPenerimaanProduksi tidak tersedia" });
 
       case "updateBatchPenerimaanProduksi":
         if (typeof updateBatchPenerimaanProduksi === "function") {
-          return createJsonResponse(updateBatchPenerimaanProduksi(token, payload));
+          const dataToUpdate = payload.payload || payload;
+          return createJsonResponse(updateBatchPenerimaanProduksi(token, dataToUpdate));
         }
         return createJsonResponse({ success: false, message: "Fungsi updateBatchPenerimaanProduksi tidak tersedia" });
 
@@ -138,13 +156,15 @@ function handleWmsApiRequest(json) {
 
       case "updatePenerimaanProduksi":
         if (typeof updatePenerimaanProduksi === "function") {
-          return createJsonResponse(updatePenerimaanProduksi(token, payload));
+          const itemUpdate = payload.payload || payload;
+          return createJsonResponse(updatePenerimaanProduksi(token, itemUpdate));
         }
         return createJsonResponse({ success: false, message: "Fungsi updatePenerimaanProduksi tidak tersedia" });
 
       case "hapusPenerimaanProduksi":
         if (typeof hapusPenerimaanProduksi === "function") {
-          return createJsonResponse(hapusPenerimaanProduksi(token, payload));
+          const itemDelete = payload.id !== undefined ? payload : { id: payload };
+          return createJsonResponse(hapusPenerimaanProduksi(token, itemDelete));
         }
         return createJsonResponse({ success: false, message: "Fungsi hapusPenerimaanProduksi tidak tersedia" });
 
@@ -164,7 +184,8 @@ function handleWmsApiRequest(json) {
 
       case "selesaiPickingFulfillment":
         if (typeof selesaiPickingFulfillment === "function") {
-          return createJsonResponse(selesaiPickingFulfillment(token, payload));
+          const bubbleObj = payload.bubbleObj || payload;
+          return createJsonResponse(selesaiPickingFulfillment(token, bubbleObj));
         }
         return createJsonResponse({ success: false, message: "Fungsi selesaiPickingFulfillment tidak tersedia" });
 
@@ -188,6 +209,18 @@ function handleWmsApiRequest(json) {
           return createJsonResponse(cetakUlangSjRefill(token, targetSJ));
         }
         return createJsonResponse({ success: false, message: "Fungsi cetakUlangSjRefill tidak tersedia" });
+
+      case "cetakMultipleSuratJalanRefill":
+        if (typeof cetakMultipleSuratJalanRefill === "function") {
+          return createJsonResponse(cetakMultipleSuratJalanRefill(payload.bubbles || payload));
+        }
+        return createJsonResponse({ success: false, message: "Fungsi cetakMultipleSuratJalanRefill tidak tersedia" });
+
+      case "cetakSuratJalanRefill":
+        if (typeof cetakSuratJalanRefill === "function") {
+          return createJsonResponse(cetakSuratJalanRefill(payload.noSJ || payload));
+        }
+        return createJsonResponse({ success: false, message: "Fungsi cetakSuratJalanRefill tidak tersedia" });
 
       case "prosesApprovalRefill":
         if (typeof prosesApprovalRefill === "function") {
@@ -240,13 +273,15 @@ function handleWmsApiRequest(json) {
 
       case "approveAdjustment":
         if (typeof approveAdjustment === "function") {
-          return createJsonResponse(approveAdjustment(token, payload.rowIndex || payload));
+          const rowIdx = payload.rowIndex !== undefined ? payload.rowIndex : payload;
+          return createJsonResponse(approveAdjustment(token, rowIdx));
         }
         return createJsonResponse({ success: false, message: "Fungsi approveAdjustment tidak tersedia" });
 
       case "rejectAdjustment":
         if (typeof rejectAdjustment === "function") {
-          return createJsonResponse(rejectAdjustment(token, payload.rowIndex || payload));
+          const rowIdx = payload.rowIndex !== undefined ? payload.rowIndex : payload;
+          return createJsonResponse(rejectAdjustment(token, rowIdx));
         }
         return createJsonResponse({ success: false, message: "Fungsi rejectAdjustment tidak tersedia" });
 
@@ -296,9 +331,17 @@ function handleWmsApiRequest(json) {
         return createJsonResponse({ success: false, message: "Fungsi getWmsLogProdukInitData tidak tersedia" });
 
       // --- UPDATE DATABASE ---
+      case "getWmsUpdateDatabaseRingkasan":
+        if (typeof getWmsUpdateDatabaseRingkasan === "function") {
+          return createJsonResponse(getWmsUpdateDatabaseRingkasan(token));
+        }
+        return createJsonResponse({ success: false, message: "Fungsi getWmsUpdateDatabaseRingkasan tidak tersedia" });
+
       case "updateDatabaseCsv":
         if (typeof updateDatabaseCsv === "function") {
-          return createJsonResponse(updateDatabaseCsv(payload.csvData || payload, token));
+          const header = payload.headerRow || payload.header || [];
+          const rows = payload.rows || [];
+          return createJsonResponse(updateDatabaseCsv(token, header, rows));
         }
         return createJsonResponse({ success: false, message: "Fungsi updateDatabaseCsv tidak tersedia" });
 
@@ -308,7 +351,18 @@ function handleWmsApiRequest(json) {
         }
         return createJsonResponse({ success: false, message: "Fungsi bersihkanCacheProdukWms tidak tersedia" });
 
-      // --- GENERIC DISPATCHER (Jika ada fungsi GAS yang dipanggil langsung) ---
+      case "rebuildStockTriggerManual":
+      case "rebuildStock":
+        if (typeof rebuildStockAman === "function") {
+          rebuildStockAman();
+          return createJsonResponse({ success: true, message: "Rebuild stok selesai" });
+        } else if (typeof rebuildStock === "function") {
+          rebuildStock();
+          return createJsonResponse({ success: true, message: "Rebuild stok selesai" });
+        }
+        return createJsonResponse({ success: false, message: "Fungsi rebuildStock tidak tersedia" });
+
+      // --- GENERIC DISPATCHER ---
       default:
         if (typeof this[action] === "function") {
           const result = this[action](payload, token);
