@@ -113,7 +113,12 @@ function buildPage(defaultPageCode) {
   </script>
 </body>`;
 
-  return masterShell.replace('</body>', initScript);
+  // Ganti </body> yang TERAKHIR (bukan yang pertama - yang ada di dalam JS string literal)
+  const lastBodyIdx = masterShell.lastIndexOf('</body>');
+  if (lastBodyIdx === -1) {
+    return masterShell + initScript;
+  }
+  return masterShell.substring(0, lastBodyIdx) + initScript + masterShell.substring(lastBodyIdx + '</body>'.length);
 }
 
 // Pastikan direktori tujuan tersedia

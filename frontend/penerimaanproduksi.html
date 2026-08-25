@@ -3178,16 +3178,7 @@
       `<html><head><title>${escapeHtml(docTitle)}</title></head>` +
       `<body style="margin:0; background:#333;">` +
       `<iframe src="${base64PdfData}" style="width:100%; height:100%; border:none;"></iframe>` +
-      `
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      window.INITIAL_PAGE = "penerimaanproduksi";
-      if (typeof checkAuthSession === 'function') {
-        checkAuthSession();
-      }
-    });
-  </script>
-</body></html>`
+      `</body></html>`
     );
     setTimeout(() => { 
       try { win.print(); } catch(e) {}
@@ -11070,5 +11061,14 @@
 
   <!-- CONTAINER FLOATING TOAST NOTIFIKASI SPA -->
   <div id="wmsGlobalToastContainer" class="toast-container"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      window.INITIAL_PAGE = "penerimaanproduksi";
+      if (typeof checkAuthSession === 'function') {
+        checkAuthSession();
+      }
+    });
+  </script>
 </body>
 </html>
