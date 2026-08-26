@@ -323,7 +323,7 @@ function submitScanPeminjaman(data) {
 
   try {
     const timestamp = new Date();
-    const tanggalStr = Utilities.formatDate(timestamp, TIMEZONE, "yyyy-MM-dd");
+    const tanggalStr = Utilities.formatDate(timestamp, TIMEZONE, "yyyy-MM-dd HH:mm:ss");
     const noRef = getPeminjamanID();
     const invoice = getInvoice();
     const operatorStr = (session.nama || session.username) + " | " + pic;

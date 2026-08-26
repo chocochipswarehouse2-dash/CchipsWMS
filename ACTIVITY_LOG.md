@@ -216,6 +216,12 @@ Seluruh antarmuka web WMS kini menggunakan desain seragam standar Antigravity:
 
 ---
 
+## [2026-08-26] - Update Format Timestamp Log Produk (Backend)
+- **Perubahan**: Memastikan seluruh data tanggal yang diinput ke Sheet "Log Produk" oleh skrip backend (`Log Product.js`, `Stockopname.js`, `StockOpnameAdjustment.js`, `FormPeminjaman.js`) kini menggunakan format teks statis `yyyy-MM-dd HH:mm:ss` (contoh: `2026-08-26 08:12:33`).
+- **Alasan**: Mencegah Google Sheets secara tidak sengaja memotong/menyembunyikan informasi jam, sehingga laporan histori keluar-masuk barang memiliki jejak waktu yang jauh lebih presisi.
+
+---
+
 ## [2026-08-26] - Penghapusan Halaman Log Produk & Log Mutasi (Frontend)
 - **Perubahan**:
   - Menghapus view HTML untuk `Log Produk` (`ViewLogProduk.html`, `WmsLogProdukView.html`) dan `Log Mutasi` (`ViewLogMutasi.html`, `WmsLogMutasiView.html`).

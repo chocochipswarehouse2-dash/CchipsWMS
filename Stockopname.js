@@ -93,7 +93,7 @@ function prosesStockOpname(json) {
   const itemsOpnameFisik = []; // { sku, lokasi, qtyFisik } -- hasil agregasi baris tanpa #IN/#OUT
 
   const waktuPesan = new Date();
-  const tanggal = waktuPesan; // 1 Pesan WA = 1 Timestamp Waktu Identik Presisi
+  const tanggal = Utilities.formatDate(waktuPesan, "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"); // 1 Pesan WA = 1 Timestamp Waktu Identik Presisi
   let invoice = "";
   const operator = name + " | " + sender;
 

@@ -814,7 +814,7 @@ function prosesSatuChunkApproval_(session, rowIndexListChunk, disetujui) {
 
     const tanggalProses = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm");
     const approver = session.username;
-    const tanggalLog = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd");
+    const tanggalLog = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm:ss");
 
     const rowsUntukLog = [];
     const qtyUntukLog = [];

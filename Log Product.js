@@ -41,8 +41,8 @@ function prosesKeluarMasuk(json) {
     let currentLokasi = "";
     let rows = [];
     
-    // UBAH DI SINI: Gunakan new Date() agar menyimpan format Tanggal + Jam akurat
-    const waktuLengkap = new Date(); 
+    // UBAH DI SINI: Gunakan Utilities.formatDate agar menyimpan format Tanggal + Jam akurat dalam bentuk teks
+    const waktuLengkap = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"); 
     
     const invoice = getInvoice();
     const operator = name + " | " + sender;
