@@ -216,6 +216,14 @@ Seluruh antarmuka web WMS kini menggunakan desain seragam standar Antigravity:
 
 ---
 
+## [2026-08-26] - Penghapusan Halaman Log Produk & Log Mutasi (Frontend)
+- **Perubahan**:
+  - Menghapus view HTML untuk `Log Produk` (`ViewLogProduk.html`, `WmsLogProdukView.html`) dan `Log Mutasi` (`ViewLogMutasi.html`, `WmsLogMutasiView.html`).
+  - Menghapus route handler dan menu navigasi yang mengarah ke halaman tersebut pada `Router.js` dan `WmsDashboard.html`.
+- **Status**: Kedua modul antarmuka tersebut telah ditiadakan sepenuhnya dari Single Page Application (SPA) WMS.
+
+---
+
 ## [2026-08-26] - Implementasi Local Restore Point (Git Backup)
 - **Kebutuhan**: 
   - Platform Google Apps Script (GAS) memiliki batasan jumlah versi deployment (limit ~200 versi). Agar terhindar dari hilangnya versi stabil sebelumnya, diperlukan mekanisme pencadangan lokal yang independen dari server Google.

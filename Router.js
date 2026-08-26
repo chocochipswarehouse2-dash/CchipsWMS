@@ -55,31 +55,6 @@ function renderFulfillmentPage(session, token) {
 }
 
 /************************************************
- * HAK AKSES & RENDER HALAMAN LOG PRODUK
- ************************************************/
-function wmsBisaAksesLogProduk(akses) {
-  return akses === "All"; 
-}
-
-function renderWmsLogProdukPage(session, token) {
-  if (!wmsBisaAksesLogProduk(session.akses)) {
-    return renderWmsAksesDitolak();
-  }
-
-  const template = HtmlService.createTemplateFromFile("WmsLogProdukView");
-  
-  template.token = token;
-  template.username = session.username;
-  template.akses = session.akses;
-  template.execUrl = ScriptApp.getService().getUrl();
-
-  return template.evaluate()
-    .setTitle("Log Produk - WMS Chocochips")
-    .addMetaTag("viewport", "width=device-width, initial-scale=1")
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-/************************************************
  * RENDER HALAMAN KLASIFIKASI & MONITORING
  ************************************************/
 function renderWmsKlasifikasiPage(session, token) {

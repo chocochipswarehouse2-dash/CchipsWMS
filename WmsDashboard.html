@@ -1624,12 +1624,6 @@
       <!-- VIEW 4: PEMINJAMAN SEMENTARA (SPS) -->
       <?!= include('ViewPeminjaman') ?>
 
-      <!-- VIEW 5: LOG PRODUK -->
-      <?!= include('ViewLogProduk') ?>
-
-      <!-- VIEW 6: LOG MUTASI -->
-      <?!= include('ViewLogMutasi') ?>
-
       <!-- VIEW 7: UPDATE DATABASE -->
       <?!= include('ViewUpdateDatabase') ?>
 
@@ -1858,8 +1852,6 @@
       { value: "penerimaanproduksi", label: "Penerimaan Produksi", icon: "📥", akses: "All" },
       { value: "fulfillment", label: "Fulfillment Refill", icon: "🚚", akses: "Fulfillment" },
       { value: "peminjaman", label: "Peminjaman", icon: "📝", akses: "Peminjaman" },
-      { value: "logproduk", label: "Log Produk", icon: "📜", akses: "All" },
-      { value: "logmutasi", label: "Log Mutasi", icon: "🔄", akses: "All" },
       { value: "updatedatabase", label: "Update Database", icon: "🗄️", akses: "All" },
       { value: "stockopname", label: "Stock Opname", icon: "🔍", akses: "All" },
       { value: "setting", label: "Pengaturan & User", icon: "⚙️", akses: "All" }
@@ -1966,8 +1958,6 @@
       else if (pageCode === 'penerimaanproduksi' && typeof initPenerimaanView === 'function') initPenerimaanView();
       else if (pageCode === 'fulfillment' && typeof initFulfillmentView === 'function') initFulfillmentView();
       else if (pageCode === 'peminjaman' && typeof initPeminjamanView === 'function') initPeminjamanView();
-      else if (pageCode === 'logproduk' && typeof initLogProdukView === 'function') initLogProdukView();
-      else if (pageCode === 'logmutasi' && typeof initLogMutasiView === 'function') initLogMutasiView();
       else if (pageCode === 'updatedatabase' && typeof initUpdateDatabaseView === 'function') initUpdateDatabaseView();
       else if (pageCode === 'stockopname' && typeof initStockOpnameView === 'function') initStockOpnameView();
       else if (pageCode === 'setting' && typeof initSettingView === 'function') initSettingView();
@@ -2268,8 +2258,6 @@
           // Juga trigger reload modul aktif jika sedang dibuka
           const page = typeof currentActivePage !== 'undefined' ? currentActivePage : '';
           if (page === 'fulfillment' && typeof window.muatDataFulfillment === 'function') window.muatDataFulfillment(true);
-          else if (page === 'logmutasi' && typeof window.muatDataLogMutasi === 'function') window.muatDataLogMutasi(true);
-          else if (page === 'logproduk' && typeof window.muatDataLogProduk === 'function') window.muatDataLogProduk(true);
           else if (page === 'penerimaanproduksi' && typeof window.muatDataPenerimaan === 'function') window.muatDataPenerimaan(true);
           else if (page === 'klasifikasi' && typeof window.muatDataKlasifikasi === 'function') window.muatDataKlasifikasi(true);
         });
