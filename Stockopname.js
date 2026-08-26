@@ -225,3 +225,55 @@ function prosesStockOpname(json) {
   saveWebhookHistory(getWebhookDedupKey(json));
   return ContentService.createTextOutput("OK");
 }
+
+/************************************************
+ * ENDPOINT SUBMIT SCAN DARI WEB APP GITHUB
+ ************************************************/
+function submitScannerWeb(token, payload) {
+  const session = getWmsSessionFromToken(token);
+  if (!session) return { success: false, message: "Sesi login tidak valid / kadaluarsa." };
+  
+  // Mendukung format payload baru (array teks langsung)
+  let finalMessage = "";
+  if (payload && payload.data && payload.data.length > 0) {
+      finalMessage = payload.data.join("\n");
+  } else if (payload && payload.items && payload.items.length > 0) {
+      // Fallback format lama (jika ada cache browser yg belum terupdate)
+      const messageLines = [];
+      let currentKat = "";
+      let currentLok = "";
+      for (let i = payload.items.length - 1; i >= 0; i--) {
+         const it = payload.items[i];
+         if (it.category && it.category !== currentKat && it.category !== "-") {
+            currentKat = it.category;
+            messageLines.push("#" + currentKat);
+         }
+         if (it.location && it.location !== currentLok && it.location !== "-") {
+            currentLok = it.location;
+            messageLines.push("#LOK " + currentLok);
+         }
+         messageLines.push(it.sku);
+      }
+      finalMessage = messageLines.join("\n");
+  } else {
+      return { success: false, message: "Data scan kosong." };
+  }
+  
+  // Format event dummy layaknya payload WA asli
+  const dummyJson = {
+      message: finalMessage,
+      sender: session.username + " | ScannerWeb",
+      inboxid: "WEB-" + Date.now()
+  };
+  
+  try {
+     // Gunakan logic yang sudah battle-tested untuk opname/mutasi
+     const resText = prosesStockOpname(dummyJson).getContent();
+     if (resText.includes("ERROR")) {
+        return { success: false, message: resText };
+     }
+     return { success: true, message: "Berhasil disimpan ke Log Produk!" };
+  } catch(e) {
+     return { success: false, message: e.message };
+  }
+}
