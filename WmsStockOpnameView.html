@@ -317,7 +317,7 @@
           </div>
 
           <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
-            <input type="file" id="csvFileInput" accept=".csv" style="margin-bottom:0; flex:1;">
+            <input type="file" id="csvFileInputSoScan" accept=".csv" style="margin-bottom:0; flex:1;">
             <button class="btn btn-add" onclick="importCsv()">UPLOAD & TAMBAH</button>
           </div>
         </div>
@@ -358,7 +358,7 @@
           </div>
 
           <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
-            <input type="file" id="csvFileInputManual" accept=".csv" style="margin-bottom:0; flex:1;">
+            <input type="file" id="csvFileInputManualSoScan" accept=".csv" style="margin-bottom:0; flex:1;">
             <button class="btn btn-add" onclick="importCsvManual()">UPLOAD & TAMBAH</button>
           </div>
         </div>
@@ -825,7 +825,7 @@
   }
 
   function importCsv() {
-    const fileInput = document.getElementById('csvFileInput');
+    const fileInput = document.getElementById('csvFileInputSoScan');
     if (!fileInput.files.length) {
       showMsg('Silakan pilih file CSV terlebih dahulu.', false);
       return;
@@ -838,11 +838,16 @@
       const text = e.target.result;
       const lines = text.split(/\r?\n/);
       let addedCount = 0;
+      
+      let separator = ',';
+      if (lines.length > 0 && lines[0].indexOf(';') > -1 && lines[0].indexOf(',') === -1) {
+        separator = ';';
+      }
 
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
 
-        const row = barisCsvKeArray(lines[i]);
+        const row = barisCsvKeArray(lines[i], separator);
 
         if (row.length >= 3) {
           const sku = row[0].trim().toUpperCase();
@@ -893,7 +898,7 @@
   }
 
   function importCsvManual() {
-    const fileInput = document.getElementById('csvFileInputManual');
+    const fileInput = document.getElementById('csvFileInputManualSoScan');
     if (!fileInput.files.length) {
       showMsg('Silakan pilih file CSV terlebih dahulu.', false);
       return;
@@ -906,11 +911,16 @@
       const text = e.target.result;
       const lines = text.split(/\r?\n/);
       let addedCount = 0;
+      
+      let separator = ',';
+      if (lines.length > 0 && lines[0].indexOf(';') > -1 && lines[0].indexOf(',') === -1) {
+        separator = ';';
+      }
 
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
 
-        const row = barisCsvKeArray(lines[i]);
+        const row = barisCsvKeArray(lines[i], separator);
 
         if (row.length >= 4) {
           const sku = row[0].trim().toUpperCase();
@@ -948,19 +958,28 @@
     reader.readAsText(file);
   }
 
-  function barisCsvKeArray(text) {
-    const re_valid = /^\s*(?:'[^'\\]*(?:\\[\s\S][^'\\]*)*'|"[^"\\]*(?:\\[\s\S][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\s\S][^'\\]*)*'|"[^"\\]*(?:\\[\s\S][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
-    const re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\s\S][^'\\]*)*)'|"([^"\\]*(?:\\[\s\S][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
-    if (!re_valid.test(text)) return [];
-    const a = [];
-    text.replace(re_value, function(m0, m1, m2, m3) {
-      if      (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
-      else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
-      else if (m3 !== undefined) a.push(m3);
-      return '';
-    });
-    if (/,\s*$/.test(text)) a.push('');
-    return a;
+  function barisCsvKeArray(text, separator = ',') {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === '"') {
+        if (inQuotes && text[i + 1] === '"') {
+          current += '"';
+          i++; // Skip the escaped quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === separator && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current);
+    return result;
   }
 </script>
 </body>

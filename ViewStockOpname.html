@@ -109,7 +109,7 @@
           </div>
 
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <input type="file" id="csvFileInput" accept=".csv" class="search-input" style="flex: 1; min-width: 220px; height: 38px; padding-top: 8px;">
+            <input type="file" id="csvFileInputSoScan" accept=".csv" class="search-input" style="flex: 1; min-width: 220px; height: 38px; padding-top: 8px;">
             <button class="btn btn-success" id="btnImportCsvSo" style="font-size: 12px; height: 38px; padding: 0 18px;" onclick="importCsv(this)">📤 UPLOAD &amp; TAMBAH</button>
           </div>
         </div>
@@ -190,8 +190,8 @@
           </div>
 
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <input type="file" id="csvFileInputManual" accept=".csv" class="search-input" style="flex: 1; min-width: 220px; height: 38px; padding-top: 8px;">
-            <button class="btn btn-success" id="btnImportManualCsv" style="font-size: 12px; height: 38px; padding: 0 18px;" onclick="importCsvManual(this)">📤 UPLOAD &amp; TAMBAH</button>
+            <input type="file" id="csvFileInputManualSoScan" accept=".csv" class="search-input" style="flex: 1; min-width: 220px; height: 38px; padding-top: 8px;">
+            <button class="btn btn-success" id="btnImportCsvManualSo" style="font-size: 12px; height: 38px; padding: 0 18px;" onclick="importCsvManual(this)">📤 UPLOAD &amp; TAMBAH</button>
           </div>
         </div>
       </div>
@@ -979,7 +979,7 @@
   }
 
   function importCsv(btn) {
-    const fileInput = document.getElementById('csvFileInput');
+    const fileInput = document.getElementById('csvFileInputSoScan');
     if (!fileInput || !fileInput.files.length) {
       if (window.showWmsToast) window.showWmsToast('Silakan pilih file CSV terlebih dahulu.', 'warning');
       return;
@@ -998,7 +998,13 @@
 
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
-        const row = barisCsvKeArraySo(lines[i]);
+        let separator = ',';
+        if (lines[i].indexOf(';') !== -1 && lines[i].indexOf(',') === -1) {
+           separator = ';';
+        } else if (lines[i].indexOf(';') !== -1 && lines[i].split(';').length > lines[i].split(',').length) {
+           separator = ';';
+        }
+        const row = barisCsvKeArraySo(lines[i], separator);
         if (row.length >= 3) {
           const sku = row[0].trim().toUpperCase();
           const lokasi = row[1].trim();
@@ -1053,7 +1059,7 @@
   }
 
   function importCsvManual(btn) {
-    const fileInput = document.getElementById('csvFileInputManual');
+    const fileInput = document.getElementById('csvFileInputManualSoScan');
     if (!fileInput || !fileInput.files.length) {
       if (window.showWmsToast) window.showWmsToast('Silakan pilih file CSV terlebih dahulu.', 'warning');
       return;
@@ -1072,7 +1078,13 @@
 
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
-        const row = barisCsvKeArraySo(lines[i]);
+        let separator = ',';
+        if (lines[i].indexOf(';') !== -1 && lines[i].indexOf(',') === -1) {
+           separator = ';';
+        } else if (lines[i].indexOf(';') !== -1 && lines[i].split(';').length > lines[i].split(',').length) {
+           separator = ';';
+        }
+        const row = barisCsvKeArraySo(lines[i], separator);
         if (row.length >= 4) {
           const sku = row[0].trim().toUpperCase();
           const lokasi = row[1].trim();
@@ -1109,18 +1121,27 @@
     reader.readAsText(file);
   }
 
-  function barisCsvKeArraySo(text) {
-    const re_valid = /^\s*(?:'[^'\\]*(?:\\[\s\S][^'\\]*)*'|"[^"\\]*(?:\\[\s\S][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*(?:,\s*(?:'[^'\\]*(?:\\[\s\S][^'\\]*)*'|"[^"\\]*(?:\\[\s\S][^"\\]*)*"|[^,'"\s\\]*(?:\s+[^,'"\s\\]+)*)\s*)*$/;
-    const re_value = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\s\S][^'\\]*)*)'|"([^"\\]*(?:\\[\s\S][^"\\]*)*)"|([^,'"\s\\]*(?:\s+[^,'"\s\\]+)*))\s*(?:,|$)/g;
-    if (!re_valid.test(text)) return [];
-    const a = [];
-    text.replace(re_value, function(m0, m1, m2, m3) {
-      if      (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
-      else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
-      else if (m3 !== undefined) a.push(m3);
-      return '';
-    });
-    if (/,\s*$/.test(text)) a.push('');
-    return a;
+  function barisCsvKeArraySo(text, separator = ',') {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === '"') {
+        if (inQuotes && text[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === separator && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current);
+    return result;
   }
 </script>

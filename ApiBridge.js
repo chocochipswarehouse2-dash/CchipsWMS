@@ -111,6 +111,12 @@ function handleWmsApiRequest(json) {
         }
         return createJsonResponse({ success: false, message: "Fungsi submitScanPeminjaman tidak tersedia" });
 
+      case "submitScannerWeb":
+        if (typeof submitScannerWeb === "function") {
+          return createJsonResponse(submitScannerWeb(token, payload));
+        }
+        return createJsonResponse({ success: false, message: "Fungsi submitScannerWeb tidak tersedia" });
+
       case "kembalikanPeminjaman":
         if (typeof kembalikanPeminjaman === "function") {
           return createJsonResponse(kembalikanPeminjaman(payload));

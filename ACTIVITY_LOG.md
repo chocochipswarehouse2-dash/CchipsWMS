@@ -217,7 +217,8 @@ Seluruh antarmuka web WMS kini menggunakan desain seragam standar Antigravity:
 ---
 
 ## [2026-08-26] - Update Format Timestamp Log Produk (Backend)
-- **Perubahan**: Memastikan seluruh data tanggal yang diinput ke Sheet "Log Produk" oleh skrip backend (`Log Product.js`, `Stockopname.js`, `StockOpnameAdjustment.js`, `FormPeminjaman.js`) kini menggunakan format teks statis `yyyy-MM-dd HH:mm:ss` (contoh: `2026-08-26 08:12:33`).
+- **[26 Agustus 2026] Deploy @813**: Membuat endpoint API `submitScannerWeb` di `Stockopname.js` dan `ApiBridge.js` untuk integrasi pengiriman data barcode dari Web App Scanner eksternal. Membuat frontend Web App Scanner lengkap (login, UI scan, settings user) di folder terpisah `ScannerWebApp` yang siap di-deploy ke GitHub Pages.
+- **[26 Agustus 2026] Deploy @811**: Mengubah seluruh format Timestamp menjadi format 24 jam (yyyy-MM-dd HH:mm:ss) pada file `Log Product.js`, `Stockopname.js`, `StockOpnameAdjustment.js`, dan `FormPeminjaman.js`. Format pada DB Supabase juga sudah menggunakan `timestamp with time zone`.
 - **Alasan**: Mencegah Google Sheets secara tidak sengaja memotong/menyembunyikan informasi jam, sehingga laporan histori keluar-masuk barang memiliki jejak waktu yang jauh lebih presisi.
 
 ---
