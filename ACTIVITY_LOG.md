@@ -214,3 +214,12 @@ Seluruh antarmuka web WMS kini menggunakan desain seragam standar Antigravity:
      - Manajemen sesi pengguna dan otorisasi (`WmsAuth.js`) kini terpusat pada server GAS.
      - `SupabaseBridge.js` berfokus mensuplai data real-time ke antarmuka GAS (seperti katalog produk dan stok instan), sementara rekam mutasi permanen tetap tersimpan ganda ke Google Sheets.
 
+---
+
+## [2026-08-26] - Implementasi Local Restore Point (Git Backup)
+- **Kebutuhan**: 
+  - Platform Google Apps Script (GAS) memiliki batasan jumlah versi deployment (limit ~200 versi). Agar terhindar dari hilangnya versi stabil sebelumnya, diperlukan mekanisme pencadangan lokal yang independen dari server Google.
+- **Solusi & Prosedur**:
+  1. **Git Local Snapshots**: Seluruh source code GAS (`.js`, `.html`) kini diamankan menggunakan Git commit secara lokal di mesin (*Local Restore Point*).
+  2. **Pembaruan Restore Point**: Apabila di masa depan ada penambahan fitur, halaman, atau fungsi baru yang sudah teruji stabil, versi stabil tersebut dapat difoto kembali (*commit*) menjadi restore point baru.
+  3. **Mekanisme Rollback**: Jika terjadi kerusakan di versi terbaru GAS, kode dapat dipulihkan dengan melakukan `git checkout` ke riwayat commit stabil terakhir, lalu di-push kembali ke GAS menggunakan Clasp.
