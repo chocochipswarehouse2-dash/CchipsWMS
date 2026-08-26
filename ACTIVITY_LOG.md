@@ -200,26 +200,17 @@ Seluruh antarmuka web WMS kini menggunakan desain seragam standar Antigravity:
 
 ---
 
-## [2026-08-25] - Sinkronisasi Penuh Frontend GitHub = Frontend GAS (Acuan) v792
+## [2026-08-26] - Penghapusan Repositori Frontend Eksternal & Sentralisasi ke GAS + Supabase
 - **Tujuan**:
-  - Menyelaraskan seluruh tampilan visual (UI/UX, CSS tema, font, layout responsif mobile & desktop) dan fungsi operasional Frontend GitHub Pages agar 100% identik dengan Frontend Google Apps Script (acuan utama).
-- **Perbaikan & Standarisasi**:
-  1. **Direct View Injection Architecture**:
-     - Menghapus pemisahan skrip modules yang memicu tabrakan variabel global (`SyntaxError`).
-     - Menyematkan seluruh komponen view (`ViewPeminjaman`, `ViewPenerimaanProduksi`, `ViewFulfillment`, `ViewStockOpname`, `ViewLogProduk`, `ViewLogMutasi`, `ViewUpdateDatabase`, `ViewSetting`, `ViewKlasifikasi`) langsung ke dalam `<main class="app-content">` persis seperti cara kerja rendering GAS.
-     - Menyematkan form login dari `WmsLoginPage.html` ke dalam kontainer `#loginScreen`.
-  2. **Enhanced API Bridge Polyfill (`js/api.js`)**:
-     - Proxy dinamis `google.script.run` yang secara transparan menangani seluruh pemanggilan method backend untuk 10 modul WMS.
-     - Auto-retry dengan GET Fallback jika request POST terkena CORS restriction.
-     - Direct Supabase Cloud Master Data Loader untuk response data instan <500ms.
-  3. **Seamless Authentication Controller (`js/auth.js`)**:
-     - Menjaga pengguna tetap berada di domain GitHub Pages setelah login tanpa ter-redirect keluar.
-     - Manajemen token sesi, sinkronisasi profil user di sidebar, dan routing dinamis `window.INITIAL_PAGE`.
-  4. **Proteksi Backend (`.claspignore`)**:
-     - Mengisolasi file-file statis frontend dari perintah `clasp push` agar backend Google Apps Script tetap bersih, aman, dan stabil.
-  5. **Generated Entry Points**:
-     - `index.html` (Default tab: `produk` / Master Inventory)
-     - `peminjaman.html` (Default tab: `peminjaman` / Form SPS & Live Stock)
-     - `penerimaanproduksi.html` (Default tab: `penerimaanproduksi` / Kedatangan Barang & Kargo)
-     - `fulfillment.html` (Default tab: `fulfillment` / Refill Multi-CSV & Surat Jalan)
+  - Menyederhanakan arsitektur dan pemeliharaan aplikasi dengan memusatkan seluruh antarmuka web (UI) dan logika backend murni pada **Google Apps Script (GAS)** yang terintegrasi dengan **Supabase**.
+- **Perubahan Arsitektur & Lingkungan**:
+  1. **Pembersihan Kode Eksternal**:
+     - Menghapus keseluruhan source code, style, dan modul frontend eksternal yang disiapkan untuk GitHub Pages (folder `frontend`, `css`, `js`, `index.html`, dan variannya).
+     - Menghapus workflow deployment (`.github/`) dan skrip build (Node.js/PowerShell).
+  2. **Penggunaan Native GAS Web App**:
+     - Seluruh file tampilan web (`ViewPeminjaman.html`, `WmsDashboard.html`, dll) serta style (`StyleGlobal.html`) kini berjalan 100% dari deployment Web App Google Apps Script sebagai satu entitas Monolith yang ringan dan cepat.
+     - Tidak ada lagi sinkronisasi ganda atau resiko CORS antar domain eksternal.
+  3. **Interaksi Supabase & GAS yang Lebih Aman**:
+     - Manajemen sesi pengguna dan otorisasi (`WmsAuth.js`) kini terpusat pada server GAS.
+     - `SupabaseBridge.js` berfokus mensuplai data real-time ke antarmuka GAS (seperti katalog produk dan stok instan), sementara rekam mutasi permanen tetap tersimpan ganda ke Google Sheets.
 
