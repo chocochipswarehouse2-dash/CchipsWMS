@@ -10,17 +10,14 @@ function initSyncSupabase() {
   const shLog = ss.getSheetByName("Log Product");
   const props = PropertiesService.getScriptProperties();
 
-  // Cari invoice terakhir yang ada di sheet Log Product
+  // Cari invoice terakhir yang ada di sheet Log Product secara akurat
   let lastInvoice = "";
-  if (shLog && shLog.getLastRow() > 1) {
-    const numRows = Math.min(20, shLog.getLastRow() - 1);
-    const lastData = shLog.getRange(shLog.getLastRow() - numRows + 1, 4, numRows, 1).getValues();
-    for (let r = lastData.length - 1; r >= 0; r--) {
-      const inv = String(lastData[r][0] || "").trim();
-      if (inv) {
-        lastInvoice = inv;
-        break;
-      }
+  if (shLog) {
+    const nextRow = typeof findNextRow === "function" ? findNextRow(shLog) : (shLog.getLastRow() + 1);
+    const lastRowIndex = nextRow - 1;
+    if (lastRowIndex > 1) {
+      const invVal = shLog.getRange(lastRowIndex, 4).getValue(); // Kolom D: Invoice
+      lastInvoice = String(invVal || "").trim();
     }
   }
 
@@ -50,9 +47,9 @@ function initSyncSupabase() {
   return "0";
 }
 
-function syncLogProdukFromSupabase() {
+function syncLogProdukFromSupabase(forceReset) {
   const props = PropertiesService.getScriptProperties();
-  let lastSyncedId = props.getProperty("LAST_SYNCED_LOG_ID");
+  let lastSyncedId = forceReset ? null : props.getProperty("LAST_SYNCED_LOG_ID");
   
   if (!lastSyncedId) {
     lastSyncedId = initSyncSupabase();
@@ -102,8 +99,9 @@ function syncLogProdukFromSupabase() {
       timestamp = Utilities.formatDate(new Date(log.created_at), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
     } catch(e) {}
     
-    // Susunan kolom "Log Product": 
-    // [0:Tanggal, 1:SKU, 2:Lokasi, 3:Invoice, 4:Operator, 5:Type, 6:Keterangan, 7:Area, 8:Nama Produk, 9:Size, 10:Qty]
+    // Susunan 8 kolom "Log Product" (Kolom A-H): 
+    // [0:Tanggal, 1:SKU, 2:Lokasi, 3:Invoice, 4:Operator, 5:Type, 6:Keterangan, 7:Area]
+    // Kolom I (Nama Produk) & J (Size) otomatis diisi oleh ARRAYFORMULA di Sheet
     const row = [
       timestamp,
       log.sku || "",
@@ -112,10 +110,7 @@ function syncLogProdukFromSupabase() {
       log.operator || "",
       log.type || "",
       log.keterangan || "",
-      log.area || "",
-      log.nama_produk || log.sku || "",
-      log.size || "-",
-      log.qty || 1
+      log.area || ""
     ];
     
     rowsToAppend.push(row);
@@ -126,9 +121,9 @@ function syncLogProdukFromSupabase() {
   }
   
   if (rowsToAppend.length > 0) {
-    // 1. Tulis ke "Log Product" (11 kolom)
+    // 1. Tulis ke "Log Product" (8 kolom: A s/d H)
     const startRow = typeof findNextRow === "function" ? findNextRow(shLog) : (shLog.getLastRow() + 1);
-    shLog.getRange(startRow, 1, rowsToAppend.length, 11).setValues(rowsToAppend);
+    shLog.getRange(startRow, 1, rowsToAppend.length, 8).setValues(rowsToAppend);
     
     // 2. Kalkulasi "STOCK" sheet (Incremental)
     try {

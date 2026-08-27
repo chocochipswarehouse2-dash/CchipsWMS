@@ -3,11 +3,11 @@
  * FIND NEXT ROW (NO LOMPAT)
  ************************************************/
 function findNextRow(sheet) {
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return 2;
+  const maxRows = sheet.getMaxRows();
+  if (maxRows < 2) return 2;
 
-  // Baca Kolom B (SKU / Barcode) untuk mendeteksi baris data riil tanpa terpengaruh ArrayFormula Kolom I & J
-  const dataB = sheet.getRange(1, 2, lastRow, 1).getValues();
+  // Baca Kolom B (SKU) sampai batas baris riil untuk menghindari terpengaruh ArrayFormula Kolom I & J
+  const dataB = sheet.getRange(1, 2, maxRows, 1).getValues();
   for (let i = dataB.length - 1; i >= 0; i--) {
     if (String(dataB[i][0] || "").trim() !== "") {
       return i + 2; // i adalah 0-indexed, +1 = baris data riil terakhir, +1 lagi = baris kosong berikutnya

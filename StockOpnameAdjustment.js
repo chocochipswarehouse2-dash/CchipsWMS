@@ -712,6 +712,7 @@ function prosesApprovalAdjustment(token, idList, disetujui) {
           const shLog = ss.getSheetByName(SHEET_NAME_LOG_PRODUCT || "Log Product");
           if (shLog) {
             const nowWib = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm:ss");
+            // Tulis 8 kolom (Kolom A-H): Kolom I (Nama Produk) & J (Size) otomatis dari ARRAYFORMULA
             const sheetRows = logsToInsert.map(function(l) {
               const typeAdj = l.type === "IN" ? "ADJ_IN" : "ADJ_OUT";
               return [
@@ -722,14 +723,11 @@ function prosesApprovalAdjustment(token, idList, disetujui) {
                 l.operator,
                 typeAdj,
                 l.keterangan,
-                l.area,
-                l.nama_produk,
-                l.size,
-                l.qty
+                l.area
               ];
             });
             const startRow = typeof findNextRow === "function" ? findNextRow(shLog) : (shLog.getLastRow() + 1);
-            shLog.getRange(startRow, 1, sheetRows.length, 11).setValues(sheetRows);
+            shLog.getRange(startRow, 1, sheetRows.length, 8).setValues(sheetRows);
 
             if (typeof updateStockIncremental === "function") {
               updateStockIncremental(sheetRows);

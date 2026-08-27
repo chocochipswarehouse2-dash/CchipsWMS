@@ -350,54 +350,117 @@ function generateCompactProdukData() {
     masterData[sku] = item;
   }
 
-  const stockValues = shStock.getDataRange().getValues();
-  for (let i = 1; i < stockValues.length; i++) {
-    const row = stockValues[i];
-    const lokasi = String(row[0] || "").trim();
-    const area = String(row[1] || "").trim();
-    const sku = String(row[2] || "").trim().toUpperCase();
-    const qty = Number(row[3]) || 0;
-    const namaFromStock = String(row[4] || "").trim();
-    const sizeFromStock = String(row[5] || "").trim();
-
-    if (!sku || qty === 0) continue;
-
-    if (!masterData[sku]) {
-      masterData[sku] = {
-        k: sku,
-        p: namaFromStock || sku,
-        s: sizeFromStock || "-",
-        c: "STOCK"
-      };
-    } else {
-      if ((!masterData[sku].p || masterData[sku].p.indexOf("SKU") > -1 || masterData[sku].p === "(Nama Tidak Ditemukan)") && namaFromStock) {
-        masterData[sku].p = namaFromStock;
-      }
-      if ((!masterData[sku].s || masterData[sku].s === "-") && sizeFromStock) {
-        masterData[sku].s = sizeFromStock;
-      }
+  // 2. Ambil Stok Fisik Realtime dari Supabase (view_stok_realtime)
+  let realtimeStocks = [];
+  try {
+    if (typeof fetchAllSupabaseStokRealtime === "function") {
+      realtimeStocks = fetchAllSupabaseStokRealtime();
     }
+  } catch (errSup) {
+    Logger.log("Gagal fetchAllSupabaseStokRealtime: " + errSup.message);
+  }
 
-    const item = masterData[sku];
-    const a = area.toUpperCase();
-    const l = lokasi.toUpperCase();
-    let kat = "Lainnya";
+  // Jika Supabase mengembalikan data stok, gunakan langsung dari Supabase
+  if (realtimeStocks && realtimeStocks.length > 0) {
+    for (let i = 0; i < realtimeStocks.length; i++) {
+      const sRow = realtimeStocks[i];
+      const sku = String(sRow.sku || "").trim().toUpperCase();
+      const lokasi = String(sRow.lokasi || "").trim();
+      const area = String(sRow.area || "").trim();
+      const qty = Number(sRow.sisa_stok) || 0;
+      const namaFromStock = String(sRow.nama_produk || "").trim();
+      const sizeFromStock = String(sRow.size || "").trim();
 
-    if (a === "WAREHOUSE") kat = "Gudang Utama";
-    else if (a === "BLOK F" && (l === "SHOPEE" || l === "TIKTOK" || l === "TT" || l === "LIVE")) kat = "Barang Live";
-    else if (a === "BLOK F" && (l === "STUDIO" || l === "SAMPLE")) kat = "Sample Studio";
-    else if ((a === "PERBAIKAN" || a.indexOf("PERMAK") > -1) && (l.indexOf("PMK") === 0 || l.indexOf("CC") === 0 || l.indexOf("PERMAK") > -1 || l.indexOf("CUCI") > -1)) kat = "Permak / Cuci";
-    else if ((a === "PERBAIKAN" || a.indexOf("DEFECT") > -1) && (l.indexOf("DF") === 0 || l.indexOf("DEFECT") > -1 || l.indexOf("CACAT") > -1)) kat = "Barang Cacat";
-    else if (a === "DEALPOS OFFLINE" && l === "WH") kat = "WH";
-    else if (a === "DEALPOS OFFLINE" && l === "QC") kat = "QC";
-    else if (a === "DEALPOS OFFLINE" && (l === "DD" || l === "DEFECT")) kat = "Barang Cacat";
-    else if (a === "DEALPOS OFFLINE" && l === "GA") kat = "GA";
+      if (!sku || qty === 0) continue;
 
-    if (!item.f) item.f = {};
-    item.f[kat] = (item.f[kat] || 0) + qty;
+      if (!masterData[sku]) {
+        masterData[sku] = {
+          k: sku,
+          p: namaFromStock || sku,
+          s: sizeFromStock || "-",
+          c: "STOCK"
+        };
+      } else {
+        if ((!masterData[sku].p || masterData[sku].p.indexOf("SKU") > -1 || masterData[sku].p === "(Nama Tidak Ditemukan)") && namaFromStock) {
+          masterData[sku].p = namaFromStock;
+        }
+        if ((!masterData[sku].s || masterData[sku].s === "-") && sizeFromStock) {
+          masterData[sku].s = sizeFromStock;
+        }
+      }
 
-    if (!item.l) item.l = [];
-    item.l.push(lokasi + ":" + qty);
+      const item = masterData[sku];
+      const a = area.toUpperCase();
+      const l = lokasi.toUpperCase();
+      let kat = "Lainnya";
+
+      if (a === "WAREHOUSE") kat = "Gudang Utama";
+      else if (a === "BLOK F" && (l === "SHOPEE" || l === "TIKTOK" || l === "TT" || l === "LIVE")) kat = "Barang Live";
+      else if (a === "BLOK F" && (l === "STUDIO" || l === "SAMPLE")) kat = "Sample Studio";
+      else if ((a === "PERBAIKAN" || a.indexOf("PERMAK") > -1) && (l.indexOf("PMK") === 0 || l.indexOf("CC") === 0 || l.indexOf("PERMAK") > -1 || l.indexOf("CUCI") > -1)) kat = "Permak / Cuci";
+      else if ((a === "PERBAIKAN" || a.indexOf("DEFECT") > -1) && (l.indexOf("DF") === 0 || l.indexOf("DEFECT") > -1 || l.indexOf("CACAT") > -1)) kat = "Barang Cacat";
+      else if (a === "DEALPOS OFFLINE" && l === "WH") kat = "WH";
+      else if (a === "DEALPOS OFFLINE" && l === "QC") kat = "QC";
+      else if (a === "DEALPOS OFFLINE" && (l === "DD" || l === "DEFECT")) kat = "Barang Cacat";
+      else if (a === "DEALPOS OFFLINE" && l === "GA") kat = "GA";
+
+      if (!item.f) item.f = {};
+      item.f[kat] = (item.f[kat] || 0) + qty;
+
+      if (!item.l) item.l = [];
+      item.l.push(lokasi + ":" + qty);
+    }
+  } else if (shStock) {
+    // Fallback ke Sheet STOCK jika Supabase tidak tersedia
+    const stockValues = shStock.getDataRange().getValues();
+    for (let i = 1; i < stockValues.length; i++) {
+      const row = stockValues[i];
+      const lokasi = String(row[0] || "").trim();
+      const area = String(row[1] || "").trim();
+      const sku = String(row[2] || "").trim().toUpperCase();
+      const qty = Number(row[3]) || 0;
+      const namaFromStock = String(row[4] || "").trim();
+      const sizeFromStock = String(row[5] || "").trim();
+
+      if (!sku || qty === 0) continue;
+
+      if (!masterData[sku]) {
+        masterData[sku] = {
+          k: sku,
+          p: namaFromStock || sku,
+          s: sizeFromStock || "-",
+          c: "STOCK"
+        };
+      } else {
+        if ((!masterData[sku].p || masterData[sku].p.indexOf("SKU") > -1 || masterData[sku].p === "(Nama Tidak Ditemukan)") && namaFromStock) {
+          masterData[sku].p = namaFromStock;
+        }
+        if ((!masterData[sku].s || masterData[sku].s === "-") && sizeFromStock) {
+          masterData[sku].s = sizeFromStock;
+        }
+      }
+
+      const item = masterData[sku];
+      const a = area.toUpperCase();
+      const l = lokasi.toUpperCase();
+      let kat = "Lainnya";
+
+      if (a === "WAREHOUSE") kat = "Gudang Utama";
+      else if (a === "BLOK F" && (l === "SHOPEE" || l === "TIKTOK" || l === "TT" || l === "LIVE")) kat = "Barang Live";
+      else if (a === "BLOK F" && (l === "STUDIO" || l === "SAMPLE")) kat = "Sample Studio";
+      else if ((a === "PERBAIKAN" || a.indexOf("PERMAK") > -1) && (l.indexOf("PMK") === 0 || l.indexOf("CC") === 0 || l.indexOf("PERMAK") > -1 || l.indexOf("CUCI") > -1)) kat = "Permak / Cuci";
+      else if ((a === "PERBAIKAN" || a.indexOf("DEFECT") > -1) && (l.indexOf("DF") === 0 || l.indexOf("DEFECT") > -1 || l.indexOf("CACAT") > -1)) kat = "Barang Cacat";
+      else if (a === "DEALPOS OFFLINE" && l === "WH") kat = "WH";
+      else if (a === "DEALPOS OFFLINE" && l === "QC") kat = "QC";
+      else if (a === "DEALPOS OFFLINE" && (l === "DD" || l === "DEFECT")) kat = "Barang Cacat";
+      else if (a === "DEALPOS OFFLINE" && l === "GA") kat = "GA";
+
+      if (!item.f) item.f = {};
+      item.f[kat] = (item.f[kat] || 0) + qty;
+
+      if (!item.l) item.l = [];
+      item.l.push(lokasi + ":" + qty);
+    }
   }
 
   const hasil = Object.values(masterData);

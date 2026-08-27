@@ -188,14 +188,14 @@ function prosesStockOpname(json) {
       Logger.log("Supabase batch sync error: " + errSupAll.message);
     }
 
-    // 2. [GOOGLE SHEETS BACKUP] Tulis ke Sheet Log Product & Update STOCK (11 Kolom)
+    // 2. [GOOGLE SHEETS BACKUP] Tulis ke Sheet Log Product & Update STOCK (8 Kolom A-H)
+    // Kolom I (Nama Produk) & J (Size) otomatis diisi oleh ARRAYFORMULA di Sheet
     try {
       const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       const shLog = ss.getSheetByName(SHEET_NAME_LOG_PRODUCT || "Log Product");
       if (shLog) {
         const rowsSheet = rows.map(function(r) {
           const skuRow = String(r[1] || "").trim().toUpperCase();
-          const meta = typeof cariMetaProdukBySku === "function" ? cariMetaProdukBySku(skuRow) : { nama: skuRow, size: "-" };
           return [
             r[0], // Tanggal
             skuRow, // SKU
@@ -204,14 +204,11 @@ function prosesStockOpname(json) {
             r[4], // Operator
             r[5], // Type
             r[6], // Keterangan
-            r[7], // Area
-            (meta && meta.nama) ? meta.nama : skuRow, // Nama Produk
-            (meta && meta.size) ? meta.size : "-", // Size
-            1 // Qty
+            r[7]  // Area
           ];
         });
         const startRow = typeof findNextRow === "function" ? findNextRow(shLog) : (shLog.getLastRow() + 1);
-        shLog.getRange(startRow, 1, rowsSheet.length, 11).setValues(rowsSheet);
+        shLog.getRange(startRow, 1, rowsSheet.length, 8).setValues(rowsSheet);
 
         if (typeof updateStockIncremental === "function") {
           updateStockIncremental(rowsSheet);

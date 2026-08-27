@@ -30,7 +30,7 @@ function handleWmsApiRequest(json) {
 
     if (action === "syncLogProduk" || action === "syncSupabaseToSheet" || action === "syncFromSupabase") {
       if (typeof syncLogProdukFromSupabase === "function") {
-        syncLogProdukFromSupabase();
+        syncLogProdukFromSupabase(true);
         return createJsonResponse({ success: true, message: "Sync Supabase ke Sheet berhasil dijalankan" });
       }
       return createJsonResponse({ success: false, message: "Fungsi syncLogProdukFromSupabase tidak tersedia" });

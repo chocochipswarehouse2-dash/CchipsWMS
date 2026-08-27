@@ -467,3 +467,47 @@ function runMigrasiUsers() {
          SpreadsheetApp.getUi().alert('GAGAL', result.message, SpreadsheetApp.getUi().ButtonSet.OK);
     }
 }
+
+/**
+ * Mengambil seluruh data stok realtime per lokasi dari Supabase view_stok_realtime (dengan pagination otomatis)
+ */
+function fetchAllSupabaseStokRealtime() {
+  const allRows = [];
+  let from = 0;
+  const chunkSize = 1000;
+  
+  try {
+    while (true) {
+      const to = from + chunkSize - 1;
+      const url = SUPABASE_URL + "/rest/v1/view_stok_realtime?sisa_stok=neq.0&select=sku,nama_produk,size,area,lokasi,sisa_stok";
+      const options = {
+        method: "get",
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+          "Content-Type": "application/json",
+          "Range-Unit": "items",
+          "Range": from + "-" + to
+        },
+        muteHttpExceptions: true
+      };
+      
+      const res = UrlFetchApp.fetch(url, options);
+      const code = res.getResponseCode();
+      if (code === 200 || code === 206) {
+        const data = JSON.parse(res.getContentText());
+        if (!data || !Array.isArray(data) || data.length === 0) break;
+        allRows.push.apply(allRows, data);
+        if (data.length < chunkSize) break;
+        from += chunkSize;
+      } else {
+        Logger.log("fetchAllSupabaseStokRealtime code " + code + ": " + res.getContentText());
+        break;
+      }
+    }
+  } catch (err) {
+    Logger.log("fetchAllSupabaseStokRealtime error: " + err.message);
+  }
+  
+  return allRows;
+}
