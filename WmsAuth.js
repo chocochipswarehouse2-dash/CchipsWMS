@@ -67,8 +67,8 @@ function verifyWmsLogin(username, password) {
   const targetUser = String(username).trim().toLowerCase();
   const targetPassword = String(password).trim();
 
-  // 1. Ambil list user dari Supabase
-  const query = `select=username,password,akses&username=eq.${encodeURIComponent(targetUser)}`;
+  // 1. Ambil list user dari Supabase (Gunakan ilike untuk case-insensitive match e.g. Warehouse vs warehouse)
+  const query = `select=username,password,akses&username=ilike.${encodeURIComponent(targetUser)}`;
   const res = supabaseFetch("wms_users", "get", null, query, true);
 
   if (res.success && res.data && res.data.length > 0) {
