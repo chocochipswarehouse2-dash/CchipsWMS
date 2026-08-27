@@ -191,3 +191,102 @@ function getLokasiPriority(lokasi) {
 
   }
 }
+
+/************************************************
+ * MODUL 4: INCREMENTAL UPDATE
+ *
+ * Fungsi ini memperbarui sheet STOCK secara cepat
+ * dengan HANYA menghitung perubahan dari baris-baris
+ * terbaru (newRows) lalu menambahkan/menguranginya
+ * dari saldo stok yang sudah ada di sheet STOCK.
+ * Jauh lebih cepat dari rebuildStock() karena tidak
+ * membaca seluruh baris Log Product.
+ ************************************************/
+function updateStockIncremental(newRows) {
+  if (!newRows || newRows.length === 0) return;
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const shStock = ss.getSheetByName("STOCK");
+  if (!shStock) throw new Error("Sheet STOCK tidak ditemukan.");
+
+  const lastRow = shStock.getLastRow();
+  let currentStockData = [];
+  if (lastRow >= 2) {
+    currentStockData = shStock.getRange(2, 1, lastRow - 1, 4).getValues();
+  }
+
+  const stockMap = new Map();
+  // 1. Muat saldo lama
+  for (let i = 0; i < currentStockData.length; i++) {
+    const row = currentStockData[i];
+    const lokasi = String(row[0] || "").trim();
+    const area = String(row[1] || "").trim();
+    const sku = String(row[2] || "").trim();
+    const qty = Number(row[3]) || 0;
+    
+    if (!sku || !lokasi) continue;
+    const key = lokasi + "|" + area.toUpperCase() + "|" + sku;
+    stockMap.set(key, { lokasi, area, sku, qty });
+  }
+
+  // 2. Terapkan mutasi baru
+  for (let i = 0; i < newRows.length; i++) {
+    const row = newRows[i];
+    // Struktur row: [timestamp, sku, lokasi, invoice, user, type, remark, area, ..., ..., qty]
+    const sku = String(row[1] || "").trim().toUpperCase();
+    const lokasi = typeof normalizeLokasi === "function" ? normalizeLokasi(row[2]) : String(row[2]).trim().toUpperCase();
+    const type = String(row[5] || "").trim().toUpperCase();
+    const area = typeof getArea === "function" ? getArea(lokasi) : String(row[7]).trim().toUpperCase();
+
+    if (!sku || !lokasi) continue;
+
+    let qty = 0;
+    if (type === TYPE_IN) {
+      qty = 1;
+    } else if (type === TYPE_OUT) {
+      qty = -1;
+    } else if (type === TYPE_ADJ_IN) {
+      const qtyAdj = Math.abs(Number(row[10]) || 0) || 1;
+      qty = qtyAdj;
+    } else if (type === TYPE_ADJ_OUT) {
+      const qtyAdj = Math.abs(Number(row[10]) || 0) || 1;
+      qty = -qtyAdj;
+    } else {
+      continue; // TYPE_SO & tipe lain tidak mengubah stok
+    }
+
+    if (qty === 0) continue;
+
+    const key = lokasi + "|" + area.toUpperCase() + "|" + sku;
+    const item = stockMap.get(key) || { lokasi, area, sku, qty: 0 };
+    item.qty += qty;
+    stockMap.set(key, item);
+  }
+
+  // 3. Format, filter qty != 0, sort
+  const hasil = [];
+  for (let item of stockMap.values()) {
+    if (item.qty !== 0) {
+      hasil.push({
+        data: [item.lokasi, item.area, item.sku, item.qty],
+        pArea: typeof getAreaPriority === "function" ? getAreaPriority(item.area) : 99,
+        pLokasi: typeof getLokasiPriority === "function" ? getLokasiPriority(item.lokasi) : 99
+      });
+    }
+  }
+
+  hasil.sort((a, b) => {
+    if (a.pArea !== b.pArea) return a.pArea - b.pArea;
+    if (a.pLokasi !== b.pLokasi) return a.pLokasi - b.pLokasi;
+    const cmpLok = a.data[0].localeCompare(b.data[0]);
+    if (cmpLok !== 0) return cmpLok;
+    return a.data[2].localeCompare(b.data[2]);
+  });
+
+  const arrayTulis = hasil.map(i => i.data);
+
+  // 4. Tulis ke sheet STOCK
+  if (typeof writeStock === "function") {
+    writeStock(shStock, arrayTulis);
+  }
+}

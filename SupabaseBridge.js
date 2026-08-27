@@ -336,3 +336,134 @@ function catatLogDanUpdateStokSupabase(entry) {
     return { success: false, error: err.message };
   }
 }
+/**
+ * Sinkronisasi Seluruh Riwayat Log Product ke Supabase
+ * (Migrasi Fase Awal)
+ */
+function syncLogProductToSupabase() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Log Product');
+  if (!sheet) return { success: false, message: 'Sheet Log Product tidak ditemukan' };
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { success: false, message: 'Sheet Log Product kosong' };
+  
+  // Ambil semua data
+  const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+  const rowsToInsert = [];
+  
+  for(let i = 0; i < data.length; i++) {
+    const row = data[i];
+    const timestamp = row[0]; // Object Date atau string
+    const sku = String(row[1] || '').trim().toUpperCase();
+    const lokasi = typeof normalizeLokasi === 'function' ? normalizeLokasi(row[2]) : String(row[2]).trim().toUpperCase();
+    const invoice = String(row[3] || '').trim();
+    const user = String(row[4] || '').trim();
+    const type = String(row[5] || '').trim().toUpperCase();
+    const remark = String(row[6] || '').trim();
+    const area = typeof getArea === 'function' ? getArea(lokasi) : String(row[7]).trim().toUpperCase();
+    let qty = 1; // Default
+    
+    if (type === 'ADJ_IN' || type === 'ADJ_OUT') {
+        qty = Math.abs(Number(row[10]) || 0) || 1;
+    }
+    
+    if (sku && lokasi && type) {
+      let createdAtIso = new Date().toISOString();
+      if (timestamp && timestamp instanceof Date) {
+         createdAtIso = timestamp.toISOString();
+      } else if (timestamp) {
+         try { createdAtIso = new Date(timestamp).toISOString(); } catch(e){}
+      }
+      
+      rowsToInsert.push({
+         created_at: createdAtIso,
+         type: type,
+         invoice: invoice,
+         sku: sku,
+         nama_produk: sku, // Fallback
+         area: area,
+         lokasi: lokasi,
+         qty: qty,
+         operator: user,
+         keterangan: remark
+      });
+    }
+  }
+  
+  if (rowsToInsert.length === 0) return { success: true, count: 0 };
+  
+  // Karena bisa puluhan ribu, batasi batch 500
+  const CHUNK_SIZE = 500;
+  let totalInserted = 0;
+  
+  for (let i = 0; i < rowsToInsert.length; i += CHUNK_SIZE) {
+    const chunk = rowsToInsert.slice(i, i + CHUNK_SIZE);
+    
+    const res = supabaseFetch('log_produk', 'post', chunk, '', true);
+    if (!res.success) {
+       Logger.log('Gagal sync Log Product chunk ' + i + ': ' + JSON.stringify(res.error));
+       return { success: false, message: 'Gagal di baris ' + i + ': ' + JSON.stringify(res.error), count: totalInserted };
+    }
+    totalInserted += chunk.length;
+  }
+  
+  return { success: true, count: totalInserted };
+}
+
+function runMigrasiFullLog() {
+    SpreadsheetApp.getActiveSpreadsheet().toast('Memulai migrasi riwayat Log Product...', 'MIGRASI', 15);
+    const result = syncLogProductToSupabase();
+    if (result.success) {
+         SpreadsheetApp.getUi().alert('SUKSES', 'Berhasil memindahkan ' + result.count + ' baris riwayat ke Supabase.', SpreadsheetApp.getUi().ButtonSet.OK);
+    } else {
+         SpreadsheetApp.getUi().alert('GAGAL', result.message, SpreadsheetApp.getUi().ButtonSet.OK);
+    }
+}
+
+/**
+ * Sinkronisasi User WMS ke Supabase (Sekali Jalan)
+ */
+function syncWmsUsersToSupabase() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName("Users");
+  if (!sheet) return { success: false, message: 'Sheet Users tidak ditemukan' };
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { success: false, message: 'Sheet Users kosong' };
+
+  const data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+  const rowsToInsert = [];
+
+  for(let i = 0; i < data.length; i++) {
+    const username = String(data[i][0] || '').trim();
+    const password = String(data[i][1] || '').trim();
+    const akses = String(data[i][2] || 'All').trim();
+
+    if (username && password) {
+      rowsToInsert.push({
+        username: username,
+        password: password,
+        akses: akses
+      });
+    }
+  }
+
+  if (rowsToInsert.length === 0) return { success: true, count: 0 };
+
+  const res = supabaseFetch('wms_users', 'post', rowsToInsert, 'on_conflict=username', true);
+  if (!res.success) {
+    return { success: false, message: 'Gagal sync User: ' + JSON.stringify(res.error) };
+  }
+  return { success: true, count: rowsToInsert.length };
+}
+
+function runMigrasiUsers() {
+    SpreadsheetApp.getActiveSpreadsheet().toast('Memulai migrasi WMS Users...', 'MIGRASI', 15);
+    const result = syncWmsUsersToSupabase();
+    if (result.success) {
+         SpreadsheetApp.getUi().alert('SUKSES', 'Berhasil memindahkan ' + result.count + ' user ke Supabase.', SpreadsheetApp.getUi().ButtonSet.OK);
+    } else {
+         SpreadsheetApp.getUi().alert('GAGAL', result.message, SpreadsheetApp.getUi().ButtonSet.OK);
+    }
+}

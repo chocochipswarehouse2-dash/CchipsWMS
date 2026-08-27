@@ -236,5 +236,9 @@ Seluruh antarmuka web WMS kini menggunakan desain seragam standar Antigravity:
   - Platform Google Apps Script (GAS) memiliki batasan jumlah versi deployment (limit ~200 versi). Agar terhindar dari hilangnya versi stabil sebelumnya, diperlukan mekanisme pencadangan lokal yang independen dari server Google.
 - **Solusi & Prosedur**:
   1. **Git Local Snapshots**: Seluruh source code GAS (`.js`, `.html`) kini diamankan menggunakan Git commit secara lokal di mesin (*Local Restore Point*).
-  2. **Pembaruan Restore Point**: Apabila di masa depan ada penambahan fitur, halaman, atau fungsi baru yang sudah teruji stabil, versi stabil tersebut dapat difoto kembali (*commit*) menjadi restore point baru.
-  3. **Mekanisme Rollback**: Jika terjadi kerusakan di versi terbaru GAS, kode dapat dipulihkan dengan melakukan `git checkout` ke riwayat commit stabil terakhir, lalu di-push kembali ke GAS menggunakan Clasp.
+- **Perubahan**:
+  - Mengalihkan kalkulasi stok sistem dari sheet `STOCK` ke `view_stok_realtime` di Supabase.
+  - Sesi opname dan adjustment manual langsung dihitung selisihnya dan disimpan ke tabel `stock_opname_queue` di Supabase dengan status `PENDING`.
+  - Fungsi approval dan reject memperbarui status di `stock_opname_queue` dan otomatis menginput mutasi `ADJ_IN` / `ADJ_OUT` ke `log_produk` (Supabase).
+  - Merapikan collision variabel global antar modul tab SPA dashboard untuk memastikan runtime browser bebas error.
+- **Deployment**: Live di versi `@836`.

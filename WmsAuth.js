@@ -14,65 +14,19 @@ const WMS_SESSION_SECRET = "WMS_CHOCOCHIPS_AUTH_SECRET_2026_V1";
 const WMS_SESSION_MAX_DAYS = 14; // Bertahan 14 hari tanpa relogin
 
 function getCachedWmsUsersList(ss) {
-  const cache = CacheService.getScriptCache();
-  const cachedRaw = cache.get(CACHE_WMS_USERS_KEY);
-  if (cachedRaw) {
-    try {
-      const parsed = JSON.parse(cachedRaw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    } catch (e) {}
+  // Tidak lagi menggunakan Spreadsheet, langsung fetch ke Supabase
+  const res = supabaseFetch("wms_users", "get", null, "select=*", true);
+  if (res.success && res.data && res.data.length > 0) {
+    return res.data.map(u => ({
+      username: u.username,
+      password: u.password,
+      akses: u.akses || "All"
+    }));
   }
-
-  if (!ss) ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  let sheet = getSheetByNameCI_WMS(ss, SHEET_WMS_USERS);
-  if (!sheet) {
-    try {
-      sheet = ss.insertSheet(SHEET_WMS_USERS);
-      sheet.appendRow(["Username", "Password", "Akses"]);
-      sheet.appendRow(["admin", "123", "All"]);
-      sheet.appendRow(["warehouse", "123", "All"]);
-    } catch (e) {}
-  }
-
-  const lastRow = sheet ? sheet.getLastRow() : 0;
-  if (lastRow < 2) {
-    try {
-      if (sheet) {
-        sheet.appendRow(["admin", "123", "All"]);
-        sheet.appendRow(["warehouse", "123", "All"]);
-      }
-    } catch (e) {}
-    return [
-      { username: "admin", password: "123", akses: "All" },
-      { username: "warehouse", password: "123", akses: "All" }
-    ];
-  }
-
-  const values = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
-  const users = [];
-
-  for (let i = 0; i < values.length; i++) {
-    const uname = String(values[i][0] || "").trim();
-    if (uname) {
-      users.push({
-        username: uname,
-        password: String(values[i][1] || "").trim(),
-        akses: String(values[i][2] || "").trim() || "All"
-      });
-    }
-  }
-
-  if (users.length === 0) {
-    users.push({ username: "admin", password: "123", akses: "All" });
-  }
-
-  try {
-    cache.put(CACHE_WMS_USERS_KEY, JSON.stringify(users), 21600); // Cache 6 jam
-  } catch (e) {}
-
-  return users;
+  return [
+    { username: "admin", password: "123", akses: "All" },
+    { username: "warehouse", password: "123", akses: "All" }
+  ];
 }
 
 function invalidateWmsUsersCache() {
@@ -113,21 +67,19 @@ function verifyWmsLogin(username, password) {
   const targetUser = String(username).trim().toLowerCase();
   const targetPassword = String(password).trim();
 
-  // 1. Ambil list user dari cache cepat / spreadsheet
-  const users = getCachedWmsUsersList() || [];
+  // 1. Ambil list user dari Supabase
+  const query = `select=username,password,akses&username=eq.${encodeURIComponent(targetUser)}`;
+  const res = supabaseFetch("wms_users", "get", null, query, true);
 
-  // 2. Cocokkan kredensial dari list database
-  for (let i = 0; i < users.length; i++) {
-    const u = users[i];
-    if (u.username.toLowerCase() === targetUser) {
-      if (u.password === targetPassword) {
-        const token = createWmsSessionToken(u.username, u.akses);
-        return { success: true, token: token, akses: u.akses, role: u.akses, username: u.username };
-      }
+  if (res.success && res.data && res.data.length > 0) {
+    const u = res.data[0];
+    if (u.password === targetPassword) {
+      const token = createWmsSessionToken(u.username, u.akses);
+      return { success: true, token: token, akses: u.akses, role: u.akses, username: u.username };
     }
   }
 
-  // 3. Fallback superadmin darurat
+  // 2. Fallback superadmin darurat
   if ((targetUser === "admin" || targetUser === "warehouse") && targetPassword === "123") {
     const token = createWmsSessionToken(targetUser, "All");
     return { success: true, token: token, akses: "All", role: "All", username: targetUser.toUpperCase() };
@@ -839,51 +791,28 @@ function getWmsUsersList(token) {
   if (!session) return { success: false, message: "Sesi login tidak valid / kadaluarsa." };
   if (!wmsBisaAksesAdmin(session.akses)) return { success: false, message: "Hanya akun Administrator yang dapat mengelola pengguna." };
 
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  let sheet = getSheetByNameCI_WMS(ss, SHEET_WMS_USERS);
-  if (!sheet) {
-    try {
-      sheet = ss.insertSheet(SHEET_WMS_USERS);
-      sheet.appendRow(["Username", "Password", "Akses"]);
-      sheet.appendRow(["admin", "123", "All"]);
-      sheet.appendRow(["warehouse", "123", "All"]);
-    } catch (e) {}
-  }
-
-  const lastRow = sheet ? sheet.getLastRow() : 0;
-  if (lastRow < 2) {
-    try {
-      if (sheet) {
-        sheet.appendRow(["admin", "123", "All"]);
-        sheet.appendRow(["warehouse", "123", "All"]);
-      }
-    } catch (e) {}
-    return {
-      success: true,
-      users: [
-        { row: 2, username: "admin", password: "123", role: "All" },
-        { row: 3, username: "warehouse", password: "123", role: "All" }
-      ],
-      currentUser: session.username
-    };
-  }
-
-  const data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
-  const users = [];
-
-  data.forEach(function (r, idx) {
-    const uname = String(r[0] || "").trim();
-    if (uname) {
-      users.push({
+  const res = supabaseFetch("wms_users", "get", null, "select=*", true);
+  if (res.success && res.data) {
+    const users = res.data.map(function(u, idx) {
+      return {
         row: idx + 2,
-        username: uname,
-        password: String(r[1] || "").trim(),
-        role: String(r[2] || "All").trim()
-      });
-    }
-  });
+        username: u.username,
+        password: u.password,
+        role: u.akses || "All"
+      };
+    });
+    return { success: true, users: users, currentUser: session.username };
+  }
 
-  return { success: true, users: users, currentUser: session.username };
+  // Fallback
+  return {
+    success: true,
+    users: [
+      { row: 2, username: "admin", password: "123", role: "All" },
+      { row: 3, username: "warehouse", password: "123", role: "All" }
+    ],
+    currentUser: session.username
+  };
 }
 
 function saveWmsUser(token, userData) {
@@ -898,37 +827,31 @@ function saveWmsUser(token, userData) {
     return { success: false, message: "Password wajib diisi." };
   }
 
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = getSheetByNameCI_WMS(ss, SHEET_WMS_USERS);
-  if (!sheet) return { success: false, message: "Sheet 'Users' tidak ditemukan." };
-
   const usernameBaru = String(userData.username).trim();
   const passwordBaru = String(userData.password).trim();
   const roleBaru = String(userData.role || "All").trim();
   const isEdit = Boolean(userData.isEdit);
   const oldUsername = String(userData.oldUsername || "").trim().toLowerCase();
 
-  const lastRow = sheet.getLastRow();
-  const allRows = lastRow >= 2 ? sheet.getRange(2, 1, lastRow - 1, 3).getValues() : [];
-
-  let rowIndexFound = -1;
-  for (let i = 0; i < allRows.length; i++) {
-    const uNameLower = String(allRows[i][0] || "").trim().toLowerCase();
-    if (isEdit && oldUsername && uNameLower === oldUsername) {
-      rowIndexFound = i + 2;
-    } else if (!isEdit && uNameLower === usernameBaru.toLowerCase()) {
+  // Jika edit dan username berubah, hapus yang lama dulu
+  if (isEdit && oldUsername && oldUsername !== usernameBaru.toLowerCase()) {
+    const delRes = supabaseFetch("wms_users", "delete", null, `username=eq.${encodeURIComponent(oldUsername)}`, true);
+    if (!delRes.success) return { success: false, message: "Gagal update (hapus username lama)." };
+  } else if (!isEdit) {
+    const checkRes = supabaseFetch("wms_users", "get", null, `select=username&username=eq.${encodeURIComponent(usernameBaru)}`, true);
+    if (checkRes.success && checkRes.data && checkRes.data.length > 0) {
       return { success: false, message: `Username "${usernameBaru}" sudah terdaftar.` };
     }
   }
 
-  if (isEdit && rowIndexFound > 0) {
-    sheet.getRange(rowIndexFound, 1, 1, 3).setValues([[usernameBaru, passwordBaru, roleBaru]]);
+  const payload = [{ username: usernameBaru, password: passwordBaru, akses: roleBaru }];
+  const res = supabaseFetch("wms_users", "post", payload, "on_conflict=username", true);
+
+  if (res.success) {
     invalidateWmsUsersCache();
-    return { success: true, message: `User "${usernameBaru}" berhasil diperbarui!` };
+    return { success: true, message: `User "${usernameBaru}" berhasil ${isEdit ? 'diperbarui' : 'ditambahkan'}!` };
   } else {
-    sheet.appendRow([usernameBaru, passwordBaru, roleBaru]);
-    invalidateWmsUsersCache();
-    return { success: true, message: `User "${usernameBaru}" berhasil ditambahkan!` };
+    return { success: false, message: "Gagal menyimpan user ke database Supabase." };
   }
 }
 
@@ -944,21 +867,11 @@ function deleteWmsUser(token, targetUsername) {
     return { success: false, message: "Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif." };
   }
 
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = getSheetByNameCI_WMS(ss, SHEET_WMS_USERS);
-  if (!sheet) return { success: false, message: "Sheet 'Users' tidak ditemukan." };
-
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return { success: false, message: "Tidak ada user." };
-
-  const allRows = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-  for (let i = 0; i < allRows.length; i++) {
-    if (String(allRows[i][0] || "").trim().toLowerCase() === target.toLowerCase()) {
-      sheet.deleteRow(i + 2);
-      invalidateWmsUsersCache();
-      return { success: true, message: `User "${target}" berhasil dihapus.` };
-    }
+  const res = supabaseFetch("wms_users", "delete", null, `username=eq.${encodeURIComponent(target)}`, true);
+  if (res.success) {
+    invalidateWmsUsersCache();
+    return { success: true, message: `User "${target}" berhasil dihapus.` };
   }
 
-  return { success: false, message: `User "${target}" tidak ditemukan.` };
+  return { success: false, message: `Gagal menghapus user "${target}".` };
 }

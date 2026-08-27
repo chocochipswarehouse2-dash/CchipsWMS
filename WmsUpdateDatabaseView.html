@@ -251,7 +251,7 @@
     </div>
 
     <div class="alert-box alert-warning">
-      ⚠️ <b>PERHATIAN:</b> PROSES INI AKAN <b>MENGGANTIKAN SELURUH DATA</b> DI SHEET "DATA" DENGAN DATA DARI CSV YANG DIUPLOAD. PASTIKAN FORMAT FILE BENAR.
+      ⚠️ <b>PERHATIAN:</b> PROSES INI AKAN <b>MEMASUKKAN ATAU MEMPERBARUI DATA</b> DI SUPABASE CLOUD MENGGUNAKAN DATA DARI CSV YANG DIUPLOAD. PASTIKAN FORMAT FILE BENAR.
     </div>
 
     <div class="card-box">
@@ -281,7 +281,7 @@
       </div>
 
       <button type="button" class="btn btn-primary" id="btnImport" disabled>
-        <span id="importLabel">⚡ PROSES CEPAT KE SUPABASE &amp; SHEET</span>
+        <span id="importLabel">⚡ PROSES UPLOAD KE DATABASE</span>
       </button>
 
       <div class="toast" id="toast"></div>
@@ -375,17 +375,30 @@
     }
 
     // ============ MUAT RINGKASAN DATA SAAT INI ============
-    function muatRingkasan() {
-      google.script.run.withSuccessHandler(function (res) {
-        const el = document.getElementById('ringkasanSaatIni');
-        if (!res.success) {
-          el.textContent = res.message;
-          return;
+    async function muatRingkasan() {
+      const el = document.getElementById('ringkasanSaatIni');
+      el.textContent = 'MEMUAT STATUS DATABASE SAAT INI...';
+      try {
+        const res = await fetch(SUPABASE_URL + '/rest/v1/master_produk?select=sku', {
+          method: 'GET',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            'Prefer': 'count=exact',
+            'Range': '0-0'
+          }
+        });
+        if (!res.ok) throw new Error('Network response was not ok');
+        
+        let count = 0;
+        const range = res.headers.get('Content-Range');
+        if (range) {
+          count = range.split('/')[1];
         }
-        el.innerHTML = 'STATUS DATABASE: <b>' + res.jumlahBaris + '</b> PRODUK DI SHEET "DATA" &amp; SUPABASE CLOUD.';
-      }).withFailureHandler(function (err) {
-        document.getElementById('ringkasanSaatIni').textContent = 'GAGAL MEMUAT INFO: ' + err.message;
-      }).getWmsUpdateDatabaseRingkasan(TOKEN);
+        el.innerHTML = 'STATUS DATABASE: <b>' + count + '</b> PRODUK DI SUPABASE CLOUD.';
+      } catch (err) {
+        el.textContent = 'GAGAL MEMUAT INFO: ' + err.message;
+      }
     }
     muatRingkasan();
 
@@ -463,7 +476,7 @@
         return;
       }
 
-      if (!confirm('TINDAKAN INI AKAN MEMPERBARUI DATABASE SUPABASE & SHEET DATA SECARA KILAT. LANJUTKAN?')) return;
+      if (!confirm('TINDAKAN INI AKAN MEMPERBARUI DATABASE SUPABASE. LANJUTKAN?')) return;
 
       const btn = document.getElementById('btnImport');
       btn.disabled = true;
@@ -586,22 +599,19 @@
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
         progressStatus.textContent = '✅ SELESAI ' + totalItems.toLocaleString() + ' SKU DALAM ' + duration + 's!';
-        showToast(true, '⚡ KILAT: ' + totalItems.toLocaleString() + ' SKU TERSIMPAN KE SUPABASE DALAM ' + duration + ' DETIK! MENYINKRONKAN GOOGLE SHEET DI BACKGROUND...');
+        showToast(true, '⚡ KILAT: ' + totalItems.toLocaleString() + ' SKU TERSIMPAN KE DATABASE DALAM ' + duration + ' DETIK!');
 
         // Reset form UI
         document.getElementById('fileImport').value = '';
         document.getElementById('previewArea').style.display = 'none';
         btn.disabled = true;
-        document.getElementById('importLabel').textContent = '⚡ PROSES CEPAT KE SUPABASE & SHEET';
+        document.getElementById('importLabel').textContent = '⚡ PROSES UPLOAD KE DATABASE';
 
-        // Trigger sinkronisasi Google Sheet di background
-        google.script.run.withSuccessHandler(function () {
-          muatRingkasan();
-        }).updateDatabaseCsv(TOKEN, PARSED_HEADER, PARSED_ROWS);
+        muatRingkasan();
 
       } catch (err) {
         btn.disabled = false;
-        document.getElementById('importLabel').textContent = '⚡ PROSES CEPAT KE SUPABASE & SHEET';
+        document.getElementById('importLabel').textContent = '⚡ PROSES UPLOAD KE DATABASE';
         showToast(false, 'GAGAL UPLOAD KE SUPABASE: ' + err.message);
       }
     });

@@ -1,0 +1,603 @@
+
+  let isProcessing = false;
+  let isSubmittingOpname = false;
+  let isSubmittingManual = false;
+
+  let produkList = [];
+  let lokasiList = [];
+  let keranjang = [];
+  let manualKeranjang = [];
+  const token = "<?= token ?>";
+  const akses = "<?= akses ?>";
+
+  function showMsg(text, ok) {
+    document.getElementById('msgBox').innerHTML =
+      '<div class="msg ' + (ok ? 'ok' : 'err') + '">' + text + '</div>';
+  }
+
+  function setBtnLoading(btnId, isLoading, loadingLabel, normalLabel) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.disabled = isLoading;
+    btn.innerHTML = isLoading
+      ? '<span class="spinner-inline"></span> ' + loadingLabel
+      : normalLabel;
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'approval') muatPending();
+    });
+  });
+
+  google.script.run.withSuccessHandler(function (res) {
+    if (!res.success) { showMsg(res.message, false); return; }
+    produkList = res.produkList || [];
+    lokasiList = res.lokasiList || [];
+    const dlSku = document.getElementById('listSku');
+    produkList.forEach(function (p) {
+      const opt = document.createElement('option');
+      opt.value = p.sku;
+      opt.label = p.produk + (p.size ? (' - ' + p.size) : '');
+      dlSku.appendChild(opt);
+    });
+    const dlLok = document.getElementById('listLokasi');
+    lokasiList.forEach(function (l) {
+      const opt = document.createElement('option');
+      opt.value = l;
+      dlLok.appendChild(opt);
+    });
+  }).withFailureHandler(function (err) {
+    showMsg('Gagal memuat data awal: ' + err.message, false);
+  }).getWmsStockOpnameInitData(token);
+
+  document.getElementById('opnameSku').addEventListener('change', cekQtySistem);
+  document.getElementById('opnameLokasi').addEventListener('change', cekQtySistem);
+
+  function cekQtySistem() {
+    const sku = document.getElementById('opnameSku').value.trim();
+    const lokasi = document.getElementById('opnameLokasi').value.trim();
+    if (!sku || !lokasi) return;
+    document.getElementById('qtySistemBadge').innerText = 'Qty sistem: mengecek...';
+    google.script.run.withSuccessHandler(function (res) {
+      if (res.success) {
+        document.getElementById('qtySistemBadge').innerText = 'Qty sistem: ' + res.qtySistem;
+      }
+    }).getWmsQtySistem(token, sku, lokasi);
+  }
+
+  function tambahKeKeranjang() {
+    const sku = document.getElementById('opnameSku').value.trim().toUpperCase();
+    const lokasi = document.getElementById('opnameLokasi').value.trim();
+    const qtyFisik = Number(document.getElementById('opnameQty').value);
+
+    if (!sku) { showMsg('SKU wajib diisi.', false); return; }
+    if (!lokasi) { showMsg('Lokasi wajib diisi.', false); return; }
+    if (isNaN(qtyFisik) || document.getElementById('opnameQty').value === '') {
+      showMsg('Qty fisik wajib diisi angka.', false); return;
+    }
+
+    const dupIdx = keranjang.findIndex(item => item.sku === sku && item.lokasi === lokasi);
+    if (dupIdx !== -1) {
+      keranjang[dupIdx].qtyFisik = qtyFisik;
+      showMsg(`SKU ${sku} di lokasi ${lokasi} diperbarui menjadi ${qtyFisik} pcs.`, true);
+    } else {
+      keranjang.push({ sku: sku, lokasi: lokasi, qtyFisik: qtyFisik });
+    }
+
+    renderKeranjang();
+    document.getElementById('opnameQty').value = '';
+    document.getElementById('qtySistemBadge').innerText = 'Qty sistem: -';
+    document.getElementById('opnameSku').focus();
+  }
+
+  function hapusItem(idx) {
+    keranjang.splice(idx, 1);
+    renderKeranjang();
+  }
+
+  function renderKeranjang() {
+    const container = document.getElementById('keranjangList');
+    if (keranjang.length === 0) {
+      container.innerHTML = '<div class="empty">BELUM ADA ITEM DITAMBAHKAN</div>';
+      return;
+    }
+    let html = '';
+    keranjang.forEach(function (item, idx) {
+      html += '<div class="keranjang-item">' +
+        '<div class="info"><b>' + item.sku + '</b> &bull; Lokasi: ' + item.lokasi + ' &bull; Qty Fisik: ' + item.qtyFisik + '</div>' +
+        '<button class="danger" onclick="hapusItem(' + idx + ')">HAPUS</button>' +
+        '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function submitSesi() {
+    if (isSubmittingOpname) return;
+    if (keranjang.length === 0) { showMsg('Keranjang opname kosong.', false); return; }
+
+    isSubmittingOpname = true;
+    setBtnLoading('btnSubmitSesiOpname', true, 'MEMPROSES SESI...', 'SUBMIT SESI OPNAME');
+
+    google.script.run.withSuccessHandler(function (res) {
+      isSubmittingOpname = false;
+      setBtnLoading('btnSubmitSesiOpname', false, '', 'SUBMIT SESI OPNAME');
+      if (res.success) {
+        showMsg('Sesi opname ' + res.sessionId + ' berhasil diajukan (' + res.count + ' item).', true);
+        keranjang = [];
+        renderKeranjang();
+      } else {
+        showMsg(res.message, false);
+      }
+    }).withFailureHandler(function (err) {
+      isSubmittingOpname = false;
+      setBtnLoading('btnSubmitSesiOpname', false, '', 'SUBMIT SESI OPNAME');
+      showMsg('Gagal submit sesi: ' + err.message, false);
+    }).submitWmsStockOpnameSesi(token, keranjang);
+  }
+
+  function tambahKeKeranjangManual() {
+    const sku = document.getElementById('manualSku').value.trim().toUpperCase();
+    const lokasi = document.getElementById('manualLokasi').value.trim();
+    const delta = Number(document.getElementById('manualDelta').value);
+    const alasan = document.getElementById('manualAlasan').value.trim();
+
+    if (!sku) { showMsg('SKU wajib diisi.', false); return; }
+    if (!lokasi) { showMsg('Lokasi wajib diisi.', false); return; }
+    if (!delta || isNaN(delta)) { showMsg('Qty adjustment tidak boleh 0 atau kosong.', false); return; }
+    if (!alasan) { showMsg('Alasan wajib diisi.', false); return; }
+
+    const dupIdx = manualKeranjang.findIndex(item => item.sku === sku && item.lokasi === lokasi);
+    if (dupIdx !== -1) {
+      manualKeranjang[dupIdx].deltaQty = delta;
+      manualKeranjang[dupIdx].alasan = alasan;
+      showMsg(`Adjustment ${sku} di ${lokasi} diperbarui (${delta > 0 ? '+' + delta : delta}).`, true);
+    } else {
+      manualKeranjang.push({ sku: sku, lokasi: lokasi, deltaQty: delta, alasan: alasan });
+    }
+
+    renderKeranjangManual();
+    document.getElementById('manualDelta').value = '';
+    document.getElementById('manualAlasan').value = '';
+    document.getElementById('manualSku').focus();
+  }
+
+  function hapusManualItem(idx) {
+    manualKeranjang.splice(idx, 1);
+    renderKeranjangManual();
+  }
+
+  function renderKeranjangManual() {
+    const container = document.getElementById('manualKeranjangList');
+    if (manualKeranjang.length === 0) {
+      container.innerHTML = '<div class="empty">BELUM ADA ITEM DITAMBAHKAN</div>';
+      return;
+    }
+    let html = '';
+    manualKeranjang.forEach(function (item, idx) {
+      const cls = item.deltaQty > 0 ? 'selisih-plus' : 'selisih-minus';
+      const sign = item.deltaQty > 0 ? '+' : '';
+      const prodObj = produkList.find(p => p.sku === item.sku);
+      const nama = prodObj ? prodObj.produk : item.sku;
+      html += '<div class="keranjang-item">' +
+        '<div class="info"><div style="font-weight:700; color:var(--text); margin-bottom:2px;">' + nama + '</div>' +
+        '<b>' + item.sku + '</b> &bull; Lokasi: <b>' + item.lokasi + '</b>' +
+        ' &bull; Adjustment: <span class="' + cls + '">' + sign + item.deltaQty + '</span>' +
+        '<br><small style="color:var(--muted)">Alasan: ' + item.alasan + '</small></div>' +
+        '<button class="danger" onclick="hapusManualItem(' + idx + ')">HAPUS</button>' +
+        '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function submitManualBulk() {
+    if (isSubmittingManual) return;
+    if (manualKeranjang.length === 0) { showMsg('Keranjang adjustment manual kosong.', false); return; }
+
+    isSubmittingManual = true;
+    setBtnLoading('btnSubmitManualBulk', true, 'MEMPROSES PENGAJUAN...', 'SUBMIT SEMUA ADJUSTMENT MANUAL');
+
+    google.script.run.withSuccessHandler(function (res) {
+      isSubmittingManual = false;
+      setBtnLoading('btnSubmitManualBulk', false, '', 'SUBMIT SEMUA ADJUSTMENT MANUAL');
+      if (res.success) {
+        showMsg(`Berhasil mengajukan ${res.successCount} adjustment manual untuk approval.`, true);
+        manualKeranjang = [];
+        renderKeranjangManual();
+      } else {
+        showMsg(res.message, false);
+      }
+    }).withFailureHandler(function (err) {
+      isSubmittingManual = false;
+      setBtnLoading('btnSubmitManualBulk', false, '', 'SUBMIT SEMUA ADJUSTMENT MANUAL');
+      showMsg('Gagal submit adjustment: ' + err.message, false);
+    }).submitWmsAdjustmentManualBulk(token, manualKeranjang);
+  }
+
+  function muatPending() {
+    document.getElementById('pendingList').innerHTML = '<div class="empty">MEMUAT DATA PENDING...</div>';
+    google.script.run.withSuccessHandler(function (res) {
+      if (!res.success) {
+        document.getElementById('pendingList').innerHTML = '<div class="empty">' + res.message + '</div>';
+        return;
+      }
+      renderPending(res.data || []);
+    }).withFailureHandler(function (err) {
+      document.getElementById('pendingList').innerHTML = '<div class="empty">GAGAL MEMUAT: ' + err.message + '</div>';
+    }).getWmsPendingAdjustments(token);
+  }
+
+  function renderPending(list) {
+    const badge = document.getElementById('badgePending');
+    badge.innerText = list.length > 0 ? '(' + list.length + ')' : '';
+
+    if (list.length === 0) {
+      document.getElementById('pendingList').innerHTML = '<div class="empty">TIDAK ADA ADJUSTMENT YANG MENUNGGU APPROVAL.</div>';
+      return;
+    }
+
+    let html = '<table><thead><tr>' +
+      '<th style="width:30px;"><input type="checkbox" id="checkAllPending" onchange="toggleSelectAll(this)"></th>' +
+      '<th>Timestamp</th><th>Produk / SKU</th><th>Lokasi</th><th>Tipe</th>' +
+      '<th>Qty Sistem</th><th>Qty Fisik</th><th>Delta</th><th>Alasan</th><th>PIC</th><th>Aksi</th>' +
+      '</tr></thead><tbody>';
+
+    list.forEach(function (item) {
+      const cls = item.deltaQty > 0 ? 'selisih-plus' : 'selisih-minus';
+      const sign = item.deltaQty > 0 ? '+' : '';
+      const tgl = item.timestamp ? new Date(item.timestamp).toLocaleString('id-ID') : '-';
+      const prodObj = produkList.find(p => p.sku === item.sku);
+      const nama = item.namaProduk || (prodObj ? prodObj.produk : item.sku);
+      html += '<tr>' +
+        '<td><input type="checkbox" class="cb-pending" value="' + item.id + '"></td>' +
+        '<td>' + tgl + '</td>' +
+        '<td><div style="font-weight:700; font-size:12px;">' + nama + '</div><small style="color:var(--primary); font-weight:700;">' + item.sku + '</small></td>' +
+        '<td>' + item.lokasi + '</td>' +
+        '<td>' + item.tipe + '</td>' +
+        '<td>' + item.qtySistem + '</td>' +
+        '<td>' + (item.qtyFisik !== '' ? item.qtyFisik : '-') + '</td>' +
+        '<td class="' + cls + '">' + sign + item.deltaQty + '</td>' +
+        '<td>' + item.alasan + '</td>' +
+        '<td>' + item.pic + '</td>' +
+        '<td>' +
+          '<div style="display:flex; gap:6px;">' +
+            '<button class="approve" onclick="aksiApproval(\'' + item.id + '\', \'approve\')">âœ“</button>' +
+            '<button class="danger" onclick="aksiApproval(\'' + item.id + '\', \'reject\')">âœ•</button>' +
+          '</div>' +
+        '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    document.getElementById('pendingList').innerHTML = html;
+  }
+
+  function toggleSelectAll(master) {
+    document.querySelectorAll('.cb-pending').forEach(cb => cb.checked = master.checked);
+  }
+
+  function getSelectedPendingIds() {
+    const ids = [];
+    document.querySelectorAll('.cb-pending:checked').forEach(cb => ids.push(cb.value));
+    return ids;
+  }
+
+  function aksiApproval(id, aksi) {
+    if (isProcessing) return;
+    const alasanReject = aksi === 'reject' ? (prompt('Alasan penolakan (opsional):') || '') : '';
+    isProcessing = true;
+    showMsg('Memproses approval...', true);
+
+    google.script.run.withSuccessHandler(function (res) {
+      isProcessing = false;
+      showMsg(res.message, res.success);
+      if (res.success) muatPending();
+    }).withFailureHandler(function (err) {
+      isProcessing = false;
+      showMsg('Gagal: ' + err.message, false);
+    }).prosesWmsApproval(token, id, aksi, alasanReject);
+  }
+
+  function prosesAksiMassal(aksi) {
+    if (isProcessing) return;
+    const ids = getSelectedPendingIds();
+    if (ids.length === 0) {
+      alert('PILIH MINIMAL SATU DATA YANG INGIN DIPROSES!');
+      return;
+    }
+
+    const konfirmasi = confirm(`Yakin ingin ${aksi.toUpperCase()} ${ids.length} data terpilih?`);
+    if (!konfirmasi) return;
+
+    let alasanReject = '';
+    if (aksi === 'reject') {
+      alasanReject = prompt('Alasan penolakan massal (opsional):') || '';
+    }
+
+    isProcessing = true;
+    const btnApprove = document.getElementById('btnApproveMassal');
+    const btnReject = document.getElementById('btnRejectMassal');
+    btnApprove.disabled = true;
+    btnReject.disabled = true;
+    if (aksi === 'approve') btnApprove.innerHTML = '<span class="spinner-inline"></span> MEMPROSES...';
+    if (aksi === 'reject') btnReject.innerHTML = '<span class="spinner-inline"></span> MEMPROSES...';
+
+    google.script.run.withSuccessHandler(function (res) {
+      isProcessing = false;
+      btnApprove.disabled = false;
+      btnReject.disabled = false;
+      btnApprove.innerHTML = 'APPROVE TERPILIH';
+      btnReject.innerHTML = 'REJECT TERPILIH';
+
+      showMsg(res.message, res.success);
+      if (res.success) muatPending();
+    }).withFailureHandler(function (err) {
+      isProcessing = false;
+      btnApprove.disabled = false;
+      btnReject.disabled = false;
+      btnApprove.innerHTML = 'APPROVE TERPILIH';
+      btnReject.innerHTML = 'REJECT TERPILIH';
+      showMsg('Gagal memproses massal: ' + err.message, false);
+    }).prosesWmsApprovalBulk(token, ids, aksi, alasanReject);
+  }
+
+  function initTheme() {
+    const savedTheme = localStorage.getItem('wms_theme') || 'dark';
+    document.body.setAttribute('data-theme', savedTheme);
+    updateThemeButtonText(savedTheme);
+  }
+
+  function updateThemeButtonText(theme) {
+    const btn = document.getElementById('btnToggleTheme');
+    if (!btn) return;
+    btn.innerHTML = (theme === 'dark') ? 'â˜€ï¸ LIGHT MODE' : 'ðŸŒ™ DARK MODE';
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.body.getAttribute('data-theme') || 'dark';
+    const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+    document.body.setAttribute('data-theme', newTheme);
+    localStorage.setItem('wms_theme', newTheme);
+    updateThemeButtonText(newTheme);
+  }
+  initTheme();
+
+  const MENU_WMS_LIST = [
+    { value: "produk", label: "INVENTORY", akses: "Produk" },
+    { value: "klasifikasi", label: "MONITORING & KLASIFIKASI", akses: "All" },
+    { value: "penerimaanproduksi", label: "PENERIMAAN PRODUKSI", akses: "All" },
+    { value: "fulfillment", label: "FULFILLMENT REFILL", akses: "Fulfillment" },
+    { value: "peminjaman", label: "PEMINJAMAN", akses: "Peminjaman" },
+    { value: "logproduk", label: "LOG PRODUK", akses: "All" },
+    { value: "logmutasi", label: "LOG MUTASI", akses: "All" },
+    { value: "updatedatabase", label: "UPDATE DATABASE", akses: "All" },
+    { value: "stockopname", label: "STOCK OPNAME", akses: "All" }
+  ];
+
+  function bisaAksesMenuWms(kode) {
+    if (typeof akses === "undefined" || !akses) return true;
+    const roles = String(akses).split(',').map(function(r) { return r.trim(); });
+    return roles.includes("All") || roles.includes(kode);
+  }
+
+  function isiNavDropdownWms(halamanAktif) {
+    const select = document.getElementById('navSelectWms');
+    if (!select) return;
+    select.innerHTML = '';
+    MENU_WMS_LIST.forEach(function (m) {
+      if (!bisaAksesMenuWms(m.akses)) return;
+      const opt = document.createElement('option');
+      opt.value = m.value;
+      opt.textContent = m.label;
+      if (m.value === halamanAktif) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+  isiNavDropdownWms('stockopname');
+
+  function navigasiMenu(select) {
+    const val = select.value;
+    if (val && val !== 'stockopname') {
+      window.top.location.href = "<?= execUrl ?>?token=" + encodeURIComponent(token) + "&page=" + encodeURIComponent(val);
+    }
+  }
+
+  function logout() {
+    google.script.run.logoutWmsSession(token);
+    try { sessionStorage.clear(); } catch(e) {}
+    window.top.location.href = "<?= execUrl ?>";
+  }
+
+  function downloadCsvBrowser(csvStr, filename) {
+    const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
+
+  function downloadTemplateCsv() {
+    const csv = "SKU,Lokasi,Qty Fisik\n";
+    downloadCsvBrowser(csv, "Template_Opname.csv");
+  }
+
+  function exportStockCsv() {
+    showMsg('Sedang menyiapkan file export...', true);
+    google.script.run.withSuccessHandler(function (res) {
+      if (res.success) {
+        downloadCsvBrowser(res.csvData, "Export_Stok_Opname.csv");
+        showMsg('File export berhasil diunduh.', true);
+      } else {
+        showMsg(res.message, false);
+      }
+    }).withFailureHandler(function (err) {
+      showMsg('Gagal export: ' + err.message, false);
+    }).getWmsStockExportCsv(token);
+  }
+
+  function importCsv() {
+    const fileInput = document.getElementById('csvFileInputSoScan');
+    if (!fileInput.files.length) {
+      showMsg('Silakan pilih file CSV terlebih dahulu.', false);
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/);
+      let addedCount = 0;
+      
+      let separator = ',';
+      if (lines.length > 0 && lines[0].indexOf(';') > -1 && lines[0].indexOf(',') === -1) {
+        separator = ';';
+      }
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+
+        const row = barisCsvKeArray(lines[i], separator);
+
+        if (row.length >= 3) {
+          const sku = row[0].trim().toUpperCase();
+          const lokasi = row[1].trim();
+          const qtyFisik = Number(row[2].trim());
+
+          if (sku && lokasi && !isNaN(qtyFisik) && row[2].trim() !== "") {
+            keranjang.push({ sku: sku, lokasi: lokasi, qtyFisik: qtyFisik });
+            addedCount++;
+          }
+        }
+      }
+
+      if (addedCount > 0) {
+        showMsg(`Berhasil menambahkan ${addedCount} item dari CSV ke sesi.`, true);
+        renderKeranjang();
+      } else {
+        showMsg('Tidak ada data valid yang bisa dibaca. Pastikan format: SKU, Lokasi, Qty Fisik.', false);
+      }
+
+      fileInput.value = '';
+    };
+
+    reader.onerror = function() {
+      showMsg('Gagal membaca file CSV.', false);
+    };
+
+    reader.readAsText(file);
+  }
+
+  function downloadTemplateManualCsv() {
+    const csv = "SKU,Lokasi,Delta,Alasan\n";
+    downloadCsvBrowser(csv, "Template_Adjustment_Manual.csv");
+  }
+
+  function exportStockCsvManual() {
+    showMsg('Sedang menyiapkan file export...', true);
+    google.script.run.withSuccessHandler(function (res) {
+      if (res.success) {
+        downloadCsvBrowser(res.csvData, "Export_Stok_Referensi.csv");
+        showMsg('File export berhasil diunduh.', true);
+      } else {
+        showMsg(res.message, false);
+      }
+    }).withFailureHandler(function (err) {
+      showMsg('Gagal export: ' + err.message, false);
+    }).getWmsStockExportCsv(token);
+  }
+
+  function importCsvManual() {
+    const fileInput = document.getElementById('csvFileInputManualSoScan');
+    if (!fileInput.files.length) {
+      showMsg('Silakan pilih file CSV terlebih dahulu.', false);
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/);
+      let addedCount = 0;
+      
+      let separator = ',';
+      if (lines.length > 0 && lines[0].indexOf(';') > -1 && lines[0].indexOf(',') === -1) {
+        separator = ';';
+      }
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+
+        const row = barisCsvKeArray(lines[i], separator);
+
+        if (row.length >= 4) {
+          const sku = row[0].trim().toUpperCase();
+          const lokasi = row[1].trim();
+          const delta = Number(row[2].trim());
+          const alasan = row[3].trim();
+
+          if (sku && lokasi && !isNaN(delta) && delta !== 0 && alasan) {
+            const dupIdx = manualKeranjang.findIndex(item => item.sku === sku && item.lokasi === lokasi);
+            if (dupIdx !== -1) {
+              manualKeranjang[dupIdx].deltaQty = delta;
+              manualKeranjang[dupIdx].alasan = alasan;
+            } else {
+              manualKeranjang.push({ sku: sku, lokasi: lokasi, deltaQty: delta, alasan: alasan });
+            }
+            addedCount++;
+          }
+        }
+      }
+
+      if (addedCount > 0) {
+        showMsg(`Berhasil menambahkan/memperbarui ${addedCount} item dari CSV ke sesi adjustment manual.`, true);
+        renderKeranjangManual();
+      } else {
+        showMsg('Tidak ada data valid yang bisa dibaca.', false);
+      }
+
+      fileInput.value = '';
+    };
+
+    reader.onerror = function () {
+      showMsg('Gagal membaca file CSV.', false);
+    };
+
+    reader.readAsText(file);
+  }
+
+  function barisCsvKeArray(text, separator = ',') {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === '"') {
+        if (inQuotes && text[i + 1] === '"') {
+          current += '"';
+          i++; // Skip the escaped quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === separator && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current);
+    return result;
+  }

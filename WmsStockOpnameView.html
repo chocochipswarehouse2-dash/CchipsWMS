@@ -379,6 +379,7 @@
   </div>
 
 <script>
+
   let isProcessing = false;
   let isSubmittingOpname = false;
   let isSubmittingManual = false;
@@ -387,8 +388,13 @@
   let lokasiList = [];
   let keranjang = [];
   let manualKeranjang = [];
+  
   const token = "<?= token ?>";
   const akses = "<?= akses ?>";
+  const CURRENT_USER = "<?= user ?>";
+  
+  const SUPABASE_URL = "https://filgijcfhgqlirzhvwho.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_L4FEkugwRKqcwFzLXfpZag_aByUy5mD";
 
   function showMsg(text, ok) {
     document.getElementById('msgBox').innerHTML =
@@ -414,40 +420,61 @@
     });
   });
 
-  google.script.run.withSuccessHandler(function (res) {
-    if (!res.success) { showMsg(res.message, false); return; }
-    produkList = res.produkList || [];
-    lokasiList = res.lokasiList || [];
-    const dlSku = document.getElementById('listSku');
-    produkList.forEach(function (p) {
-      const opt = document.createElement('option');
-      opt.value = p.sku;
-      opt.label = p.produk + (p.size ? (' - ' + p.size) : '');
-      dlSku.appendChild(opt);
-    });
-    const dlLok = document.getElementById('listLokasi');
-    lokasiList.forEach(function (l) {
-      const opt = document.createElement('option');
-      opt.value = l;
-      dlLok.appendChild(opt);
-    });
-  }).withFailureHandler(function (err) {
-    showMsg('Gagal memuat data awal: ' + err.message, false);
-  }).getWmsStockOpnameInitData(token);
+  async function loadInitData() {
+    try {
+      const pRes = await fetch(`${SUPABASE_URL}/rest/v1/master_produk?select=sku,produk,size`, {
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+      });
+      if (!pRes.ok) throw new Error("Gagal load produk");
+      produkList = await pRes.json();
+      
+      const dlSku = document.getElementById('listSku');
+      dlSku.innerHTML = '';
+      produkList.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.sku;
+        opt.label = p.produk + (p.size ? (' - ' + p.size) : '');
+        dlSku.appendChild(opt);
+      });
+
+      const viewRes = await fetch(`${SUPABASE_URL}/rest/v1/view_stok_realtime?select=lokasi`, {
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+      });
+      const viewData = await viewRes.json();
+      lokasiList = [...new Set(viewData.map(v => v.lokasi))].sort();
+      
+      const dlLok = document.getElementById('listLokasi');
+      dlLok.innerHTML = '';
+      lokasiList.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l;
+        dlLok.appendChild(opt);
+      });
+    } catch(err) {
+      showMsg('Gagal memuat data awal: ' + err.message, false);
+    }
+  }
+  loadInitData();
 
   document.getElementById('opnameSku').addEventListener('change', cekQtySistem);
   document.getElementById('opnameLokasi').addEventListener('change', cekQtySistem);
 
-  function cekQtySistem() {
+  async function cekQtySistem() {
     const sku = document.getElementById('opnameSku').value.trim();
     const lokasi = document.getElementById('opnameLokasi').value.trim();
     if (!sku || !lokasi) return;
     document.getElementById('qtySistemBadge').innerText = 'Qty sistem: mengecek...';
-    google.script.run.withSuccessHandler(function (res) {
-      if (res.success) {
-        document.getElementById('qtySistemBadge').innerText = 'Qty sistem: ' + res.qtySistem;
-      }
-    }).getWmsQtySistem(token, sku, lokasi);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/view_stok_realtime?sku=eq.${encodeURIComponent(sku)}&lokasi=eq.${encodeURIComponent(lokasi)}&select=sisa_stok`, {
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+      });
+      if (!res.ok) throw new Error("Gagal get qty");
+      const data = await res.json();
+      const qty = data.length > 0 ? data[0].sisa_stok : 0;
+      document.getElementById('qtySistemBadge').innerText = 'Qty sistem: ' + qty;
+    } catch (e) {
+      document.getElementById('qtySistemBadge').innerText = 'Qty sistem: ?';
+    }
   }
 
   function tambahKeKeranjang() {
@@ -496,28 +523,53 @@
     container.innerHTML = html;
   }
 
-  function submitSesi() {
+  async function submitSesi() {
     if (isSubmittingOpname) return;
     if (keranjang.length === 0) { showMsg('Keranjang opname kosong.', false); return; }
 
     isSubmittingOpname = true;
     setBtnLoading('btnSubmitSesiOpname', true, 'MEMPROSES SESI...', 'SUBMIT SESI OPNAME');
 
-    google.script.run.withSuccessHandler(function (res) {
-      isSubmittingOpname = false;
-      setBtnLoading('btnSubmitSesiOpname', false, '', 'SUBMIT SESI OPNAME');
-      if (res.success) {
-        showMsg('Sesi opname ' + res.sessionId + ' berhasil diajukan (' + res.count + ' item).', true);
-        keranjang = [];
-        renderKeranjang();
-      } else {
-        showMsg(res.message, false);
-      }
-    }).withFailureHandler(function (err) {
-      isSubmittingOpname = false;
-      setBtnLoading('btnSubmitSesiOpname', false, '', 'SUBMIT SESI OPNAME');
-      showMsg('Gagal submit sesi: ' + err.message, false);
-    }).submitWmsStockOpnameSesi(token, keranjang);
+    const sessionId = "SO-" + Date.now();
+    try {
+       const payloads = await Promise.all(keranjang.map(async item => {
+          let qs = 0;
+          try {
+             const qsRes = await fetch(`${SUPABASE_URL}/rest/v1/view_stok_realtime?sku=eq.${encodeURIComponent(item.sku)}&lokasi=eq.${encodeURIComponent(item.lokasi)}&select=sisa_stok`, {
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+             });
+             const qsData = await qsRes.json();
+             if (qsData.length > 0) qs = qsData[0].sisa_stok;
+          } catch(e) {}
+          const prodObj = produkList.find(p => p.sku === item.sku);
+          return {
+             sesi_id: sessionId,
+             sku: item.sku,
+             nama_produk: prodObj ? prodObj.produk : "",
+             size: prodObj ? prodObj.size : "",
+             lokasi: item.lokasi,
+             qty_sistem: qs,
+             qty_fisik: item.qtyFisik,
+             selisih: item.qtyFisik - qs,
+             status: 'PENDING',
+             jenis: 'Opname',
+             operator: CURRENT_USER
+          };
+       }));
+       const insRes = await fetch(`${SUPABASE_URL}/rest/v1/stock_opname_queue`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payloads)
+       });
+       if (!insRes.ok) throw new Error("Gagal insert ke Supabase");
+       showMsg('Sesi opname ' + sessionId + ' berhasil diajukan (' + keranjang.length + ' item).', true);
+       keranjang = [];
+       renderKeranjang();
+    } catch(err) {
+       showMsg('Gagal submit sesi: ' + err.message, false);
+    }
+    isSubmittingOpname = false;
+    setBtnLoading('btnSubmitSesiOpname', false, '', 'SUBMIT SESI OPNAME');
   }
 
   function tambahKeKeranjangManual() {
@@ -574,41 +626,82 @@
     container.innerHTML = html;
   }
 
-  function submitManualBulk() {
+  async function submitManualBulk() {
     if (isSubmittingManual) return;
     if (manualKeranjang.length === 0) { showMsg('Keranjang adjustment manual kosong.', false); return; }
 
     isSubmittingManual = true;
     setBtnLoading('btnSubmitManualBulk', true, 'MEMPROSES PENGAJUAN...', 'SUBMIT SEMUA ADJUSTMENT MANUAL');
+    const sessionId = "ADJ-" + Date.now();
 
-    google.script.run.withSuccessHandler(function (res) {
-      isSubmittingManual = false;
-      setBtnLoading('btnSubmitManualBulk', false, '', 'SUBMIT SEMUA ADJUSTMENT MANUAL');
-      if (res.success) {
-        showMsg(`Berhasil mengajukan ${res.successCount} adjustment manual untuk approval.`, true);
-        manualKeranjang = [];
-        renderKeranjangManual();
-      } else {
-        showMsg(res.message, false);
-      }
-    }).withFailureHandler(function (err) {
-      isSubmittingManual = false;
-      setBtnLoading('btnSubmitManualBulk', false, '', 'SUBMIT SEMUA ADJUSTMENT MANUAL');
-      showMsg('Gagal submit adjustment: ' + err.message, false);
-    }).submitWmsAdjustmentManualBulk(token, manualKeranjang);
+    try {
+       const payloads = await Promise.all(manualKeranjang.map(async item => {
+          let qs = 0;
+          try {
+             const qsRes = await fetch(`${SUPABASE_URL}/rest/v1/view_stok_realtime?sku=eq.${encodeURIComponent(item.sku)}&lokasi=eq.${encodeURIComponent(item.lokasi)}&select=sisa_stok`, {
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+             });
+             const qsData = await qsRes.json();
+             if (qsData.length > 0) qs = qsData[0].sisa_stok;
+          } catch(e) {}
+          const prodObj = produkList.find(p => p.sku === item.sku);
+          return {
+             sesi_id: sessionId,
+             sku: item.sku,
+             nama_produk: prodObj ? prodObj.produk : "",
+             size: prodObj ? prodObj.size : "",
+             lokasi: item.lokasi,
+             qty_sistem: qs,
+             qty_fisik: qs + item.deltaQty,
+             selisih: item.deltaQty,
+             status: 'PENDING',
+             jenis: 'Manual',
+             alasan: item.alasan,
+             operator: CURRENT_USER
+          };
+       }));
+       const insRes = await fetch(`${SUPABASE_URL}/rest/v1/stock_opname_queue`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payloads)
+       });
+       if (!insRes.ok) throw new Error("Gagal insert ke Supabase");
+       showMsg(`Berhasil mengajukan ${manualKeranjang.length} adjustment manual untuk approval.`, true);
+       manualKeranjang = [];
+       renderKeranjangManual();
+    } catch(err) {
+       showMsg('Gagal submit adjustment: ' + err.message, false);
+    }
+    isSubmittingManual = false;
+    setBtnLoading('btnSubmitManualBulk', false, '', 'SUBMIT SEMUA ADJUSTMENT MANUAL');
   }
 
-  function muatPending() {
+  async function muatPending() {
     document.getElementById('pendingList').innerHTML = '<div class="empty">MEMUAT DATA PENDING...</div>';
-    google.script.run.withSuccessHandler(function (res) {
-      if (!res.success) {
-        document.getElementById('pendingList').innerHTML = '<div class="empty">' + res.message + '</div>';
-        return;
-      }
-      renderPending(res.data || []);
-    }).withFailureHandler(function (err) {
-      document.getElementById('pendingList').innerHTML = '<div class="empty">GAGAL MEMUAT: ' + err.message + '</div>';
-    }).getWmsPendingAdjustments(token);
+    try {
+       const res = await fetch(`${SUPABASE_URL}/rest/v1/stock_opname_queue?status=eq.PENDING&order=tanggal.desc`, {
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+       });
+       if (!res.ok) throw new Error("Gagal fetch pending queue");
+       const list = await res.json();
+       
+       const mappedList = list.map(q => ({
+          id: q.id,
+          timestamp: q.tanggal,
+          sku: q.sku,
+          namaProduk: q.nama_produk,
+          lokasi: q.lokasi,
+          tipe: q.jenis,
+          qtySistem: q.qty_sistem,
+          qtyFisik: q.qty_fisik,
+          deltaQty: q.selisih,
+          alasan: q.alasan || '-',
+          pic: q.operator || '-'
+       }));
+       renderPending(mappedList);
+    } catch(e) {
+       document.getElementById('pendingList').innerHTML = '<div class="empty">GAGAL MEMUAT: ' + e.message + '</div>';
+    }
   }
 
   function renderPending(list) {
@@ -666,37 +759,76 @@
     return ids;
   }
 
-  function aksiApproval(id, aksi) {
+  async function prosesApprovalApi(ids, aksi, alasan) {
+     const status = aksi === 'approve' ? 'APPROVED' : 'REJECTED';
+     const promises = ids.map(async id => {
+        const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/stock_opname_queue?id=eq.${id}`, {
+           method: 'PATCH',
+           headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+              status: status,
+              tanggal_approve: new Date().toISOString(),
+              approved_by: CURRENT_USER,
+              alasan: (alasan && aksi === 'reject') ? alasan : undefined
+           })
+        });
+        if (!patchRes.ok) throw new Error("Gagal update queue status");
+        
+        if (status === 'APPROVED') {
+           const getRes = await fetch(`${SUPABASE_URL}/rest/v1/stock_opname_queue?id=eq.${id}&select=*`, {
+              headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+           });
+           const rowData = await getRes.json();
+           const row = rowData[0];
+           
+           if (row.selisih !== 0) {
+              const type = row.selisih > 0 ? 'IN' : 'OUT';
+              const absQty = Math.abs(row.selisih);
+              const ket = `[${row.jenis.toUpperCase()}] ${row.alasan ? row.alasan : 'Adjustment'}`;
+              await fetch(`${SUPABASE_URL}/rest/v1/log_produk`, {
+                 method: 'POST',
+                 headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+                 body: JSON.stringify({
+                    type: type,
+                    sku: row.sku,
+                    nama_produk: row.nama_produk,
+                    size: row.size,
+                    lokasi: row.lokasi,
+                    qty: absQty,
+                    operator: row.approved_by,
+                    keterangan: ket
+                 })
+              });
+           }
+        }
+     });
+     await Promise.all(promises);
+  }
+
+  async function aksiApproval(id, aksi) {
     if (isProcessing) return;
     const alasanReject = aksi === 'reject' ? (prompt('Alasan penolakan (opsional):') || '') : '';
     isProcessing = true;
     showMsg('Memproses approval...', true);
-
-    google.script.run.withSuccessHandler(function (res) {
-      isProcessing = false;
-      showMsg(res.message, res.success);
-      if (res.success) muatPending();
-    }).withFailureHandler(function (err) {
-      isProcessing = false;
-      showMsg('Gagal: ' + err.message, false);
-    }).prosesWmsApproval(token, id, aksi, alasanReject);
+    try {
+       await prosesApprovalApi([id], aksi, alasanReject);
+       showMsg(`Berhasil ${aksi} adjustment.`, true);
+       muatPending();
+    } catch(e) {
+       showMsg('Gagal: ' + e.message, false);
+    }
+    isProcessing = false;
   }
 
-  function prosesAksiMassal(aksi) {
+  async function prosesAksiMassal(aksi) {
     if (isProcessing) return;
     const ids = getSelectedPendingIds();
-    if (ids.length === 0) {
-      alert('PILIH MINIMAL SATU DATA YANG INGIN DIPROSES!');
-      return;
-    }
-
+    if (ids.length === 0) { alert('PILIH MINIMAL SATU DATA YANG INGIN DIPROSES!'); return; }
     const konfirmasi = confirm(`Yakin ingin ${aksi.toUpperCase()} ${ids.length} data terpilih?`);
     if (!konfirmasi) return;
 
     let alasanReject = '';
-    if (aksi === 'reject') {
-      alasanReject = prompt('Alasan penolakan massal (opsional):') || '';
-    }
+    if (aksi === 'reject') alasanReject = prompt('Alasan penolakan massal (opsional):') || '';
 
     isProcessing = true;
     const btnApprove = document.getElementById('btnApproveMassal');
@@ -706,23 +838,18 @@
     if (aksi === 'approve') btnApprove.innerHTML = '<span class="spinner-inline"></span> MEMPROSES...';
     if (aksi === 'reject') btnReject.innerHTML = '<span class="spinner-inline"></span> MEMPROSES...';
 
-    google.script.run.withSuccessHandler(function (res) {
-      isProcessing = false;
-      btnApprove.disabled = false;
-      btnReject.disabled = false;
-      btnApprove.innerHTML = 'APPROVE TERPILIH';
-      btnReject.innerHTML = 'REJECT TERPILIH';
-
-      showMsg(res.message, res.success);
-      if (res.success) muatPending();
-    }).withFailureHandler(function (err) {
-      isProcessing = false;
-      btnApprove.disabled = false;
-      btnReject.disabled = false;
-      btnApprove.innerHTML = 'APPROVE TERPILIH';
-      btnReject.innerHTML = 'REJECT TERPILIH';
-      showMsg('Gagal memproses massal: ' + err.message, false);
-    }).prosesWmsApprovalBulk(token, ids, aksi, alasanReject);
+    try {
+       await prosesApprovalApi(ids, aksi, alasanReject);
+       showMsg(`Berhasil memproses massal.`, true);
+       muatPending();
+    } catch (err) {
+       showMsg('Gagal memproses massal: ' + err.message, false);
+    }
+    isProcessing = false;
+    btnApprove.disabled = false;
+    btnReject.disabled = false;
+    btnApprove.innerHTML = 'APPROVE TERPILIH';
+    btnReject.innerHTML = 'REJECT TERPILIH';
   }
 
   function initTheme() {
@@ -787,7 +914,6 @@
   }
 
   function logout() {
-    google.script.run.logoutWmsSession(token);
     try { sessionStorage.clear(); } catch(e) {}
     window.top.location.href = "<?= execUrl ?>";
   }
@@ -806,22 +932,38 @@
   }
 
   function downloadTemplateCsv() {
-    const csv = "SKU,Lokasi,Qty Fisik\n";
+    const csv = "SKU,Lokasi,Qty Fisik
+";
     downloadCsvBrowser(csv, "Template_Opname.csv");
   }
 
-  function exportStockCsv() {
+  async function exportStockCsvClient(filename) {
     showMsg('Sedang menyiapkan file export...', true);
-    google.script.run.withSuccessHandler(function (res) {
-      if (res.success) {
-        downloadCsvBrowser(res.csvData, "Export_Stok_Opname.csv");
-        showMsg('File export berhasil diunduh.', true);
-      } else {
-        showMsg(res.message, false);
-      }
-    }).withFailureHandler(function (err) {
-      showMsg('Gagal export: ' + err.message, false);
-    }).getWmsStockExportCsv(token);
+    try {
+       const res = await fetch(`${SUPABASE_URL}/rest/v1/view_stok_realtime?select=sku,lokasi,sisa_stok&sisa_stok=gt.0`, {
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+       });
+       if (!res.ok) throw new Error("Gagal fetch stock realtime");
+       const data = await res.json();
+       let csv = "SKU,Lokasi,Qty Sistem
+";
+       data.forEach(d => {
+          csv += `"${d.sku}","${d.lokasi}",${d.sisa_stok}
+`;
+       });
+       downloadCsvBrowser(csv, filename);
+       showMsg('File export berhasil diunduh.', true);
+    } catch(err) {
+       showMsg('Gagal export: ' + err.message, false);
+    }
+  }
+
+  function exportStockCsv() {
+    exportStockCsvClient("Export_Stok_Opname.csv");
+  }
+
+  function exportStockCsvManual() {
+    exportStockCsvClient("Export_Stok_Referensi.csv");
   }
 
   function importCsv() {
@@ -836,7 +978,8 @@
 
     reader.onload = function(e) {
       const text = e.target.result;
-      const lines = text.split(/\r?\n/);
+      const lines = text.split(/?
+/);
       let addedCount = 0;
       
       let separator = ',';
@@ -879,22 +1022,9 @@
   }
 
   function downloadTemplateManualCsv() {
-    const csv = "SKU,Lokasi,Delta,Alasan\n";
+    const csv = "SKU,Lokasi,Delta,Alasan
+";
     downloadCsvBrowser(csv, "Template_Adjustment_Manual.csv");
-  }
-
-  function exportStockCsvManual() {
-    showMsg('Sedang menyiapkan file export...', true);
-    google.script.run.withSuccessHandler(function (res) {
-      if (res.success) {
-        downloadCsvBrowser(res.csvData, "Export_Stok_Referensi.csv");
-        showMsg('File export berhasil diunduh.', true);
-      } else {
-        showMsg(res.message, false);
-      }
-    }).withFailureHandler(function (err) {
-      showMsg('Gagal export: ' + err.message, false);
-    }).getWmsStockExportCsv(token);
   }
 
   function importCsvManual() {
@@ -909,7 +1039,8 @@
 
     reader.onload = function (e) {
       const text = e.target.result;
-      const lines = text.split(/\r?\n/);
+      const lines = text.split(/?
+/);
       let addedCount = 0;
       
       let separator = ',';
@@ -967,7 +1098,7 @@
       if (char === '"') {
         if (inQuotes && text[i + 1] === '"') {
           current += '"';
-          i++; // Skip the escaped quote
+          i++; 
         } else {
           inQuotes = !inQuotes;
         }
@@ -981,6 +1112,7 @@
     result.push(current);
     return result;
   }
+
 </script>
 </body>
 </html>

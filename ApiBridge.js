@@ -28,6 +28,21 @@ function handleWmsApiRequest(json) {
       return createJsonResponse({ success: true, session: session });
     }
 
+    if (action === "syncLogProduk" || action === "syncSupabaseToSheet" || action === "syncFromSupabase") {
+      if (typeof syncLogProdukFromSupabase === "function") {
+        syncLogProdukFromSupabase();
+        return createJsonResponse({ success: true, message: "Sync Supabase ke Sheet berhasil dijalankan" });
+      }
+      return createJsonResponse({ success: false, message: "Fungsi syncLogProdukFromSupabase tidak tersedia" });
+    }
+
+    if (action === "syncStokLokasiToSheetStock") {
+      if (typeof syncStokLokasiToSheetStock === "function") {
+        return createJsonResponse(syncStokLokasiToSheetStock());
+      }
+      return createJsonResponse({ success: false, message: "Fungsi syncStokLokasiToSheetStock tidak tersedia" });
+    }
+
     // 2. AUTHENTICATED ACTIONS (Membutuhkan token valid)
     const session = getWmsSessionFromToken(token);
     if (!session) {

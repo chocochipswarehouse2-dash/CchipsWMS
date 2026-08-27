@@ -291,3 +291,53 @@ function getArea(lokasi) {
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
+
+/************************************************
+ * CARI META PRODUK (NAMA & SIZE) BY SKU
+ * Cepat via Cache (<1ms) -> TextFinder Sheet Data (<15ms)
+ ************************************************/
+function cariMetaProdukBySku(sku) {
+  sku = String(sku || "").trim().toUpperCase();
+  if (!sku) return { nama: "", size: "-" };
+
+  // 1. Cek Script Cache (0ms)
+  try {
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get("SKU_META_" + sku);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (e) {}
+
+  // 2. Cek Sheet Data via TextFinder (<15ms)
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const shData = (typeof getSheetByNameCI_WMS === "function") 
+      ? getSheetByNameCI_WMS(ss, "Data") 
+      : ss.getSheetByName("Data");
+
+    if (shData) {
+      // Cari di Kolom E (Code / SKU)
+      const finder = shData.getRange("E:E").createTextFinder(sku).matchEntireCell(true);
+      const foundCell = finder.findNext();
+      if (foundCell) {
+        const row = foundCell.getRow();
+        const rowVals = shData.getRange(row, 2, 1, 3).getValues()[0]; // Kolom B, C, D
+        const nama = String(rowVals[0] || "").trim() || sku;
+        const size = String(rowVals[2] || "").trim() || "-";
+        const meta = { nama: nama, size: size };
+
+        try {
+          const cache = CacheService.getScriptCache();
+          cache.put("SKU_META_" + sku, JSON.stringify(meta), 21600); // 6 jam
+        } catch (eCache) {}
+
+        return meta;
+      }
+    }
+  } catch (err) {
+    Logger.log("Gagal cariMetaProdukBySku: " + err.message);
+  }
+
+  return { nama: sku, size: "-" };
+}

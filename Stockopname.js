@@ -38,14 +38,8 @@ function debugLog(context, message) {
 function prosesStockOpname(json) {
   debugLog("prosesStockOpname", "MASUK FUNGSI. raw json=" + JSON.stringify(json));
 
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID)
-    .getSheets()
-    .find(s => s.getName().toUpperCase() === SHEET_NAME_LOG_PRODUCT.toUpperCase());
-
-  if (!sheet) {
-    debugLog("prosesStockOpname", "STOP: sheet '" + SHEET_NAME_LOG_PRODUCT + "' tidak ketemu.");
-    return ContentService.createTextOutput("SHEET_NOT_FOUND");
-  }
+  // FASE 2: Bypass Sheet sepenuhnya untuk log produk.
+  // Tidak perlu lagi memvalidasi Sheet Log Product.
 
   const sender = json.sender || json.pengirim || json.from || json.phone || "";
   const name = json.pushname || json.name || sender;
@@ -125,10 +119,19 @@ function prosesStockOpname(json) {
       continue;
     }
 
+    // Deteksi Keterangan Eksternal (#KET)
+    if (upper.startsWith("#KET")) {
+      let ketInput = line.replace(/^#KET/i, "").trim();
+      if (ketInput !== "") {
+        currentDeskripsi = ketInput;
+      }
+      continue;
+    }
+
     // Proses SKU (Jika lokasi sudah ada)
     if (currentLokasi !== "") {
       const typeToUse = (currentType === "") ? TYPE_SO : currentType;
-      const deskripsiToUse = (currentType === "") ? KETERANGAN_SO : currentDeskripsi;
+      const deskripsiToUse = (currentDeskripsi !== "") ? currentDeskripsi : ((currentType === "") ? KETERANGAN_SO : currentType);
       const area = getArea(currentLokasi);
 
       rows.push([
@@ -160,26 +163,18 @@ function prosesStockOpname(json) {
       rows[ri][3] = invoice;
     }
 
-    const startRow = findNextRow(sheet);
-    sheet.getRange(startRow, 1, rows.length, 8).setValues(rows);
-
-    try {
-      rebuildStock();
-    } catch (errFull) {
-      Logger.log("rebuildStock error: " + errFull.message);
-    }
-
-    // [FAST BATCH SUPABASE SYNC] Cukup 1 HTTP Request (150ms)
+    // 1. [SUPABASE SYNC] Tulis ke tabel log_produk Supabase
     try {
       if (typeof catatLogDanUpdateStokSupabaseBatch === "function") {
         const batchEntries = rows.map(function (r) {
           const skuRow = String(r[1] || "").trim().toUpperCase();
+          const meta = typeof cariMetaProdukBySku === "function" ? cariMetaProdukBySku(skuRow) : { nama: skuRow, size: "-" };
           return {
             type: r[5],
             invoice: invoice,
             sku: skuRow,
-            nama: skuRow,
-            size: "-",
+            nama: (meta && meta.nama) ? meta.nama : skuRow,
+            size: (meta && meta.size) ? meta.size : "-",
             area: r[7],
             lokasi: r[2],
             qty: 1,
@@ -191,6 +186,39 @@ function prosesStockOpname(json) {
       }
     } catch (errSupAll) {
       Logger.log("Supabase batch sync error: " + errSupAll.message);
+    }
+
+    // 2. [GOOGLE SHEETS BACKUP] Tulis ke Sheet Log Product & Update STOCK (11 Kolom)
+    try {
+      const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+      const shLog = ss.getSheetByName(SHEET_NAME_LOG_PRODUCT || "Log Product");
+      if (shLog) {
+        const rowsSheet = rows.map(function(r) {
+          const skuRow = String(r[1] || "").trim().toUpperCase();
+          const meta = typeof cariMetaProdukBySku === "function" ? cariMetaProdukBySku(skuRow) : { nama: skuRow, size: "-" };
+          return [
+            r[0], // Tanggal
+            skuRow, // SKU
+            r[2], // Lokasi
+            invoice, // Invoice
+            r[4], // Operator
+            r[5], // Type
+            r[6], // Keterangan
+            r[7], // Area
+            (meta && meta.nama) ? meta.nama : skuRow, // Nama Produk
+            (meta && meta.size) ? meta.size : "-", // Size
+            1 // Qty
+          ];
+        });
+        const startRow = typeof findNextRow === "function" ? findNextRow(shLog) : (shLog.getLastRow() + 1);
+        shLog.getRange(startRow, 1, rowsSheet.length, 11).setValues(rowsSheet);
+
+        if (typeof updateStockIncremental === "function") {
+          updateStockIncremental(rowsSheet);
+        }
+      }
+    } catch (errSheet) {
+      Logger.log("Gagal tulis ke Sheet Log Product: " + errSheet.message);
     }
   }
 

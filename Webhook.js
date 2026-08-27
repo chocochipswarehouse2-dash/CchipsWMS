@@ -89,22 +89,7 @@ function doPost(e) {
     // abaikan, jangan sampai logging gagal menghentikan proses utama
   }
 
-  // 3. AMBIL LOCK -- DIBUNGKUS try/catch SENDIRI
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(30000);
-  } catch (errLock) {
-    try {
-      debugLog(
-        "doPost-BUSY",
-        "inboxid=" + (json.inboxid || "") +
-        " Lock antrean penuh (>30s). Mengembalikan BUSY agar WA gateway retry secara aman."
-      );
-    } catch (eLogQueue) {}
-    return ContentService.createTextOutput("BUSY");
-  }
-
-  try {
+    // 3. DUPLICATE PROTECTION & PARSING MESSAGE
 
     /************************************************
      * DUPLICATE WEBHOOK PROTECTION (ROBUST MULTI-GATEWAY)
@@ -126,6 +111,38 @@ function doPost(e) {
 
     const upper = message.toUpperCase();
 
+    const isInventoryScan = 
+      upper.startsWith("#LOK") ||
+      upper.startsWith("#IN") ||
+      upper.startsWith("#OUT") ||
+      upper.startsWith("#STD") ||
+      upper.startsWith("#TPD") ||
+      upper.startsWith("#SHP") ||
+      upper.startsWith("#SCAN") ||
+      upper.startsWith("#PERMAK") ||
+      upper.startsWith("#CUCI") ||
+      upper.startsWith("#DEFECT");
+
+    if (isInventoryScan) {
+      // FASE 2: ROUTER CEPAT WEBHOOK FONNTE
+      // Request inventori (IN, OUT, LOK) jalan TANPA LOCK
+      // karena akan dikirim langsung ke Supabase (tidak nyentuh Sheet Log Product).
+      return prosesStockOpname(json);
+    }
+
+    // 3. AMBIL LOCK -- UNTUK PROSES QC DAN PRODUKSI YANG MASIH PAKAI SHEETS
+    const lock = LockService.getScriptLock();
+    let hasLock = false;
+    try {
+      lock.waitLock(30000);
+      hasLock = true;
+    } catch (errLock) {
+      try { debugLog("doPost-BUSY", "Lock antrean penuh (>30s)."); } catch (e) {}
+      throw new Error("BUSY: System is overloaded, please retry");
+    }
+
+    try {
+
     /************************************************
      * ROUTING QC
      ************************************************/
@@ -140,24 +157,7 @@ function doPost(e) {
       return prosesProduksi(json);
     }
 
-    /************************************************
-     * ROUTING STOCK OPNAME & MUTASI
-     ************************************************/
-    const isInventoryScan = 
-      upper.startsWith("#LOK") ||
-      upper.startsWith("#IN") ||
-      upper.startsWith("#OUT") ||
-      upper.startsWith("#STD") ||
-      upper.startsWith("#TPD") ||
-      upper.startsWith("#SHP") ||
-      upper.startsWith("#SCAN") ||
-      upper.startsWith("#PERMAK") ||
-      upper.startsWith("#CUCI") ||
-      upper.startsWith("#DEFECT");
-
-    if (isInventoryScan) {
-      return prosesStockOpname(json);
-    }
+    // ROUTING LAINNYA DI HAPUS DARI BLOK INI KARENA DIPINDAHKAN KE ATAS (isInventoryScan)
 
     /************************************************
      * HASHTAG TIDAK DIKENAL
@@ -171,14 +171,18 @@ function doPost(e) {
       debugLog("doPost-ERROR", "inboxid=" + (json.inboxid || "") + " ERROR: " + err.message);
     } catch (eLogErr) {}
 
-    return ContentService.createTextOutput(
-      "ERROR : " + err.message
-    );
+    // Hanya throw 500 untuk error concurrency/lock/timeout agar diretry oleh gateway.
+    // Jika error karena salah input, return 200 supaya tidak di-retry terus menerus.
+    const msgLower = err.message.toLowerCase();
+    if (msgLower.includes("busy") || msgLower.includes("sibuk") || msgLower.includes("lock") || msgLower.includes("timeout") || msgLower.includes("terlalu banyak") || msgLower.includes("too many")) {
+      throw err;
+    }
 
+    return ContentService.createTextOutput("ERROR : " + err.message);
   } finally {
-
-    lock.releaseLock();
-
+    if (typeof hasLock !== 'undefined' && hasLock) {
+      lock.releaseLock();
+    }
   }
 
 }

@@ -60,60 +60,47 @@ function renderWmsStockOpnamePage(session, token) {
 }
 
 /************************************************
- * HELPER: cari qty sistem saat ini utk 1 SKU+Lokasi
- * dari sheet STOCK (kolom A=Lokasi,B=Area,C=SKU,D=Qty)
+ * HELPER: cari qty sistem saat ini utk 1 SKU+Lokasi dari Supabase view_stok_realtime
  ************************************************/
 function getQtySistemSkuLokasi(sku, lokasi) {
   sku = String(sku || "").trim().toUpperCase();
   lokasi = normalizeLokasi(lokasi);
-
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = getSheetByNameCI_WMS(ss, "STOCK");
-  if (!sheet) return 0;
-
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return 0;
-
-  const values = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
-  for (let i = 0; i < values.length; i++) {
-    const lok = normalizeLokasi(values[i][0]);
-    const skuRow = String(values[i][2] || "").trim().toUpperCase();
-    if (lok === lokasi && skuRow === sku) {
-      return Number(values[i][3]) || 0;
+  try {
+    const url = SUPABASE_URL + "/rest/v1/view_stok_realtime?sku=eq." + encodeURIComponent(sku) + "&lokasi=eq." + encodeURIComponent(lokasi) + "&select=sisa_stok";
+    const options = {
+      method: "get",
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY },
+      muteHttpExceptions: true
+    };
+    const res = UrlFetchApp.fetch(url, options);
+    if (res.getResponseCode() === 200) {
+      const data = JSON.parse(res.getContentText());
+      if (data.length > 0) return Number(data[0].sisa_stok) || 0;
     }
-  }
+  } catch(e) {}
   return 0;
 }
 
 /************************************************
- * HELPER: cari Nama Produk & Size dari sheet "Data"
+ * HELPER: cari Nama Produk & Size dari Supabase master_produk
  ************************************************/
 function getNamaSizeDariSku(sku) {
   sku = String(sku || "").trim().toUpperCase();
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = getSheetByNameCI_WMS(ss, "Data");
-  if (!sheet) return { nama: "", size: "" };
-
-  const lastRow = sheet.getLastRow();
-  const lastCol = sheet.getLastColumn();
-  if (lastRow < 2 || lastCol < 1) return { nama: "", size: "" };
-
-  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h || "").trim().toLowerCase());
-  let colProd = headers.findIndex(h => h === "product" || h === "nama produk" || h === "produk");
-  let colSize = headers.findIndex(h => h === "variant" || h === "size" || h === "ukuran");
-  let colSku  = headers.findIndex(h => h === "code" || h === "sku" || h === "item code" || h === "barcode");
-
-  if (colProd === -1) colProd = 1;
-  if (colSize === -1) colSize = 3;
-  if (colSku === -1) colSku = 4;
-
-  const values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-  for (let i = 0; i < values.length; i++) {
-    const skuRow = String(values[i][colSku] || "").trim().toUpperCase();
-    if (skuRow === sku) {
-      return { nama: String(values[i][colProd] || "").trim(), size: String(values[i][colSize] || "").trim() };
+  try {
+    const url = SUPABASE_URL + "/rest/v1/master_produk?sku=eq." + encodeURIComponent(sku) + "&select=produk,size";
+    const options = {
+      method: "get",
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY },
+      muteHttpExceptions: true
+    };
+    const res = UrlFetchApp.fetch(url, options);
+    if (res.getResponseCode() === 200) {
+      const data = JSON.parse(res.getContentText());
+      if (data.length > 0) {
+        return { nama: String(data[0].produk || "").trim(), size: String(data[0].size || "").trim() };
+      }
     }
-  }
+  } catch(e) {}
   return { nama: "", size: "" };
 }
 
@@ -127,7 +114,7 @@ function getWmsStockOpnameInitData(token) {
     if (!wmsBisaAksesStockOpname(session.akses)) return { success: false, message: "Akun kamu tidak punya akses ke fitur ini." };
 
     const cache = CacheService.getScriptCache();
-    const cachedStr = cache.get("WMS_STOCK_OPNAME_INIT_V2");
+    const cachedStr = cache.get("WMS_STOCK_OPNAME_INIT_SUPA_V1");
     if (cachedStr) {
       try {
         const parsed = JSON.parse(cachedStr);
@@ -135,69 +122,48 @@ function getWmsStockOpnameInitData(token) {
       } catch (e) {}
     }
 
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const shStock = getSheetByNameCI_WMS(ss, "STOCK");
-    const shData = getSheetByNameCI_WMS(ss, "Data");
-
-    const produkList = [];
-    const lokasiSet = {};
-
-    if (shData) {
-      const lastRow = shData.getLastRow();
-      const lastCol = shData.getLastColumn();
-      if (lastRow >= 2 && lastCol >= 1) {
-        const headers = shData.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h || "").trim().toLowerCase());
-        let colProd = headers.findIndex(h => h === "product" || h === "nama produk" || h === "produk");
-        let colSize = headers.findIndex(h => h === "variant" || h === "size" || h === "ukuran");
-        let colSku  = headers.findIndex(h => h === "code" || h === "sku" || h === "item code" || h === "barcode");
-        if (colProd === -1) colProd = 1;
-        if (colSize === -1) colSize = 3;
-        if (colSku === -1) colSku = 4;
-
-        const values = shData.getRange(2, 1, lastRow - 1, lastCol).getValues();
-        values.forEach(function (row) {
-          const nama = String(row[colProd] || "").trim();
-          const size = String(row[colSize] || "").trim();
-          const sku = String(row[colSku] || "").trim();
-          if (sku) produkList.push({ produk: nama, size: size, sku: sku });
-        });
-      }
-    }
-
-    if (shStock) {
-      const lastRow = shStock.getLastRow();
-      if (lastRow >= 2) {
-        const values = shStock.getRange(2, 1, lastRow - 1, 1).getValues(); // A = Lokasi
-        values.forEach(function (row) {
-          const lokasi = String(row[0] || "").trim();
-          if (lokasi) lokasiSet[lokasi] = true;
-        });
-      }
-    }
-
-    const resData = {
-      produkList: produkList.slice(0, 1000), // Batasi ke 1000 item utama agar datalist DOM ringan
-      lokasiList: Object.keys(lokasiSet).sort()
-    };
+    // Ambil data produk & lokasi dari Supabase
+    let produkList = [];
+    let lokasiList = [];
 
     try {
-      cache.put("WMS_STOCK_OPNAME_INIT_V2", JSON.stringify(resData), 21600);
+      const urlProd = SUPABASE_URL + "/rest/v1/master_produk?select=sku,produk,size";
+      const resProd = UrlFetchApp.fetch(urlProd, {
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY },
+        muteHttpExceptions: true
+      });
+      if (resProd.getResponseCode() === 200) {
+        produkList = JSON.parse(resProd.getContentText());
+      }
     } catch(e) {}
 
-    return {
-      success: true,
-      produkList: resData.produkList,
-      lokasiList: resData.lokasiList
-    };
+    try {
+      const urlLok = SUPABASE_URL + "/rest/v1/view_stok_realtime?select=lokasi";
+      const resLok = UrlFetchApp.fetch(urlLok, {
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY },
+        muteHttpExceptions: true
+      });
+      if (resLok.getResponseCode() === 200) {
+        const rawLok = JSON.parse(resLok.getContentText());
+        const lokSet = {};
+        rawLok.forEach(r => { if (r.lokasi) lokSet[r.lokasi] = true; });
+        lokasiList = Object.keys(lokSet).sort();
+      }
+    } catch(e) {}
+
+    const resData = { success: true, produkList: produkList, lokasiList: lokasiList };
+    try {
+      cache.put("WMS_STOCK_OPNAME_INIT_SUPA_V1", JSON.stringify(resData), 3600);
+    } catch (e) {}
+
+    return resData;
   } catch (err) {
     return { success: false, message: "Terjadi error di server: " + err.message };
   }
 }
 
 /************************************************
- * LOOKUP QTY SISTEM (dipanggil dari client saat user
- * pilih SKU+Lokasi, supaya langsung kelihatan sebelum
- * input qty fisik)
+ * AMBIL QTY SISTEM (ajax realtime)
  ************************************************/
 function getWmsQtySistem(token, sku, lokasi) {
   try {
@@ -212,7 +178,7 @@ function getWmsQtySistem(token, sku, lokasi) {
 }
 
 /************************************************
- * EXPORT DATA STOK SAAT INI (CSV)
+ * EXPORT DATA STOK SAAT INI (CSV) DARI SUPABASE
  ************************************************/
 function getWmsStockExportCsv(token) {
   try {
@@ -220,34 +186,19 @@ function getWmsStockExportCsv(token) {
     if (!session) return { success: false, message: "Sesi tidak valid, silakan login ulang." };
     if (!wmsBisaAksesStockOpname(session.akses)) return { success: false, message: "Akun kamu tidak punya akses ke fitur ini." };
 
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = getSheetByNameCI_WMS(ss, "STOCK");
-    if (!sheet) return { success: false, message: "Sheet 'STOCK' tidak ditemukan." };
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      return { success: true, csvData: "SKU,Lokasi,Qty Fisik\n" };
-    }
-
-    // Kolom A-D = Lokasi, Area, SKU, Qty
-    const values = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+    const url = SUPABASE_URL + "/rest/v1/view_stok_realtime?select=sku,lokasi,sisa_stok&sisa_stok=gt.0&order=lokasi.asc,sku.asc";
+    const options = {
+      method: "get",
+      headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY },
+      muteHttpExceptions: true
+    };
+    const res = UrlFetchApp.fetch(url, options);
+    if (res.getResponseCode() !== 200) throw new Error("Gagal export stok dari Supabase");
+    const list = JSON.parse(res.getContentText());
 
     let csv = "SKU,Lokasi,Qty Fisik\n";
-
-    values.forEach(function (row) {
-      const lokasi = String(row[0] || "").trim();
-      const sku = String(row[2] || "").trim().toUpperCase();
-
-      if (!sku || !lokasi) return;
-
-      const qtyRaw = Number(row[3]);
-      const qty = isNaN(qtyRaw) ? 0 : qtyRaw;
-
-      const cols = [sku, lokasi, qty];
-      csv += cols.map(function (c) {
-        const s = String(c === undefined || c === null ? "" : c).replace(/"/g, '""');
-        return '"' + s + '"';
-      }).join(",") + "\n";
+    list.forEach(function(row) {
+      csv += `"${row.sku}","${row.lokasi}",${row.sisa_stok}\n`;
     });
 
     return { success: true, csvData: csv };
@@ -264,23 +215,11 @@ function submitSesiOpname(token, items) {
   if (!session) return { success: false, message: "Sesi tidak valid, silakan login ulang." };
   if (!wmsBisaAksesStockOpname(session.akses)) return { success: false, message: "Akun kamu tidak punya akses ke fitur ini." };
 
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(30000);
-  } catch (errLock) {
-    return { success: false, message: "Sistem sedang sibuk memproses transaksi lain (SO/IN/OUT/Adjustment). Coba lagi dalam beberapa detik." };
-  }
-
-  try {
-    return simpanSesiOpnameInternal(items, session.username, false);
-  } finally {
-    lock.releaseLock();
-  }
+  return simpanSesiOpnameInternal(items, session.username, false);
 }
 
 /************************************************
- * VERSI INTERNAL (dipakai bareng oleh submitSesiOpname
- * dari web DAN prosesStockOpname dari webhook WA)
+ * VERSI INTERNAL (kalkulasi & input langsung ke Supabase)
  ************************************************/
 function simpanSesiOpnameInternal(items, operator, sertakanSkuTidakDisebut) {
   sertakanSkuTidakDisebut = (sertakanSkuTidakDisebut === true);
@@ -289,56 +228,43 @@ function simpanSesiOpnameInternal(items, operator, sertakanSkuTidakDisebut) {
       return { success: false, message: "Tidak ada item untuk disubmit." };
     }
 
-    debugLog("simpanSesiOpnameInternal", "MULAI. operator=" + operator + " sertakanSkuTidakDisebut=" + sertakanSkuTidakDisebut + " items=" + JSON.stringify(items));
+    const sesiId = "SO-" + Date.now();
+    const tanggal = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm:ss");
 
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = getSheetByNameCI_WMS(ss, SHEET_NAME_ADJUSTMENT);
-    if (!sheet) {
-      debugLog("simpanSesiOpnameInternal", "GAGAL: sheet '" + SHEET_NAME_ADJUSTMENT + "' tidak ditemukan.");
-      return { success: false, message: "Sheet '" + SHEET_NAME_ADJUSTMENT + "' belum dibuat." };
-    }
-
-    const shStock = getSheetByNameCI_WMS(ss, "STOCK");
-    const shData = getSheetByNameCI_WMS(ss, "Data");
-
+    // Ambil data stok sistem dari Supabase view_stok_realtime
     const stockMap = {};
     const stockByLokasi = {};
-    if (shStock && shStock.getLastRow() >= 2) {
-      const stockData = shStock.getRange(2, 1, shStock.getLastRow() - 1, 4).getValues();
-      stockData.forEach(function(row) {
-        const lok = normalizeLokasi(row[0]);
-        const skuRow = String(row[2] || "").trim().toUpperCase();
-        if (lok && skuRow) {
-          const qty = Number(row[3]) || 0;
-          stockMap[lok + "_" + skuRow] = qty;
-          if (!stockByLokasi[lok]) stockByLokasi[lok] = [];
-          stockByLokasi[lok].push({ sku: skuRow, qty: qty });
-        }
-      });
-    }
+    try {
+      const url = SUPABASE_URL + "/rest/v1/view_stok_realtime?select=sku,lokasi,sisa_stok,area,nama_produk,size";
+      const options = {
+        method: "get",
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY },
+        muteHttpExceptions: true
+      };
+      const res = UrlFetchApp.fetch(url, options);
+      if (res.getResponseCode() === 200) {
+        const stockData = JSON.parse(res.getContentText());
+        stockData.forEach(row => {
+          const lok = normalizeLokasi(row.lokasi);
+          const sku = String(row.sku || "").trim().toUpperCase();
+          if (lok && sku) {
+            stockMap[lok + "_" + sku] = {
+              qty: Number(row.sisa_stok) || 0,
+              area: row.area || getArea(lok),
+              nama: row.nama_produk || "",
+              size: row.size || ""
+            };
+            if (!stockByLokasi[lok]) stockByLokasi[lok] = [];
+            stockByLokasi[lok].push({ sku: sku, qty: Number(row.sisa_stok) || 0, area: row.area, nama: row.nama_produk, size: row.size });
+          }
+        });
+      }
+    } catch(e) {}
 
-    const dataMap = {};
-    if (shData && shData.getLastRow() >= 2) {
-      const infoData = shData.getRange(2, 2, shData.getLastRow() - 1, 4).getValues();
-      infoData.forEach(function(row) {
-        const skuRow = String(row[3] || "").trim().toUpperCase();
-        if (skuRow) {
-          dataMap[skuRow] = {
-            nama: String(row[0] || "").trim(),
-            size: String(row[2] || "").trim()
-          };
-        }
-      });
-    }
-
-    const sesiId = getAdjustmentInvoice();
-    const tanggal = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm");
-
-    const rows = [];
+    const payloads = [];
     let jumlahDiproses = 0;
     let jumlahDilewati = 0;
     let jumlahTidakTerhitung = 0;
-
     const lokasiTersentuh = {};
 
     items.forEach(function (it) {
@@ -355,22 +281,32 @@ function simpanSesiOpnameInternal(items, operator, sertakanSkuTidakDisebut) {
       lokasiTersentuh[lokasi][sku] = true;
 
       const key = lokasi + "_" + sku;
-      const qtySistem = stockMap.hasOwnProperty(key) ? stockMap[key] : 0;
+      const sys = stockMap[key] || { qty: 0, area: getArea(lokasi), nama: it.namaProduk || sku, size: it.size || "" };
+      const qtySistem = sys.qty;
       const selisih = qtyFisik - qtySistem;
 
-      if (selisih === 0) { 
-        jumlahDilewati++; 
-        return; 
+      if (selisih === 0) {
+        jumlahDilewati++;
+        return;
       }
 
-      const info = dataMap[sku] || { nama: "", size: "" };
-      const area = getArea(lokasi);
-
-      rows.push([
-        sesiId, tanggal, sku, info.nama, info.size, lokasi, area,
-        qtySistem, qtyFisik, selisih, STATUS_ADJ_PENDING, JENIS_ADJ_OPNAME,
-        KETERANGAN_ADJUSTMENT_OPNAME, operator, sesiId, "", ""
-      ]);
+      payloads.push({
+        sesi_id: sesiId,
+        tanggal: tanggal,
+        sku: sku,
+        nama_produk: sys.nama || it.namaProduk || sku,
+        size: sys.size || it.size || "",
+        lokasi: lokasi,
+        area: sys.area || getArea(lokasi),
+        qty_sistem: qtySistem,
+        qty_fisik: qtyFisik,
+        selisih: selisih,
+        status: "PENDING",
+        jenis: "Opname",
+        alasan: "Pending Adjustment (Opname Web)",
+        operator: operator,
+        invoice: sesiId
+      });
       jumlahDiproses++;
     });
 
@@ -389,38 +325,55 @@ function simpanSesiOpnameInternal(items, operator, sertakanSkuTidakDisebut) {
 
           if (selisih === 0) { jumlahDilewati++; return; }
 
-          const info = dataMap[sku] || { nama: "", size: "" };
-          const area = getArea(lokasi);
-
-          rows.push([
-            sesiId, tanggal, sku, info.nama, info.size, lokasi, area,
-            qtySistem, qtyFisik, selisih, STATUS_ADJ_PENDING, JENIS_ADJ_OPNAME,
-            KETERANGAN_ADJUSTMENT_OPNAME + " (SKU tidak disebut/dihitung saat opname lokasi ini, qty fisik dianggap 0)",
-            operator, sesiId, "", ""
-          ]);
+          payloads.push({
+            sesi_id: sesiId,
+            tanggal: tanggal,
+            sku: sku,
+            nama_produk: entrySistem.nama || sku,
+            size: entrySistem.size || "",
+            lokasi: lokasi,
+            area: entrySistem.area || getArea(lokasi),
+            qty_sistem: qtySistem,
+            qty_fisik: qtyFisik,
+            selisih: selisih,
+            status: "PENDING",
+            jenis: "Opname",
+            alasan: "Pending Adjustment (SKU tidak terhitung saat opname)",
+            operator: operator,
+            invoice: sesiId
+          });
           jumlahDiproses++;
           jumlahTidakTerhitung++;
         });
       });
     }
 
-    if (rows.length === 0) {
-      return { success: true, message: "Semua item cocok dengan stok sistem, tidak ada adjustment yang perlu dibuat.", jumlahDiproses: 0, jumlahDilewati: jumlahDilewati };
+    if (payloads.length === 0) {
+      return { success: true, message: "Semua item cocok dengan stok sistem di Supabase, tidak ada adjustment yang perlu dibuat.", jumlahDiproses: 0, jumlahDilewati: jumlahDilewati };
     }
 
-    const startRow = findNextRow(sheet);
-    sheet.getRange(startRow, 1, rows.length, 17).setValues(rows);
-
-    try {
-      kirimRekapAdjustmentEmail(sesiId, rows);
-    } catch (errMail) {
-      Logger.log("Gagal kirim email rekap adjustment: " + errMail.message);
+    // Insert ke Supabase stock_opname_queue
+    const urlIns = SUPABASE_URL + "/rest/v1/stock_opname_queue";
+    const optionsIns = {
+      method: "post",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      payload: JSON.stringify(payloads),
+      muteHttpExceptions: true
+    };
+    const resIns = UrlFetchApp.fetch(urlIns, optionsIns);
+    if (resIns.getResponseCode() !== 201) {
+      throw new Error("Gagal menyimpan antrean opname ke Supabase: " + resIns.getContentText());
     }
 
     return {
       success: true,
-      message: "Sesi opname " + sesiId + " disimpan. " + jumlahDiproses + " item punya selisih dan menunggu approval" +
-               (jumlahTidakTerhitung > 0 ? " (termasuk " + jumlahTidakTerhitung + " SKU yang tidak disebut saat opname, ketangkap otomatis)" : "") +
+      message: "Sesi opname " + sesiId + " disimpan di Supabase. " + jumlahDiproses + " item punya selisih dan menunggu approval" +
+               (jumlahTidakTerhitung > 0 ? " (termasuk " + jumlahTidakTerhitung + " SKU yang tidak disebut)" : "") +
                ", " + jumlahDilewati + " item cocok/dilewati.",
       sesiId: sesiId,
       jumlahDiproses: jumlahDiproses,
@@ -428,7 +381,6 @@ function simpanSesiOpnameInternal(items, operator, sertakanSkuTidakDisebut) {
       jumlahTidakTerhitung: jumlahTidakTerhitung
     };
   } catch (err) {
-    debugLog("simpanSesiOpnameInternal", "EXCEPTION: " + err.message);
     return { success: false, message: "Terjadi error di server: " + err.message };
   }
 }
@@ -437,69 +389,11 @@ function simpanSesiOpnameInternal(items, operator, sertakanSkuTidakDisebut) {
  * SUBMIT ADJUSTMENT MANUAL -- 1 ITEM
  ************************************************/
 function submitAdjustmentManual(token, data) {
-  try {
-    const session = getWmsSessionFromToken(token);
-    if (!session) return { success: false, message: "Sesi tidak valid, silakan login ulang." };
-    if (!wmsBisaAksesStockOpname(session.akses)) return { success: false, message: "Akun kamu tidak punya akses ke fitur ini." };
-
-    const sku = String(data && data.sku || "").trim().toUpperCase();
-    const lokasi = normalizeLokasi(data && data.lokasi);
-    const deltaQty = Number(data && data.deltaQty);
-    const alasan = String(data && data.alasan || "").trim();
-
-    if (!sku) return { success: false, message: "SKU wajib diisi." };
-    if (!lokasi) return { success: false, message: "Lokasi wajib diisi." };
-    if (!deltaQty || isNaN(deltaQty)) return { success: false, message: "Qty adjustment wajib diisi dan tidak boleh 0 (pakai + untuk nambah, - untuk ngurangin)." };
-    if (!alasan) return { success: false, message: "Alasan/keterangan wajib diisi." };
-
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = getSheetByNameCI_WMS(ss, SHEET_NAME_ADJUSTMENT);
-    if (!sheet) return { success: false, message: "Sheet '" + SHEET_NAME_ADJUSTMENT + "' belum dibuat. Buat dulu manual." };
-
-    const operator = session.username;
-
-    const lock = LockService.getScriptLock();
-    try {
-      lock.waitLock(30000);
-    } catch (errLock) {
-      return { success: false, message: "Sistem sedang sibuk memproses transaksi lain (SO/IN/OUT/Adjustment). Coba lagi dalam beberapa detik." };
-    }
-
-    let row, invoice;
-    try {
-      const qtySistem = getQtySistemSkuLokasi(sku, lokasi);
-      const qtyFisik = qtySistem + deltaQty;
-      const info = getNamaSizeDariSku(sku);
-      const area = getArea(lokasi);
-      invoice = getAdjustmentInvoice();
-      const tanggal = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm");
-
-      row = [
-        invoice, tanggal, sku, info.nama, info.size, lokasi, area,
-        qtySistem, qtyFisik, deltaQty, STATUS_ADJ_PENDING, JENIS_ADJ_MANUAL,
-        KETERANGAN_ADJUSTMENT_MANUAL + ": " + alasan, operator, invoice, "", ""
-      ];
-
-      const startRow = findNextRow(sheet);
-      sheet.getRange(startRow, 1, 1, 17).setValues([row]);
-    } finally {
-      lock.releaseLock();
-    }
-
-    try {
-      kirimRekapAdjustmentEmail(invoice, [row]);
-    } catch (errMail) {
-      Logger.log("Gagal kirim email rekap adjustment manual: " + errMail.message);
-    }
-
-    return { success: true, message: "Adjustment manual " + invoice + " berhasil diajukan, menunggu approval.", invoice: invoice };
-  } catch (err) {
-    return { success: false, message: "Terjadi error di server: " + err.message };
-  }
+  return submitAdjustmentManualBulk(token, [data]);
 }
 
 /************************************************
- * SUBMIT ADJUSTMENT MANUAL SECARA MASSAL
+ * SUBMIT ADJUSTMENT MANUAL BULK (Supabase Backend)
  ************************************************/
 function submitAdjustmentManualBulk(token, items) {
   try {
@@ -508,46 +402,41 @@ function submitAdjustmentManualBulk(token, items) {
     if (!wmsBisaAksesStockOpname(session.akses)) return { success: false, message: "Akun kamu tidak punya akses ke fitur ini." };
 
     if (!items || items.length === 0) {
-      return { success: false, message: "Tidak ada item untuk disubmit." };
+      return { success: false, message: "Daftar adjustment kosong." };
     }
 
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = getSheetByNameCI_WMS(ss, SHEET_NAME_ADJUSTMENT);
-    if (!sheet) return { success: false, message: "Sheet '" + SHEET_NAME_ADJUSTMENT + "' belum dibuat. Buat dulu manual." };
-
-    const shStock = getSheetByNameCI_WMS(ss, "STOCK");
-    const shData = getSheetByNameCI_WMS(ss, "Data");
-
-    const stockMap = {};
-    if (shStock && shStock.getLastRow() >= 2) {
-      const stockData = shStock.getRange(2, 1, shStock.getLastRow() - 1, 4).getValues();
-      stockData.forEach(function (row) {
-        const lok = normalizeLokasi(row[0]);
-        const skuRow = String(row[2] || "").trim().toUpperCase();
-        if (lok && skuRow) {
-          stockMap[lok + "_" + skuRow] = Number(row[3]) || 0;
-        }
-      });
-    }
-
-    const dataMap = {};
-    if (shData && shData.getLastRow() >= 2) {
-      const infoData = shData.getRange(2, 2, shData.getLastRow() - 1, 4).getValues();
-      infoData.forEach(function (row) {
-        const skuRow = String(row[3] || "").trim().toUpperCase();
-        if (skuRow) {
-          dataMap[skuRow] = {
-            nama: String(row[0] || "").trim(),
-            size: String(row[2] || "").trim()
-          };
-        }
-      });
-    }
-
-    const tanggal = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm");
+    const tanggal = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm:ss");
     const operator = session.username;
+    const sesiId = "ADJ-" + Date.now();
 
-    const rowTemplates = [];
+    // Fetch stock saat ini dari Supabase view_stok_realtime
+    const stockMap = {};
+    try {
+      const url = SUPABASE_URL + "/rest/v1/view_stok_realtime?select=sku,lokasi,sisa_stok,area,nama_produk,size";
+      const options = {
+        method: "get",
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY },
+        muteHttpExceptions: true
+      };
+      const res = UrlFetchApp.fetch(url, options);
+      if (res.getResponseCode() === 200) {
+        const stockData = JSON.parse(res.getContentText());
+        stockData.forEach(row => {
+          const lok = normalizeLokasi(row.lokasi);
+          const sku = String(row.sku || "").trim().toUpperCase();
+          if (lok && sku) {
+            stockMap[lok + "_" + sku] = {
+              qty: Number(row.sisa_stok) || 0,
+              area: row.area || getArea(lok),
+              nama: row.nama_produk || "",
+              size: row.size || ""
+            };
+          }
+        });
+      }
+    } catch(e) {}
+
+    const payloads = [];
     let jumlahDilewati = 0;
 
     items.forEach(function (it) {
@@ -562,61 +451,58 @@ function submitAdjustmentManualBulk(token, items) {
       }
 
       const key = lokasi + "_" + sku;
-      const qtySistem = stockMap.hasOwnProperty(key) ? stockMap[key] : 0;
+      const sys = stockMap[key] || { qty: 0, area: getArea(lokasi), nama: it.namaProduk || sku, size: it.size || "" };
+      const qtySistem = sys.qty;
       const qtyFisik = qtySistem + deltaQty;
-      const info = dataMap[sku] || { nama: "", size: "" };
-      const area = getArea(lokasi);
 
-      rowTemplates.push([sku, info.nama, info.size, lokasi, area, qtySistem, qtyFisik, deltaQty, alasan]);
+      payloads.push({
+        sesi_id: sesiId,
+        tanggal: tanggal,
+        sku: sku,
+        nama_produk: sys.nama || it.namaProduk || sku,
+        size: sys.size || it.size || "",
+        lokasi: lokasi,
+        area: sys.area || getArea(lokasi),
+        qty_sistem: qtySistem,
+        qty_fisik: qtyFisik,
+        selisih: deltaQty,
+        status: "PENDING",
+        jenis: "Manual",
+        alasan: alasan,
+        operator: operator,
+        invoice: sesiId
+      });
     });
 
-    if (rowTemplates.length === 0) {
+    if (payloads.length === 0) {
       return {
         success: false,
         message: "Tidak ada item valid untuk disubmit. Pastikan SKU, Lokasi, dan Alasan terisi, dan Delta tidak boleh 0."
       };
     }
 
-    const lock = LockService.getScriptLock();
-    try {
-      lock.waitLock(30000);
-    } catch (errLock) {
-      return { success: false, message: "Sistem sedang sibuk memproses transaksi lain (SO/IN/OUT/Adjustment). Coba lagi dalam beberapa detik." };
-    }
-
-    const rows = [];
-    let invoiceSesi;
-    try {
-      invoiceSesi = getAdjustmentInvoice();
-
-      rowTemplates.forEach(function (t) {
-        const invoiceItem = getAdjustmentInvoice();
-        rows.push([
-          invoiceItem, tanggal, t[0], t[1], t[2], t[3], t[4],
-          t[5], t[6], t[7], STATUS_ADJ_PENDING, JENIS_ADJ_MANUAL,
-          KETERANGAN_ADJUSTMENT_MANUAL + ": " + t[8], operator, invoiceItem, "", ""
-        ]);
-      });
-
-      const startRow = findNextRow(sheet);
-      sheet.getRange(startRow, 1, rows.length, 17).setValues(rows);
-    } finally {
-      lock.releaseLock();
-    }
-
-    const jumlahDiproses = rows.length;
-
-    try {
-      kirimRekapAdjustmentEmail(invoiceSesi, rows);
-    } catch (errMail) {
-      Logger.log("Gagal kirim email rekap adjustment manual (bulk): " + errMail.message);
+    const urlIns = SUPABASE_URL + "/rest/v1/stock_opname_queue";
+    const optionsIns = {
+      method: "post",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      payload: JSON.stringify(payloads),
+      muteHttpExceptions: true
+    };
+    const resIns = UrlFetchApp.fetch(urlIns, optionsIns);
+    if (resIns.getResponseCode() !== 201) {
+      throw new Error("Gagal menyimpan adjustment ke Supabase: " + resIns.getContentText());
     }
 
     return {
       success: true,
-      message: "Berhasil mengajukan " + jumlahDiproses + " adjustment manual, menunggu approval." +
+      message: "Berhasil mengajukan " + payloads.length + " adjustment manual ke Supabase, menunggu approval." +
                (jumlahDilewati > 0 ? " (" + jumlahDilewati + " item dilewati karena data tidak lengkap / delta 0.)" : ""),
-      jumlahDiproses: jumlahDiproses,
+      jumlahDiproses: payloads.length,
       jumlahDilewati: jumlahDilewati
     };
   } catch (err) {
@@ -661,45 +547,49 @@ function getWmsAdjustmentPendingList(token) {
     if (!session) return { success: false, message: "Sesi tidak valid, silakan login ulang." };
     if (!wmsBisaAksesStockOpname(session.akses)) return { success: false, message: "Akun kamu tidak punya akses ke fitur ini." };
 
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = getSheetByNameCI_WMS(ss, SHEET_NAME_ADJUSTMENT);
-    if (!sheet) return { success: false, message: "Sheet '" + SHEET_NAME_ADJUSTMENT + "' belum dibuat." };
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return { success: true, data: [] };
-
-    const values = sheet.getRange(2, 1, lastRow - 1, 17).getValues();
+    const url = SUPABASE_URL + "/rest/v1/stock_opname_queue?status=eq.PENDING&order=tanggal.desc";
+    const options = {
+      method: "get",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+        "Content-Type": "application/json"
+      },
+      muteHttpExceptions: true
+    };
+    
+    const response = UrlFetchApp.fetch(url, options);
+    if (response.getResponseCode() !== 200) {
+      throw new Error(response.getContentText());
+    }
+    
+    const json = JSON.parse(response.getContentText());
     const data = [];
-
-    values.forEach(function (row, idx) {
-      const status = String(row[10] || "").trim();
-      if (status !== STATUS_ADJ_PENDING) return;
-
+    
+    json.forEach(function(row) {
       data.push({
-        rowIndex: idx + 2,
-        sesiId: row[0],
-        tanggal: formatTanggalAman(row[1]),
-        sku: row[2],
-        namaProduk: row[3],
-        size: row[4],
-        lokasi: row[5],
-        area: row[6],
-        qtySistem: row[7],
-        qtyFisik: row[8],
-        selisih: row[9],
-        status: status,
-        jenis: row[11],
-        alasan: row[12],
-        operator: row[13],
-        invoice: row[14]
+        rowIndex: row.id, // Gunakan UUID Supabase sebagai pengganti rowIndex
+        sesiId: row.sesi_id || "",
+        tanggal: formatTanggalAman(row.tanggal),
+        sku: row.sku || "",
+        namaProduk: row.nama_produk || "",
+        size: row.size || "",
+        lokasi: row.lokasi || "",
+        area: row.area || "",
+        qtySistem: row.qty_sistem,
+        qtyFisik: row.qty_fisik,
+        selisih: row.selisih,
+        status: row.status,
+        jenis: row.jenis || "",
+        alasan: row.alasan || "",
+        operator: row.operator || "",
+        invoice: row.invoice || ""
       });
     });
 
-    data.reverse();
-
     return { success: true, data: data };
   } catch (err) {
-    return { success: false, message: "Terjadi error di server: " + err.message };
+    return { success: false, message: "Terjadi error fetch Supabase: " + err.message };
   }
 }
 
@@ -735,207 +625,152 @@ function rejectAdjustmentBulk(token, rowIndexList) {
 /************************************************
  * PROSES APPROVAL / REJECT MASSAL (DI-CHUNK)
  ************************************************/
-const ADJUSTMENT_APPROVAL_CHUNK_SIZE = 200;
-
-function prosesApprovalAdjustment(token, rowIndexList, disetujui) {
+function prosesApprovalAdjustment(token, idList, disetujui) {
   const session = getWmsSessionFromToken(token);
   if (!session) return { success: false, message: "Sesi tidak valid, silakan login ulang." };
   if (!wmsBisaAksesStockOpname(session.akses)) return { success: false, message: "Akun kamu tidak punya akses ke fitur ini." };
 
-  if (!rowIndexList || rowIndexList.length === 0) {
+  if (!idList || idList.length === 0) {
     return { success: false, message: "Tidak ada baris yang dicentang." };
   }
 
-  const chunks = [];
-  for (let i = 0; i < rowIndexList.length; i += ADJUSTMENT_APPROVAL_CHUNK_SIZE) {
-    chunks.push(rowIndexList.slice(i, i + ADJUSTMENT_APPROVAL_CHUNK_SIZE));
-  }
-
-  let totalDiproses = 0;
-  let totalChunkRebuildGagal = 0;
-  let chunkGagalDi = -1;
-  let pesanErrorChunk = "";
-
-  for (let c = 0; c < chunks.length; c++) {
-    try {
-      const hasilChunk = prosesSatuChunkApproval_(session, chunks[c], disetujui);
-      totalDiproses += hasilChunk.jumlahDiproses;
-      if (!hasilChunk.stokSudahDiupdate) totalChunkRebuildGagal++;
-    } catch (err) {
-      chunkGagalDi = c;
-      pesanErrorChunk = err.message;
-      break;
-    }
-  }
-
-  if (chunkGagalDi !== -1) {
-    return {
-      success: totalDiproses > 0,
-      message: (totalDiproses > 0 ? totalDiproses + " item berhasil diproses sebelum error terjadi. " : "") +
-        "Batch ke-" + (chunkGagalDi + 1) + " dari " + chunks.length + " gagal: " + pesanErrorChunk +
-        " -- sisa item BELUM diproses, tetap berstatus Pending, aman dicoba lagi (tidak ada data yang 'gantung')."
-    };
-  }
-
-  return {
-    success: true,
-    message: (disetujui ? "Approve" : "Reject") + " berhasil untuk " + totalDiproses + " item." +
-             (totalChunkRebuildGagal > 0
-               ? " ⚠️ " + totalChunkRebuildGagal + " dari " + chunks.length + " batch gagal di-rebuild otomatis ke sheet STOCK -- jalankan rebuildStock() manual dari editor Apps Script untuk menyegarkan tampilan stok."
-               : (disetujui ? " Stok sistem sudah diperbarui." : ""))
-  };
-}
-
-/************************************************
- * PROSES 1 CHUNK APPROVAL
- *
- * REVISI (SeqID): baris ADJ_IN/ADJ_OUT yang ditulis ke Log
- * Product sekarang JUGA diisi kolom L (SeqID) -- sejajar
- * dengan penulisan qty di kolom K yang sudah ada sebelumnya.
- * Kalau rollback terjadi (errStatus), baris yang dihapus
- * otomatis ikut menghapus SeqID-nya juga (satu kesatuan baris)
- * -- tidak perlu penanganan rollback terpisah utk SeqID.
- ************************************************/
-function prosesSatuChunkApproval_(session, rowIndexListChunk, disetujui) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const shAdj = getSheetByNameCI_WMS(ss, SHEET_NAME_ADJUSTMENT);
-  const shLog = getSheetByNameCI_WMS(ss, SHEET_NAME_LOG_PRODUCT);
-  if (!shAdj) throw new Error("Sheet '" + SHEET_NAME_ADJUSTMENT + "' tidak ditemukan.");
-  if (!shLog) throw new Error("Sheet '" + SHEET_NAME_LOG_PRODUCT + "' tidak ditemukan.");
-
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  const approver = session.username;
 
   try {
-    const lastRow = shAdj.getLastRow();
-    if (lastRow < 2) return { jumlahDiproses: 0, stokSudahDiupdate: true };
+    // 1. Fetch data dari Supabase untuk ID yang di-approve/reject (PostgREST syntax: id=in.(uuid1,uuid2))
+    const cleanIds = idList.map(function(id) { return String(id).trim(); }).filter(Boolean);
+    if (cleanIds.length === 0) {
+      return { success: false, message: "Tidak ada ID valid yang dipilih." };
+    }
+    const idFilter = cleanIds.join(",");
+    const urlGet = SUPABASE_URL + "/rest/v1/stock_opname_queue?id=in.(" + idFilter + ")&status=eq.PENDING";
+    const optionsGet = {
+      method: "get",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+        "Content-Type": "application/json"
+      },
+      muteHttpExceptions: true
+    };
+    
+    const resGet = UrlFetchApp.fetch(urlGet, optionsGet);
+    if (resGet.getResponseCode() !== 200) {
+      throw new Error("Gagal mengambil data dari Supabase: " + resGet.getContentText());
+    }
+    
+    const items = JSON.parse(resGet.getContentText());
+    if (items.length === 0) {
+      return { success: false, message: "Item sudah tidak berstatus Pending atau tidak ditemukan." };
+    }
 
-    const allData = shAdj.getRange(2, 1, lastRow - 1, 17).getValues();
-
-    const tanggalProses = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm");
-    const approver = session.username;
-    const tanggalLog = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm:ss");
-
-    const rowsUntukLog = [];
-    const qtyUntukLog = [];
-    const idxTerpakai = [];
-
-    rowIndexListChunk.forEach(function (rowIndex) {
-      rowIndex = Number(rowIndex);
-      const idx = rowIndex - 2;
-      if (!rowIndex || rowIndex < 2 || idx < 0 || idx >= allData.length) return;
-
-      const rowData = allData[idx];
-      const status = String(rowData[10] || "").trim();
-      if (status !== STATUS_ADJ_PENDING) return;
-
-      if (disetujui) {
-        const sku = String(rowData[2] || "").trim().toUpperCase();
-        const lokasi = String(rowData[5] || "").trim();
-        const selisih = Number(rowData[9]) || 0;
-        const invoice = String(rowData[14] || "").trim();
-        const keterangan = String(rowData[12] || "");
-
-        if (selisih !== 0) {
-          const type = selisih > 0 ? TYPE_ADJ_IN : TYPE_ADJ_OUT;
-          const qtyAdj = Math.abs(selisih);
-          rowsUntukLog.push([tanggalLog, sku, lokasi, invoice, approver, type, keterangan, getArea(lokasi)]);
-          qtyUntukLog.push([qtyAdj]);
+    // 2. Jika disetujui, siapkan payload untuk log_produk
+    if (disetujui) {
+      const logsToInsert = [];
+      items.forEach(function(item) {
+        if (item.selisih !== 0) {
+          const type = item.selisih > 0 ? "IN" : "OUT";
+          const qtyAdj = Math.abs(item.selisih);
+          const ket = item.alasan ? item.alasan : ("[" + (item.jenis || "ADJUSTMENT").toUpperCase() + "] Stock Opname");
+          logsToInsert.push({
+            sku: item.sku,
+            lokasi: item.lokasi,
+            invoice: item.invoice || item.sesi_id || ("ADJ-" + Date.now()),
+            operator: approver,
+            type: type,
+            keterangan: ket,
+            area: item.area || getArea(item.lokasi),
+            qty: qtyAdj,
+            size: item.size || "-",
+            nama_produk: item.nama_produk || item.sku
+          });
         }
-      }
-
-      idxTerpakai.push(idx);
-    });
-
-    if (idxTerpakai.length === 0) {
-      return { jumlahDiproses: 0, stokSudahDiupdate: true };
-    }
-
-    let startRowLog = null;
-    if (rowsUntukLog.length > 0) {
-      startRowLog = findNextRow(shLog);
-      shLog.getRange(startRowLog, 1, rowsUntukLog.length, 8).setValues(rowsUntukLog);
-      shLog.getRange(startRowLog, 11, qtyUntukLog.length, 1).setValues(qtyUntukLog);
-    }
-
-    try {
-      idxTerpakai.forEach(function (idx) {
-        allData[idx][10] = disetujui ? STATUS_ADJ_APPROVED : STATUS_ADJ_REJECTED;
-        allData[idx][15] = tanggalProses;
-        allData[idx][16] = approver;
       });
-      shAdj.getRange(2, 1, allData.length, 17).setValues(allData);
-    } catch (errStatus) {
-      if (startRowLog) {
+      
+      if (logsToInsert.length > 0) {
+        // 1. [SUPABASE] Insert log_produk
+        const urlLog = SUPABASE_URL + "/rest/v1/log_produk";
+        const optionsLog = {
+          method: "post",
+          headers: {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          },
+          payload: JSON.stringify(logsToInsert),
+          muteHttpExceptions: true
+        };
+        const resLog = UrlFetchApp.fetch(urlLog, optionsLog);
+        if (resLog.getResponseCode() !== 201) {
+          throw new Error("Gagal insert log_produk: " + resLog.getContentText());
+        }
+
+        // 2. [GOOGLE SHEETS BACKUP] Tulis ke Sheet Log Product & Update STOCK (11 Kolom)
         try {
-          shLog.deleteRows(startRowLog, rowsUntukLog.length);
-        } catch (errRollback) {
-          Logger.log("GAGAL ROLLBACK Log Product setelah update status Adjustment gagal: " + errRollback.message);
-        }
-      }
-      throw errStatus;
-    }
+          const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+          const shLog = ss.getSheetByName(SHEET_NAME_LOG_PRODUCT || "Log Product");
+          if (shLog) {
+            const nowWib = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm:ss");
+            const sheetRows = logsToInsert.map(function(l) {
+              const typeAdj = l.type === "IN" ? "ADJ_IN" : "ADJ_OUT";
+              return [
+                nowWib,
+                l.sku,
+                l.lokasi,
+                l.invoice,
+                l.operator,
+                typeAdj,
+                l.keterangan,
+                l.area,
+                l.nama_produk,
+                l.size,
+                l.qty
+              ];
+            });
+            const startRow = typeof findNextRow === "function" ? findNextRow(shLog) : (shLog.getLastRow() + 1);
+            shLog.getRange(startRow, 1, sheetRows.length, 11).setValues(sheetRows);
 
-    let stokSudahDiupdate = true;
-    if (rowsUntukLog.length > 0) {
-      try {
-        rebuildStock();
-      } catch (errRebuild) {
-        stokSudahDiupdate = false;
-        Logger.log("Chunk approval berhasil dicatat (Log Product + status), tapi rebuildStock() gagal: " + errRebuild.message);
-      }
-
-      // [SUPABASE SYNC] Sync baris ADJ_IN / ADJ_OUT ke Supabase real-time
-      try {
-        if (typeof catatLogDanUpdateStokSupabase === "function") {
-          const ssSup = SpreadsheetApp.openById(SPREADSHEET_ID);
-          const shDataSup = getSheetByNameCI_WMS ? getSheetByNameCI_WMS(ssSup, "Data") : ssSup.getSheetByName("Data");
-          const skuNamaMap = {};
-          if (shDataSup && shDataSup.getLastRow() > 1) {
-            const shDataVals = shDataSup.getDataRange().getValues();
-            const hdrs = shDataVals[0].map(h => String(h || "").trim().toLowerCase());
-            const iSku  = hdrs.findIndex(h => h === "code" || h === "sku" || h === "item code" || h === "barcode");
-            const iNama = hdrs.findIndex(h => h === "product" || h === "produk" || h === "nama produk");
-            const iSize = hdrs.findIndex(h => h === "variant" || h === "size" || h === "ukuran");
-            for (let ri = 1; ri < shDataVals.length; ri++) {
-              const s = String(shDataVals[ri][iSku >= 0 ? iSku : 4] || "").trim().toUpperCase();
-              if (s) skuNamaMap[s] = {
-                nama: String(shDataVals[ri][iNama >= 0 ? iNama : 1] || "").trim(),
-                size: String(shDataVals[ri][iSize >= 0 ? iSize : 3] || "").trim()
-              };
+            if (typeof updateStockIncremental === "function") {
+              updateStockIncremental(sheetRows);
             }
           }
-
-          for (let li = 0; li < rowsUntukLog.length; li++) {
-            try {
-              const r = rowsUntukLog[li];
-              const skuRow = String(r[1] || "").trim().toUpperCase();
-              const meta = skuNamaMap[skuRow] || { nama: skuRow, size: "-" };
-              const q = (qtyUntukLog[li] && qtyUntukLog[li][0]) ? Number(qtyUntukLog[li][0]) : 1;
-              catatLogDanUpdateStokSupabase({
-                type: r[5],
-                invoice: r[3],
-                sku: skuRow,
-                nama: meta.nama || skuRow,
-                size: meta.size || "-",
-                area: r[7],
-                lokasi: r[2],
-                qty: q,
-                operator: r[4],
-                keterangan: r[6]
-              });
-            } catch (errRowSup) {
-              Logger.log("Supabase adjustment row error: " + errRowSup.message);
-            }
-          }
+        } catch (eSheet) {
+          Logger.log("Gagal tulis approval ke sheet: " + eSheet.message);
         }
-      } catch (errSupAll) {
-        Logger.log("Supabase adjustment sync error: " + errSupAll.message);
       }
     }
 
-    return { jumlahDiproses: idxTerpakai.length, stokSudahDiupdate: stokSudahDiupdate };
-  } finally {
-    lock.releaseLock();
+    // 3. Update status di stock_opname_queue menjadi APPROVED / REJECTED
+    const newStatus = disetujui ? "APPROVED" : "REJECTED";
+    const urlPatch = SUPABASE_URL + "/rest/v1/stock_opname_queue?id=in.(" + idFilter + ")";
+    const optionsPatch = {
+      method: "patch",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      payload: JSON.stringify({
+        status: newStatus,
+        tanggal_approve: new Date().toISOString(),
+        approved_by: approver
+      }),
+      muteHttpExceptions: true
+    };
+    
+    const resPatch = UrlFetchApp.fetch(urlPatch, optionsPatch);
+    if (resPatch.getResponseCode() !== 204) {
+      throw new Error("Gagal update status stock_opname_queue: " + resPatch.getContentText());
+    }
+
+    return {
+      success: true,
+      message: (disetujui ? "Approval" : "Reject") + " berhasil untuk " + items.length + " item."
+    };
+
+  } catch (err) {
+    return { success: false, message: "Terjadi error: " + err.message };
   }
-}
+}

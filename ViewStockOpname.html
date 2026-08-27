@@ -210,7 +210,7 @@
 
         <div id="pendingList">
           <div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 30px; font-style: italic;">
-            Memuat data pending dari sheet Stock Opname...
+            Memuat data pending dari Supabase...
           </div>
         </div>
       </div>
@@ -221,17 +221,22 @@
 
 <script>
   // ========================================================
-  // STOCK OPNAME & ADJUSTMENT CONTROLLER (ANIMATED & AUTO-REFRESH)
+  // STOCK OPNAME & ADJUSTMENT CONTROLLER (SUPABASE CLOUD FIRST)
   // ========================================================
-  let isProcessingSo = false;
-  let soKeranjang = [];
-  let soManualKeranjang = [];
-  let isStockOpnameInitialized = false;
+  var SUPABASE_URL = window.SUPABASE_URL || "https://filgijcfhgqlirzhvwho.supabase.co";
+  var SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_L4FEkugwRKqcwFzLXfpZag_aByUy5mD";
+  var CURRENT_USER = typeof USERNAME !== 'undefined' ? USERNAME : (typeof window.WMS_USERNAME !== 'undefined' ? window.WMS_USERNAME : 'System');
+
+  var isProcessingSo = false;
+  var soKeranjang = [];
+  var soManualKeranjang = [];
+  var isStockOpnameInitialized = false;
 
   function initStockOpnameView() {
     isStockOpnameInitialized = true;
     syncStockOpnameWithMasterData();
   }
+  window.initStockOpnameView = initStockOpnameView;
 
   function syncStockOpnameWithMasterData() {
     const masterList = window.WMS_MASTER_DATA || ALL_PRODUK_DATA || [];
@@ -290,6 +295,7 @@
 
     if (tabName === 'approval') muatPending();
   }
+  window.switchSoTab = switchSoTab;
 
   // ========================================================
   // FAST AUTO-SUGGEST COMBOBOX (SEARCH ACROSS 5,000+ PRODUCTS)
@@ -561,14 +567,16 @@
     const masterList = window.WMS_MASTER_DATA || ALL_PRODUK_DATA || [];
     const found = (window.WMS_SKU_MAP && window.WMS_SKU_MAP[sku]) || masterList.find(x => x.sku === sku);
     const namaProduk = found ? found.produk : sku;
+    const sizeProduk = found && found.size ? found.size : '-';
 
     const dupIdx = soKeranjang.findIndex(item => item.sku === sku && item.lokasi === lokasi);
     if (dupIdx !== -1) {
       soKeranjang[dupIdx].qtyFisik = qtyFisik;
       soKeranjang[dupIdx].namaProduk = namaProduk;
+      soKeranjang[dupIdx].size = sizeProduk;
       if (window.showWmsToast) window.showWmsToast(`SKU ${sku} di lokasi ${lokasi} diperbarui (${qtyFisik} pcs).`, 'info');
     } else {
-      soKeranjang.push({ sku: sku, namaProduk: namaProduk, lokasi: lokasi, qtyFisik: qtyFisik });
+      soKeranjang.push({ sku: sku, namaProduk: namaProduk, size: sizeProduk, lokasi: lokasi, qtyFisik: qtyFisik });
       if (window.showWmsToast) window.showWmsToast(`Item ${sku} ditambahkan ke sesi.`, 'success');
     }
 
@@ -604,6 +612,7 @@
           '<div style="font-size:12.5px; font-weight:700; color:var(--text); margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + nama + '">' + nama + '</div>' +
           '<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:11.5px;">' +
             '<span class="badge-sku" style="font-size:10.5px; padding:1px 6px;">' + item.sku + '</span>' +
+            (item.size && item.size !== '-' && item.size !== 'DEFAULT' ? '<span class="badge-size" style="font-size:9.5px; padding:1px 5px;">' + item.size + '</span>' : '') +
             '&bull; Lokasi: <b style="color:var(--primary);">' + item.lokasi + '</b>' +
             '&bull; Qty Fisik: <b>' + item.qtyFisik + ' pcs</b>' +
           '</div>' +
@@ -627,20 +636,20 @@
     google.script.run.withSuccessHandler(function (res) {
       isProcessingSo = false;
       if (window.setButtonLoading) window.setButtonLoading(btn, false);
-      if (res.success) {
-        if (window.showWmsToast) window.showWmsToast('Sesi opname ' + res.sessionId + ' berhasil diajukan (' + res.count + ' item)!', 'success');
+      if (res && res.success) {
+        if (window.showWmsToast) window.showWmsToast(res.message || 'Sesi opname berhasil diajukan!', 'success');
         soKeranjang = [];
         renderKeranjang();
-        // Otomatis refresh master dan pending list
         if (typeof muatDataProduk === 'function') muatDataProduk();
+        muatPending();
       } else {
-        if (window.showWmsToast) window.showWmsToast(res.message || 'Gagal submit sesi', 'error');
+        if (window.showWmsToast) window.showWmsToast((res && res.message) || 'Gagal submit sesi', 'error');
       }
     }).withFailureHandler(function (err) {
       isProcessingSo = false;
       if (window.setButtonLoading) window.setButtonLoading(btn, false);
       if (window.showWmsToast) window.showWmsToast('Gagal submit sesi: ' + err.message, 'error');
-    }).submitWmsStockOpnameSesi(TOKEN, soKeranjang);
+    }).submitSesiOpname(TOKEN, soKeranjang);
   }
 
   // ============ ADJUSTMENT MANUAL KERANJANG ============
@@ -658,15 +667,17 @@
     const masterList = window.WMS_MASTER_DATA || ALL_PRODUK_DATA || [];
     const found = (window.WMS_SKU_MAP && window.WMS_SKU_MAP[sku]) || masterList.find(x => x.sku === sku);
     const namaProduk = found ? found.produk : sku;
+    const sizeProduk = found && found.size ? found.size : '-';
 
     const dupIdx = soManualKeranjang.findIndex(item => item.sku === sku && item.lokasi === lokasi);
     if (dupIdx !== -1) {
       soManualKeranjang[dupIdx].deltaQty = delta;
       soManualKeranjang[dupIdx].alasan = alasan;
       soManualKeranjang[dupIdx].namaProduk = namaProduk;
+      soManualKeranjang[dupIdx].size = sizeProduk;
       if (window.showWmsToast) window.showWmsToast(`Adjustment ${sku} di ${lokasi} diperbarui (${delta > 0 ? '+' + delta : delta}).`, 'info');
     } else {
-      soManualKeranjang.push({ sku: sku, namaProduk: namaProduk, lokasi: lokasi, deltaQty: delta, alasan: alasan });
+      soManualKeranjang.push({ sku: sku, namaProduk: namaProduk, size: sizeProduk, lokasi: lokasi, deltaQty: delta, alasan: alasan });
       if (window.showWmsToast) window.showWmsToast(`Adjustment ${sku} ditambahkan ke sesi.`, 'success');
     }
 
@@ -704,6 +715,7 @@
           '<div style="font-size:12.5px; font-weight:700; color:var(--text); margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + nama + '">' + nama + '</div>' +
           '<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:11.5px;">' +
             '<span class="badge-sku" style="font-size:10.5px; padding:1px 6px;">' + item.sku + '</span>' +
+            (item.size && item.size !== '-' && item.size !== 'DEFAULT' ? '<span class="badge-size" style="font-size:9.5px; padding:1px 5px;">' + item.size + '</span>' : '') +
             '&bull; Lokasi: <b style="color:var(--primary);">' + item.lokasi + '</b>' +
             '&bull; Adjustment: <b style="color:' + color + ';">' + sign + item.deltaQty + '</b>' +
           '</div>' +
@@ -728,35 +740,35 @@
     google.script.run.withSuccessHandler(function (res) {
       isProcessingSo = false;
       if (window.setButtonLoading) window.setButtonLoading(btn, false);
-      if (res.success) {
-        if (window.showWmsToast) window.showWmsToast(`Berhasil mengajukan ${res.jumlahDiproses || soManualKeranjang.length} adjustment untuk approval!`, 'success');
+      if (res && res.success) {
+        if (window.showWmsToast) window.showWmsToast(res.message || 'Berhasil mengajukan adjustment!', 'success');
         soManualKeranjang = [];
         renderKeranjangManual();
-        // Otomatis refresh master dan pending list
         if (typeof muatDataProduk === 'function') muatDataProduk();
+        muatPending();
       } else {
-        if (window.showWmsToast) window.showWmsToast(res.message || 'Gagal submit adjustment', 'error');
+        if (window.showWmsToast) window.showWmsToast((res && res.message) || 'Gagal submit adjustment', 'error');
       }
     }).withFailureHandler(function (err) {
       isProcessingSo = false;
       if (window.setButtonLoading) window.setButtonLoading(btn, false);
       if (window.showWmsToast) window.showWmsToast('Gagal submit: ' + err.message, 'error');
-    }).submitWmsAdjustmentManualBulk(TOKEN, soManualKeranjang);
+    }).submitAdjustmentManualBulk(TOKEN, soManualKeranjang);
   }
 
   // ============ APPROVAL TAB ============
   function muatPending(btn) {
     if (btn && window.setButtonLoading) window.setButtonLoading(btn, true, 'REFRESHING...');
     const listEl = document.getElementById('pendingList');
-    if (listEl) listEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:30px; font-style:italic;">Memuat data pending dari sheet Stock Opname...</div>';
+    if (listEl) listEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:30px; font-style:italic;">Memuat data pending dari Supabase...</div>';
 
     google.script.run.withSuccessHandler(function (res) {
       if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
-      if (!res.success) {
-        if (listEl) listEl.innerHTML = '<div style="color:var(--danger); padding:20px; text-align:center;">' + res.message + '</div>';
-        return;
+      if (res && res.success) {
+        renderPending(res.data || []);
+      } else {
+        if (listEl) listEl.innerHTML = '<div style="color:var(--danger); padding:20px; text-align:center;">GAGAL MEMUAT: ' + ((res && res.message) || 'Error tidak diketahui') + '</div>';
       }
-      renderPending(res.data || []);
     }).withFailureHandler(function (err) {
       if (btn && window.setButtonLoading) window.setButtonLoading(btn, false);
       if (listEl) listEl.innerHTML = '<div style="color:var(--danger); padding:20px; text-align:center;">GAGAL MEMUAT: ' + err.message + '</div>';
@@ -851,8 +863,8 @@
         '<td style="padding-left:10px; overflow:hidden;"><div style="max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11.5px; font-weight:600; color:var(--text);" title="' + (item.operator || '-') + '">' + opDisplay + '</div></td>' +
         '<td style="text-align:center; padding:4px 6px; white-space:nowrap;">' +
           '<div style="display:flex; gap:6px; justify-content:center; align-items:center;">' +
-            '<button class="btn btn-success btn-act-row" style="height:28px; width:32px; padding:0; font-size:12px; display:inline-flex; align-items:center; justify-content:center;" onclick="aksiApproval(' + item.rowIndex + ', \'approve\', this)" title="Setujui penyesuaian stok">✓</button>' +
-            '<button class="btn btn-danger btn-act-row" style="height:28px; width:32px; padding:0; font-size:12px; display:inline-flex; align-items:center; justify-content:center;" onclick="aksiApproval(' + item.rowIndex + ', \'reject\', this)" title="Tolak penyesuaian">✕</button>' +
+            '<button class="btn btn-success btn-act-row" style="height:28px; width:32px; padding:0; font-size:12px; display:inline-flex; align-items:center; justify-content:center;" onclick="aksiApproval(\'' + item.rowIndex + '\', \'approve\', this)" title="Setujui penyesuaian stok">✓</button>' +
+            '<button class="btn btn-danger btn-act-row" style="height:28px; width:32px; padding:0; font-size:12px; display:inline-flex; align-items:center; justify-content:center;" onclick="aksiApproval(\'' + item.rowIndex + '\', \'reject\', this)" title="Tolak penyesuaian">✕</button>' +
           '</div>' +
         '</td>' +
       '</tr>';
@@ -868,76 +880,75 @@
 
   function getSelectedPendingIds() {
     const ids = [];
-    document.querySelectorAll('.cb-pending:checked').forEach(cb => ids.push(Number(cb.value)));
+    document.querySelectorAll('.cb-pending:checked').forEach(cb => ids.push(String(cb.value)));
     return ids;
   }
 
   function aksiApproval(rowIndex, aksi, btnEl) {
     if (isProcessingSo) return;
-    const konfirmasi = confirm(`Yakin ingin ${aksi === 'approve' ? 'MENYETUJUI' : 'MENOLAK'} adjustment baris ini?`);
+    const konfirmasi = confirm(`Yakin ingin ${aksi === 'approve' ? 'MENYETUJUI' : 'MENOLAK'} adjustment ini?`);
     if (!konfirmasi) return;
 
     isProcessingSo = true;
     if (btnEl && window.setButtonLoading) window.setButtonLoading(btnEl, true, '...');
-    if (window.showWmsToast) window.showWmsToast('Memproses approval di Sheet & sinkronisasi cloud...', 'info');
+    if (window.showWmsToast) window.showWmsToast('Memproses approval di Supabase...', 'info');
 
-    const runner = google.script.run.withSuccessHandler(function (res) {
+    const fn = (aksi === 'approve') ? 'approveAdjustment' : 'rejectAdjustment';
+
+    google.script.run.withSuccessHandler(function (res) {
       isProcessingSo = false;
       if (btnEl && window.setButtonLoading) window.setButtonLoading(btnEl, false);
-      if (window.showWmsToast) window.showWmsToast(res.message || 'Approval berhasil diproses!', res.success ? 'success' : 'error');
-      if (res.success) {
-        // Otomatis refresh data pending dan master inventory
+      if (res && res.success) {
+        if (window.showWmsToast) window.showWmsToast(res.message || 'Approval berhasil!', 'success');
         muatPending();
         if (typeof muatDataProduk === 'function') muatDataProduk();
+      } else {
+        if (window.showWmsToast) window.showWmsToast((res && res.message) || 'Gagal memproses', 'error');
       }
     }).withFailureHandler(function (err) {
       isProcessingSo = false;
       if (btnEl && window.setButtonLoading) window.setButtonLoading(btnEl, false);
-      if (window.showWmsToast) window.showWmsToast('Gagal memproses approval: ' + err.message, 'error');
-    });
-
-    if (aksi === 'approve') runner.approveAdjustment(TOKEN, rowIndex);
-    else runner.rejectAdjustment(TOKEN, rowIndex);
+      if (window.showWmsToast) window.showWmsToast('Error server: ' + err.message, 'error');
+    })[fn](TOKEN, rowIndex);
   }
 
   function prosesAksiMassal(aksi, btn) {
     if (isProcessingSo) return;
     const ids = getSelectedPendingIds();
     if (ids.length === 0) {
-      if (window.showWmsToast) window.showWmsToast('PILIH MINIMAL SATU DATA TERLEBIH DAHULU!', 'warning');
+      if (window.showWmsToast) window.showWmsToast('Pilih minimal satu item untuk diproses!', 'warning');
       return;
     }
 
-    const konfirmasi = confirm(`Yakin ingin ${aksi.toUpperCase()} ${ids.length} data terpilih?`);
+    const konfirmasi = confirm(`Yakin ingin ${aksi === 'approve' ? 'MENYETUJUI' : 'MENOLAK'} ${ids.length} item terpilih secara massal?`);
     if (!konfirmasi) return;
 
     isProcessingSo = true;
     const btnApprove = document.getElementById('btnApproveMassal');
     const btnReject = document.getElementById('btnRejectMassal');
-    if (btnApprove && window.setButtonLoading) window.setButtonLoading(btnApprove, true, 'APPROVING...');
-    if (btnReject && window.setButtonLoading) window.setButtonLoading(btnReject, true, 'REJECTING...');
+    if (btnApprove && window.setButtonLoading) window.setButtonLoading(btnApprove, true, aksi === 'approve' ? 'MEMPROSES...' : '...');
+    if (btnReject && window.setButtonLoading) window.setButtonLoading(btnReject, true, aksi === 'reject' ? 'MEMPROSES...' : '...');
+    if (window.showWmsToast) window.showWmsToast('Memproses approval massal di Supabase...', 'info');
 
-    if (window.showWmsToast) window.showWmsToast(`Memproses ${aksi.toUpperCase()} ${ids.length} item...`, 'info');
+    const fn = (aksi === 'approve') ? 'approveAdjustmentBulk' : 'rejectAdjustmentBulk';
 
-    const runner = google.script.run.withSuccessHandler(function (res) {
+    google.script.run.withSuccessHandler(function (res) {
       isProcessingSo = false;
       if (btnApprove && window.setButtonLoading) window.setButtonLoading(btnApprove, false);
       if (btnReject && window.setButtonLoading) window.setButtonLoading(btnReject, false);
-      if (window.showWmsToast) window.showWmsToast(res.message || 'Proses massal selesai!', res.success ? 'success' : 'error');
-      if (res.success) {
-        // Otomatis refresh data pending dan master inventory
+      if (res && res.success) {
+        if (window.showWmsToast) window.showWmsToast(res.message || 'Proses massal selesai!', 'success');
         muatPending();
         if (typeof muatDataProduk === 'function') muatDataProduk();
+      } else {
+        if (window.showWmsToast) window.showWmsToast((res && res.message) || 'Gagal memproses massal', 'error');
       }
     }).withFailureHandler(function (err) {
       isProcessingSo = false;
       if (btnApprove && window.setButtonLoading) window.setButtonLoading(btnApprove, false);
       if (btnReject && window.setButtonLoading) window.setButtonLoading(btnReject, false);
-      if (window.showWmsToast) window.showWmsToast('Gagal memproses massal: ' + err.message, 'error');
-    });
-
-    if (aksi === 'approve') runner.approveAdjustmentBulk(TOKEN, ids);
-    else runner.rejectAdjustmentBulk(TOKEN, ids);
+      if (window.showWmsToast) window.showWmsToast('Error server: ' + err.message, 'error');
+    })[fn](TOKEN, ids);
   }
 
   // ============ CSV EXPORT & IMPORT ============

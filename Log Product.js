@@ -94,53 +94,36 @@ function prosesKeluarMasuk(json) {
       saveWebhookHistory(json.inboxid);
 
       try { 
-        rebuildStock(); 
+        if (typeof updateStockIncremental === "function") {
+          updateStockIncremental(rows);
+        } else {
+          rebuildStock(); 
+        }
       } catch (e) { 
         Logger.log(e); 
       }
 
-      // 4. [REAL-TIME SUPABASE SYNC] Update stok_lokasi & master_produk otomatis
+      // 4. [REAL-TIME SUPABASE SYNC] Update log_produk di Supabase
       try {
-        if (typeof catatLogDanUpdateStokSupabase === "function") {
-          // Ambil mapping SKU -> {nama, size} dari sheet Data sekali saja
-          const ss2 = SpreadsheetApp.openById(SPREADSHEET_ID);
-          const shData = getSheetByNameCI_WMS ? getSheetByNameCI_WMS(ss2, "Data") : ss2.getSheetByName("Data");
-          const skuNamaMap = {};
-          if (shData && shData.getLastRow() > 1) {
-            const shDataVals = shData.getDataRange().getValues();
-            const hdrs = shDataVals[0].map(h => String(h || "").trim().toLowerCase());
-            const iSku  = hdrs.findIndex(h => h === "code" || h === "sku" || h === "item code" || h === "barcode");
-            const iNama = hdrs.findIndex(h => h === "product" || h === "produk" || h === "nama produk");
-            const iSize = hdrs.findIndex(h => h === "variant" || h === "size" || h === "ukuran");
-            for (let ri = 1; ri < shDataVals.length; ri++) {
-              const s = String(shDataVals[ri][iSku >= 0 ? iSku : 4] || "").trim().toUpperCase();
-              if (s) skuNamaMap[s] = {
-                nama: String(shDataVals[ri][iNama >= 0 ? iNama : 1] || "").trim(),
-                size: String(shDataVals[ri][iSize >= 0 ? iSize : 3] || "").trim()
-              };
-            }
-          }
-
-          rows.forEach(function (r) {
-            try {
-              const skuRow = String(r[1] || "").trim().toUpperCase();
-              const meta = skuNamaMap[skuRow] || { nama: skuRow, size: "-" };
-              catatLogDanUpdateStokSupabase({
-                type: r[5],
-                invoice: r[3],
-                sku: skuRow,
-                nama: meta.nama || skuRow,
-                size: meta.size || "-",
-                area: r[7],
-                lokasi: r[2],
-                qty: 1,
-                operator: r[4],
-                keterangan: r[6]
-              });
-            } catch (errSup) {
-              Logger.log("Supabase sync error (row): " + errSup.message);
-            }
+        if (typeof catatLogDanUpdateStokSupabaseBatch === "function") {
+          const batchEntries = rows.map(function (r) {
+            const skuRow = String(r[1] || "").trim().toUpperCase();
+            const meta = typeof cariMetaProdukBySku === "function" ? cariMetaProdukBySku(skuRow) : { nama: skuRow, size: "-" };
+            return {
+              type: r[5],
+              invoice: r[3],
+              sku: skuRow,
+              nama: (meta && meta.nama) ? meta.nama : skuRow,
+              size: (meta && meta.size) ? meta.size : "-",
+              area: r[7],
+              lokasi: r[2],
+              qty: 1,
+              operator: r[4],
+              keterangan: r[6]
+            };
           });
+
+          catatLogDanUpdateStokSupabaseBatch(batchEntries);
         }
       } catch (errSupAll) {
         Logger.log("Supabase real-time sync gagal: " + errSupAll.message);
