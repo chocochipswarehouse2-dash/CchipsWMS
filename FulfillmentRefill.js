@@ -121,7 +121,7 @@ function getFulfillmentPickingLists(token) {
       const g = groupsMap[sj];
       let needsAlloc = false;
       g.items.forEach(item => {
-        if (!item.lokasi || item.lokasi === "-") {
+        if (!item.lokasi || item.lokasi === "-" || item.lokasi === "KOSONG") {
           needsAlloc = true;
         }
       });
@@ -140,9 +140,20 @@ function getFulfillmentPickingLists(token) {
       for (let sj in itemsNeedingAllocation) {
         if (groupsMap[sj]) {
           const allocatedItems = itemsNeedingAllocation[sj].items || [];
-          groupsMap[sj].items.forEach((it, i) => {
-            if (allocatedItems[i] && allocatedItems[i].lokasi) {
-              it.lokasi = allocatedItems[i].lokasi;
+          const allocMapBySku = {};
+          allocatedItems.forEach(ai => {
+            const sKey = String(ai.sku || "").trim().toUpperCase();
+            if (sKey && ai.lokasi && ai.lokasi !== "KOSONG") {
+              allocMapBySku[sKey] = ai.lokasi;
+            }
+          });
+
+          groupsMap[sj].items.forEach(it => {
+            const sKey = String(it.sku || "").trim().toUpperCase();
+            if (allocMapBySku[sKey]) {
+              it.lokasi = allocMapBySku[sKey];
+            } else if (!it.lokasi || it.lokasi === "KOSONG") {
+              it.lokasi = "-";
             }
           });
         }

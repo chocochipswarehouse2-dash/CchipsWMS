@@ -40,39 +40,65 @@
  ************************************************/
 
 /**
- * Baca sheet STOCK, kelompokkan per SKU.
- * HANYA area "Warehouse" yang diambil.
+ * Baca saldo stok per SKU dari Supabase view_stok_realtime (dengan fallback sheet STOCK).
+ * HANYA area "Warehouse" dengan qty > 0 yang diambil.
  * Return: { [SKU]: [ {lokasi, area, qty}, ... ] }
  */
 function loadStockMap() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName("STOCK");
-  if (!sheet) return {};
-
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return {};
-
-  // Kolom A-D = Lokasi, Area, SKU, Qty
-  const values = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
-
   const map = {};
 
-  values.forEach(function (row) {
-    const lokasi = String(row[0] || "").trim();
-    const area = String(row[1] || "").trim();
-    const sku = String(row[2] || "").trim().toUpperCase();
-    const qty = Number(row[3]) || 0;
+  // 1. Ambil langsung dari Supabase view_stok_realtime (Realtime & Akurat)
+  try {
+    if (typeof fetchAllSupabaseStokRealtime === "function") {
+      const supaStocks = fetchAllSupabaseStokRealtime();
+      if (Array.isArray(supaStocks) && supaStocks.length > 0) {
+        supaStocks.forEach(function (r) {
+          const sku = String(r.sku || "").trim().toUpperCase();
+          const lokasi = String(r.lokasi || "").trim();
+          const area = String(r.area || "").trim();
+          const qty = Number(r.sisa_stok) || 0;
 
-    if (!sku || !lokasi || qty <= 0) return;
+          // HANYA ambil area "Warehouse" dengan qty > 0
+          if (!sku || !lokasi || qty <= 0) return;
+          if (area.toUpperCase() !== "WAREHOUSE") return;
 
-    // Refill toko HANYA boleh ambil stok dari area Warehouse
-    // (rak A/B/C/dst + KOLI) — bukan Blok F atau Perbaikan.
-    if (area.toUpperCase() !== "WAREHOUSE") return;
+          if (!map[sku]) map[sku] = [];
+          map[sku].push({ lokasi: lokasi, area: area, qty: qty });
+        });
 
-    if (!map[sku]) map[sku] = [];
+        if (Object.keys(map).length > 0) {
+          return map;
+        }
+      }
+    }
+  } catch (errSup) {
+    Logger.log("loadStockMap Supabase fetch error: " + errSup.message);
+  }
 
-    map[sku].push({ lokasi: lokasi, area: area, qty: qty });
-  });
+  // 2. Fallback: Baca dari Sheet "STOCK" jika Supabase offline
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName("STOCK");
+    if (sheet && sheet.getLastRow() >= 2) {
+      const lastRow = sheet.getLastRow();
+      const values = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+
+      values.forEach(function (row) {
+        const lokasi = String(row[0] || "").trim();
+        const area = String(row[1] || "").trim();
+        const sku = String(row[2] || "").trim().toUpperCase();
+        const qty = Number(row[3]) || 0;
+
+        if (!sku || !lokasi || qty <= 0) return;
+        if (area.toUpperCase() !== "WAREHOUSE") return;
+
+        if (!map[sku]) map[sku] = [];
+        map[sku].push({ lokasi: lokasi, area: area, qty: qty });
+      });
+    }
+  } catch (errSheet) {
+    Logger.log("loadStockMap Sheet error: " + errSheet.message);
+  }
 
   return map;
 }
@@ -91,13 +117,19 @@ function allocateLokasiForSku(sku, qtyDiminta, stockMap) {
 
   const daftar = stockMap[sku] || [];
 
-  daftar.sort(function (a, b) {
-    if (a.qty !== b.qty) return a.qty - b.qty; // stok terkecil dulu
+  // Filter hanya lokasi yang punya sisa stok > 0
+  const availableLokasi = daftar.filter(d => d.qty > 0);
 
+  availableLokasi.sort(function (a, b) {
+    // 1. Stok terkecil dulu
+    if (a.qty !== b.qty) return a.qty - b.qty;
+
+    // 2. Area priority
     const pa = getAreaPriority(a.area);
     const pb = getAreaPriority(b.area);
     if (pa !== pb) return pa - pb;
 
+    // 3. Lokasi priority (rak A-Z sebelum KOLI)
     const la = getLokasiPriority(a.lokasi);
     const lb = getLokasiPriority(b.lokasi);
     if (la !== lb) return la - lb;
@@ -108,15 +140,15 @@ function allocateLokasiForSku(sku, qtyDiminta, stockMap) {
   let sisa = qtyDiminta;
   const hasil = [];
 
-  for (let i = 0; i < daftar.length && sisa > 0; i++) {
-    if (daftar[i].qty <= 0) continue;
+  for (let i = 0; i < availableLokasi.length && sisa > 0; i++) {
+    if (availableLokasi[i].qty <= 0) continue;
 
-    const ambil = Math.min(daftar[i].qty, sisa);
+    const ambil = Math.min(availableLokasi[i].qty, sisa);
     if (ambil <= 0) continue;
 
-    hasil.push({ lokasi: daftar[i].lokasi, qty: ambil });
+    hasil.push({ lokasi: availableLokasi[i].lokasi, qty: ambil });
 
-    daftar[i].qty -= ambil; // MUTASI: stok berkurang untuk request berikutnya
+    availableLokasi[i].qty -= ambil; // MUTASI: stok berkurang untuk request berikutnya
     sisa -= ambil;
   }
 
@@ -179,14 +211,14 @@ function allocateAcrossGroups(groups) {
     groups[key].items.forEach(function (item) {
       const alokasi = hasilAlokasiMap.get(item) || [];
 
-      // Kumpulkan lokasi unik dari alokasi
+      // Kumpulkan lokasi unik dari alokasi (Abaikan "KOSONG")
       const lokasiList = [];
       let totalAllocatedQty = 0;
 
       alokasi.forEach(function (a) {
         totalAllocatedQty += (Number(a.qty) || 0);
         const lok = String(a.lokasi || "").trim();
-        if (lok && !lokasiList.includes(lok)) {
+        if (lok && lok !== "KOSONG" && !lokasiList.includes(lok)) {
           lokasiList.push(lok);
         }
       });
@@ -200,9 +232,9 @@ function allocateAcrossGroups(groups) {
         existing.qty = (Number(existing.qty) || 0) + (Number(item.qty) || 0);
         
         // Gabungkan lokasi unik
-        const curLokasi = existing.lokasi ? existing.lokasi.split(" | ").map(function(s) { return s.trim(); }) : [];
+        const curLokasi = existing.lokasi && existing.lokasi !== "-" ? existing.lokasi.split(" | ").map(function(s) { return s.trim(); }) : [];
         lokasiList.forEach(function(l) {
-          if (l && !curLokasi.includes(l)) curLokasi.push(l);
+          if (l && l !== "-" && !curLokasi.includes(l)) curLokasi.push(l);
         });
         existing.lokasi = curLokasi.length > 0 ? curLokasi.join(" | ") : "-";
       } else {
