@@ -241,8 +241,8 @@ function renderWmsDashboard(session, token, initialPage) {
 /************************************************
  * DATA PRODUK & CACHE SETUP (COMPACT ENCODING V11)
  ************************************************/
-const CACHE_WMS_DASH_COUNT_KEY = "WMS_DASH_COMPACT_COUNT_V13";
-const CACHE_WMS_DASH_PREFIX = "WMS_DASH_COMPACT_CHUNK_V11_";
+const CACHE_WMS_DASH_COUNT_KEY = "WMS_DASH_COMPACT_COUNT_V15";
+const CACHE_WMS_DASH_PREFIX = "WMS_DASH_COMPACT_CHUNK_V15_";
 const CACHE_WMS_DASH_TTL_DETIK = 21600; // 6 jam
 
 const CABANG_KOTA_DIKECUALIKAN = {

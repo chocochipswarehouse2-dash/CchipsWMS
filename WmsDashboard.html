@@ -2103,7 +2103,7 @@
     }
 
     // ============ LOCAL STORAGE FAST CACHE ============
-    const CACHE_KEY_INVENTORY = 'wms_cache_inventory_v36';
+    const CACHE_KEY_INVENTORY = 'wms_cache_inventory_v38';
     let isRenderedFromLocalCache = false;
 
     function syncGlobalMasterStore(dataList) {
@@ -2156,6 +2156,105 @@
       } catch (e) {}
     }
 
+    // ============ DIRECT SUPABASE REALTIME STOCK OVERRIDE ============
+    async function fetchSupabaseStokFisikDirect() {
+      const supaUrl = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : "https://filgijcfhgqlirzhvwho.supabase.co";
+      const supaKey = typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : "sb_publishable_L4FEkugwRKqcwFzLXfpZag_aByUy5mD";
+
+      let allRows = [];
+      let from = 0;
+      const chunkSize = 1000;
+
+      try {
+        while (true) {
+          const to = from + chunkSize - 1;
+          const res = await fetch(`${supaUrl}/rest/v1/view_stok_realtime?sisa_stok=neq.0&select=sku,nama_produk,size,area,lokasi,sisa_stok&order=sku.asc,lokasi.asc`, {
+            headers: {
+              'apikey': supaKey,
+              'Authorization': 'Bearer ' + supaKey,
+              'Range-Unit': 'items',
+              'Range': `${from}-${to}`
+            }
+          });
+          if (!res.ok && res.status !== 206) break;
+          const data = await res.json();
+          if (!Array.isArray(data) || data.length === 0) break;
+          allRows.push(...data);
+          if (data.length < chunkSize) break;
+          from += chunkSize;
+        }
+      } catch (err) {
+        console.warn('fetchSupabaseStokFisikDirect warning:', err);
+      }
+      return allRows;
+    }
+
+    function applyDirectSupabaseStock(rawList, supaStocks) {
+      if (!Array.isArray(supaStocks) || supaStocks.length === 0 || !Array.isArray(rawList)) return rawList;
+
+      const skuStockMap = {};
+      supaStocks.forEach(function(sRow) {
+        const sku = String(sRow.sku || '').trim().toUpperCase();
+        const lokasi = String(sRow.lokasi || '').trim();
+        const area = String(sRow.area || '').trim();
+        const qty = Number(sRow.sisa_stok) || 0;
+        if (!sku || qty === 0) return;
+
+        if (!skuStockMap[sku]) {
+          skuStockMap[sku] = { f: {}, l: [] };
+        }
+
+        const a = area.toUpperCase();
+        const l = lokasi.toUpperCase();
+        let kat = "Lainnya";
+        if (a === "WAREHOUSE") kat = "Gudang Utama";
+        else if (a === "BLOK F" && (l === "SHOPEE" || l === "TIKTOK" || l === "TT" || l === "LIVE")) kat = "Barang Live";
+        else if (a === "BLOK F" && (l === "STUDIO" || l === "SAMPLE")) kat = "Sample Studio";
+        else if ((a === "PERBAIKAN" || a.indexOf("PERMAK") > -1) && (l.indexOf("PMK") === 0 || l.indexOf("CC") === 0 || l.indexOf("PERMAK") > -1 || l.indexOf("CUCI") > -1)) kat = "Permak / Cuci";
+        else if ((a === "PERBAIKAN" || a.indexOf("DEFECT") > -1) && (l.indexOf("DF") === 0 || l.indexOf("DEFECT") > -1 || l.indexOf("CACAT") > -1)) kat = "Barang Cacat";
+        else if (a === "DEALPOS OFFLINE" && l === "WH") kat = "WH";
+        else if (a === "DEALPOS OFFLINE" && l === "QC") kat = "QC";
+        else if (a === "DEALPOS OFFLINE" && (l === "DD" || l === "DEFECT")) kat = "Barang Cacat";
+        else if (a === "DEALPOS OFFLINE" && l === "GA") kat = "GA";
+
+        skuStockMap[sku].f[kat] = (skuStockMap[sku].f[kat] || 0) + qty;
+        skuStockMap[sku].l.push(lokasi + ":" + qty);
+      });
+
+      rawList.forEach(function(item) {
+        if (!item) return;
+        const sku = String(item.k || item.sku || '').toUpperCase();
+        const mapped = skuStockMap[sku];
+        if (mapped) {
+          item.f = mapped.f;
+          item.l = mapped.l;
+        } else {
+          item.f = {};
+          item.l = [];
+        }
+      });
+
+      return rawList;
+    }
+
+    let RAW_MASTER_DATA_CACHE = null;
+
+    async function refreshStokFisikSupabaseOnly() {
+      if (!RAW_MASTER_DATA_CACHE || RAW_MASTER_DATA_CACHE.length === 0) {
+        muatDataProduk(true);
+        return;
+      }
+      const supaStocks = await fetchSupabaseStokFisikDirect();
+      if (supaStocks && supaStocks.length > 0) {
+        applyDirectSupabaseStock(RAW_MASTER_DATA_CACHE, supaStocks);
+        ALL_PRODUK_DATA = normalisasiProdukData(RAW_MASTER_DATA_CACHE);
+        urutkanProdukData(ALL_PRODUK_DATA);
+        DISPLAY_DATA = ALL_PRODUK_DATA;
+        syncGlobalMasterStore(ALL_PRODUK_DATA);
+        terapkanFilterLokal();
+      }
+    }
+
     function muatDataProduk(force, callback) {
       if (!force) initFastClientCache();
       else {
@@ -2167,10 +2266,10 @@
         window.setButtonLoading(refreshBtn, true, 'REFRESHING...');
       }
       if (force && window.showWmsToast) {
-        window.showWmsToast('Menyinkronkan data inventori terbaru dari server...', 'info');
+        window.showWmsToast('Menyinkronkan data inventori terbaru dari server & Supabase...', 'info');
       }
 
-      google.script.run.withSuccessHandler(function (res) {
+      google.script.run.withSuccessHandler(async function (res) {
         if (force && refreshBtn && window.setButtonLoading) {
           window.setButtonLoading(refreshBtn, false);
         }
@@ -2184,6 +2283,14 @@
         }
 
         const rawData = res.data || [];
+        RAW_MASTER_DATA_CACHE = rawData;
+
+        // Ambil data fisik langsung dari Supabase untuk menjamin 100% akurat & realtime
+        const supaStocks = await fetchSupabaseStokFisikDirect();
+        if (supaStocks && supaStocks.length > 0) {
+          applyDirectSupabaseStock(rawData, supaStocks);
+        }
+
         ALL_PRODUK_DATA = normalisasiProdukData(rawData);
         urutkanProdukData(ALL_PRODUK_DATA);
         DISPLAY_DATA = ALL_PRODUK_DATA;
@@ -2194,7 +2301,7 @@
 
         terapkanFilterLokal();
         if (force && window.showWmsToast) {
-          window.showWmsToast(`Data stok inventori berhasil diperbarui (${rawData.length} SKU)!`, 'success');
+          window.showWmsToast(`Data stok inventori berhasil disinkronkan dengan Supabase (${rawData.length} SKU)!`, 'success');
         }
         if (typeof callback === 'function') callback(true);
       }).withFailureHandler(function (err) {
@@ -2209,6 +2316,7 @@
       }).getWmsProdukCompact(TOKEN, Boolean(force));
     }
     window.muatDataProduk = muatDataProduk;
+    window.refreshStokFisikSupabaseOnly = refreshStokFisikSupabaseOnly;
     muatDataProduk(false);
 
     // ============ SUPABASE REALTIME AUTO-SYNC & BACKGROUND TIMER ============
@@ -2242,10 +2350,10 @@
         }
       }
 
-      // Background Periodic Fallback: refresh setiap 5 menit jika tidak ada event realtime
+      // Background Periodic Fallback: refresh setiap 3 menit
       setInterval(function () {
-        muatDataProduk(true);
-      }, 5 * 60 * 1000);
+        refreshStokFisikSupabaseOnly();
+      }, 3 * 60 * 1000);
     }
 
     function handleRealtimeChange(payload) {
@@ -2254,14 +2362,8 @@
         if (window.showWmsToast) {
           window.showWmsToast('⚡ Realtime: Perubahan data inventori terdeteksi, menyinkronkan...', 'info');
         }
-        muatDataProduk(true, function(success) {
-          // Juga trigger reload modul aktif jika sedang dibuka
-          const page = typeof currentActivePage !== 'undefined' ? currentActivePage : '';
-          if (page === 'fulfillment' && typeof window.muatDataFulfillment === 'function') window.muatDataFulfillment(true);
-          else if (page === 'penerimaanproduksi' && typeof window.muatDataPenerimaan === 'function') window.muatDataPenerimaan(true);
-          else if (page === 'klasifikasi' && typeof window.muatDataKlasifikasi === 'function') window.muatDataKlasifikasi(true);
-        });
-      }, 1500);
+        refreshStokFisikSupabaseOnly();
+      }, 1000);
     }
 
     // Jalankan inisialisasi Realtime
