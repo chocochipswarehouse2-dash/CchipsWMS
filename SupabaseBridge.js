@@ -479,7 +479,7 @@ function fetchAllSupabaseStokRealtime() {
   try {
     while (true) {
       const to = from + chunkSize - 1;
-      const url = SUPABASE_URL + "/rest/v1/view_stok_realtime?sisa_stok=neq.0&select=sku,nama_produk,size,area,lokasi,sisa_stok";
+      const url = SUPABASE_URL + "/rest/v1/view_stok_realtime?sisa_stok=neq.0&select=sku,nama_produk,size,area,lokasi,sisa_stok&order=sku.asc,lokasi.asc";
       const options = {
         method: "get",
         headers: {
