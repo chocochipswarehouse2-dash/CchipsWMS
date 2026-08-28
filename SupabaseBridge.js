@@ -458,6 +458,191 @@ function syncWmsUsersToSupabase() {
   return { success: true, count: rowsToInsert.length };
 }
 
+/**
+ * Sinkronisasi Seluruh Data Sheet "Penerimaan Produksi" ke Supabase
+ */
+function syncPenerimaanProduksiToSupabase() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName("Penerimaan Produksi");
+  if (!sheet) return { success: false, message: "Sheet 'Penerimaan Produksi' tidak ditemukan." };
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { success: true, count: 0, message: "Sheet 'Penerimaan Produksi' kosong." };
+
+  const numCols = Math.max(11, sheet.getLastColumn());
+  const data = sheet.getRange(2, 1, lastRow - 1, numCols).getValues();
+  const rowsToInsert = [];
+
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    let tgl = row[0];
+    let tglStr = "";
+    if (tgl instanceof Date) {
+      tglStr = Utilities.formatDate(tgl, TIMEZONE, "yyyy-MM-dd");
+    } else {
+      tglStr = String(tgl || "").trim().substring(0, 10);
+    }
+    if (!tglStr) tglStr = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd");
+
+    const kategori = String(row[1] || "Lokal CMT").trim();
+    const noSj = String(row[2] || "").trim().toUpperCase();
+    const kodeProd = String(row[3] || "").trim().toUpperCase();
+    const warna = String(row[4] || "").trim();
+    const size = String(row[5] || "Default").trim();
+    const qty = parseInt(row[6], 10) || 1;
+    const fotoUrl = String(row[7] || "").trim();
+    const keterangan = String(row[8] || "").trim();
+    const operator = String(row[9] || "Operator").trim();
+
+    let waktuInput = row[10];
+    let createdAtIso = new Date().toISOString();
+    if (waktuInput instanceof Date) {
+      createdAtIso = waktuInput.toISOString();
+    } else if (waktuInput) {
+      try { createdAtIso = new Date(waktuInput).toISOString(); } catch (e) {}
+    }
+
+    if (noSj && kodeProd) {
+      rowsToInsert.push({
+        tanggal_penerimaan: tglStr,
+        kategori: kategori,
+        no_surat_jalan: noSj,
+        kode_produksi: kodeProd,
+        warna: warna,
+        size: size,
+        qty: qty,
+        foto_url: (fotoUrl.startsWith("http")) ? fotoUrl : "",
+        keterangan: keterangan,
+        operator: operator,
+        created_at: createdAtIso
+      });
+    }
+  }
+
+  if (rowsToInsert.length === 0) return { success: true, count: 0 };
+
+  const CHUNK_SIZE = 500;
+  let totalInserted = 0;
+  for (let i = 0; i < rowsToInsert.length; i += CHUNK_SIZE) {
+    const chunk = rowsToInsert.slice(i, i + CHUNK_SIZE);
+    const res = supabaseFetch("penerimaan_produksi", "post", chunk, "", true);
+    if (!res.success) {
+      Logger.log("Gagal sync penerimaan_produksi chunk " + i + ": " + JSON.stringify(res.error));
+      return { success: false, message: "Gagal pada chunk " + i + ": " + res.message, count: totalInserted };
+    }
+    totalInserted += chunk.length;
+  }
+
+  return { success: true, count: totalInserted };
+}
+
+/**
+ * Sinkronisasi Seluruh Data Sheet "Peminjaman" ke Supabase
+ */
+function syncPeminjamanToSupabase() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName("Peminjaman");
+  if (!sheet) return { success: false, message: "Sheet 'Peminjaman' tidak ditemukan." };
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { success: true, count: 0, message: "Sheet 'Peminjaman' kosong." };
+
+  const numCols = Math.max(14, sheet.getLastColumn());
+  const data = sheet.getRange(2, 1, lastRow - 1, numCols).getValues();
+  const rowsToInsert = [];
+
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    const submitTs = row[1];
+    let createdAtIso = new Date().toISOString();
+    if (submitTs instanceof Date) {
+      createdAtIso = submitTs.toISOString();
+    } else if (submitTs) {
+      try { createdAtIso = new Date(submitTs).toISOString(); } catch(e) {}
+    }
+
+    const pic = String(row[2] || "").trim();
+    const keperluan = String(row[3] || "").trim();
+
+    let tglPinjam = row[4];
+    let tglPinjamStr = "";
+    if (tglPinjam instanceof Date) {
+      tglPinjamStr = Utilities.formatDate(tglPinjam, TIMEZONE, "yyyy-MM-dd");
+    } else {
+      tglPinjamStr = String(tglPinjam || "").trim().substring(0, 10);
+    }
+    if (!tglPinjamStr) tglPinjamStr = Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd");
+
+    const namaProduk = String(row[6] || "").trim();
+    const sku = String(row[7] || "").trim().toUpperCase();
+    const size = String(row[8] || "-").trim();
+    const qty = parseInt(row[9], 10) || 1;
+    const noPjm = String(row[10] || "").trim().toUpperCase();
+    const status = String(row[11] || "Dipinjam").trim();
+    const operator = String(row[12] || "").trim();
+    const lokasi = String(row[13] || "STUDIO").trim();
+
+    if ((sku || namaProduk) && noPjm) {
+      rowsToInsert.push({
+        no_peminjaman: noPjm,
+        pic: pic || "Peminjam",
+        keperluan: keperluan,
+        tanggal_pinjam: tglPinjamStr,
+        sku: sku || namaProduk,
+        nama_produk: namaProduk || sku,
+        size: size,
+        qty: qty,
+        lokasi: lokasi,
+        status: status,
+        operator: operator,
+        created_at: createdAtIso
+      });
+    }
+  }
+
+  if (rowsToInsert.length === 0) return { success: true, count: 0 };
+
+  const CHUNK_SIZE = 500;
+  let totalInserted = 0;
+  for (let i = 0; i < rowsToInsert.length; i += CHUNK_SIZE) {
+    const chunk = rowsToInsert.slice(i, i + CHUNK_SIZE);
+    const res = supabaseFetch("peminjaman", "post", chunk, "", true);
+    if (!res.success) {
+      Logger.log("Gagal sync peminjaman chunk " + i + ": " + JSON.stringify(res.error));
+      return { success: false, message: "Gagal pada chunk " + i + ": " + res.message, count: totalInserted };
+    }
+    totalInserted += chunk.length;
+  }
+
+  return { success: true, count: totalInserted };
+}
+
+/**
+ * Menu Spreadsheet 1-Klik: Tarik seluruh data lama Sheet ke Supabase
+ */
+function menuSyncAllSheetToSupabase() {
+  const ui = SpreadsheetApp.getUi();
+  const conf = ui.alert(
+    "Konfirmasi Migrasi Data ke Supabase",
+    "Tindakan ini akan menarik seluruh riwayat Penerimaan Produksi & Peminjaman dari Google Sheets ke database Supabase Cloud.\n\nLanjutkan?",
+    ui.ButtonSet.YES_NO
+  );
+
+  if (conf !== ui.Button.YES) return;
+
+  SpreadsheetApp.getActiveSpreadsheet().toast("Menyinkronkan Penerimaan Produksi ke Supabase...", "MIGRASI SUPABASE", 15);
+  const resPenerimaan = syncPenerimaanProduksiToSupabase();
+
+  SpreadsheetApp.getActiveSpreadsheet().toast("Menyinkronkan Peminjaman ke Supabase...", "MIGRASI SUPABASE", 15);
+  const resPeminjaman = syncPeminjamanToSupabase();
+
+  ui.alert(
+    "Migrasi ke Supabase Selesai! 🚀",
+    `Hasil Sinkronisasi:\n• Penerimaan Produksi: ${resPenerimaan.count || 0} baris\n• Peminjaman SPS: ${resPeminjaman.count || 0} baris\n\nData sekarang tersimpan rapi dan realtime di Supabase!`,
+    ui.ButtonSet.OK
+  );
+}
+
 function runMigrasiUsers() {
     SpreadsheetApp.getActiveSpreadsheet().toast('Memulai migrasi WMS Users...', 'MIGRASI', 15);
     const result = syncWmsUsersToSupabase();

@@ -16,7 +16,10 @@ function onOpen() {
     .addSeparator()
     .addItem('🧪 Test Simulasi Scan WA Masuk', 'menuTestSimulasiScanMasuk')
     .addItem('🔄 Hitung Ulang Seluruh Stok (Rebuild Stock)', 'menuRebuildStockManual')
-    .addItem('⚡ Sinkronkan Data ke Supabase', 'menuSyncAllToSupabase')
+    .addSeparator()
+    .addItem('⚡ Sinkronkan Master Produk & Stok ke Supabase', 'menuSyncAllToSupabase')
+    .addItem('📥 Tarik Data Penerimaan & Peminjaman ke Supabase', 'menuSyncAllSheetToSupabase')
+    .addItem('⏱️ Pasang Auto-Sync Supabase ke Sheet (1 Menit)', 'setupSyncTrigger')
     .addItem('🧹 Bersihkan Cache WMS', 'menuBersihkanCacheManual')
     .addToUi();
 }

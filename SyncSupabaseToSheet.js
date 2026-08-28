@@ -193,20 +193,190 @@ function syncStokLokasiToSheetStock() {
   }
 }
 
+/**
+ * Sinkronisasi Penerimaan Produksi dari Supabase ke Sheet "Penerimaan Produksi"
+ */
+function syncPenerimaanProduksiFromSupabase(forceReset) {
+  const props = PropertiesService.getScriptProperties();
+  let lastSyncedId = forceReset ? "0" : (props.getProperty("LAST_SYNCED_PENERIMAAN_ID") || "0");
+
+  const url = SUPABASE_URL + "/rest/v1/penerimaan_produksi?id=gt." + lastSyncedId + "&order=id.asc&limit=500";
+  const options = {
+    method: "get",
+    headers: {
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+      "Content-Type": "application/json"
+    },
+    muteHttpExceptions: true
+  };
+
+  try {
+    const res = UrlFetchApp.fetch(url, options);
+    if (res.getResponseCode() !== 200) return;
+
+    const newRows = JSON.parse(res.getContentText());
+    if (!newRows || newRows.length === 0) return;
+
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName("Penerimaan Produksi");
+    if (!sheet) return;
+
+    const rowsToAppend = [];
+    let highestId = parseInt(lastSyncedId, 10) || 0;
+
+    for (let i = 0; i < newRows.length; i++) {
+      const item = newRows[i];
+      let tglStr = item.tanggal_penerimaan || "";
+      let waktuInputStr = item.created_at;
+      try {
+        waktuInputStr = Utilities.formatDate(new Date(item.created_at), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
+      } catch (e) {}
+
+      // Susunan Kolom Sheet "Penerimaan Produksi":
+      // [0:Tanggal, 1:Kategori, 2:No SJ, 3:Kode Prod, 4:Warna, 5:Size, 6:Qty, 7:Foto, 8:Ket, 9:Operator, 10:Waktu Input]
+      const row = [
+        tglStr,
+        item.kategori || "Lokal CMT",
+        item.no_surat_jalan || "",
+        item.kode_produksi || "",
+        item.warna || "",
+        item.size || "Default",
+        item.qty || 1,
+        item.foto_url || "",
+        item.keterangan || "",
+        item.operator || "Operator",
+        waktuInputStr
+      ];
+
+      rowsToAppend.push(row);
+      if (item.id > highestId) highestId = item.id;
+    }
+
+    if (rowsToAppend.length > 0) {
+      const startRow = typeof findNextRow === "function" ? findNextRow(sheet) : (sheet.getLastRow() + 1);
+      sheet.getRange(startRow, 1, rowsToAppend.length, 11).setValues(rowsToAppend);
+      props.setProperty("LAST_SYNCED_PENERIMAAN_ID", highestId.toString());
+      Logger.log("Berhasil sync " + rowsToAppend.length + " baris Penerimaan Produksi ke Sheet.");
+    }
+  } catch (err) {
+    Logger.log("syncPenerimaanProduksiFromSupabase error: " + err.message);
+  }
+}
+
+/**
+ * Sinkronisasi Peminjaman dari Supabase ke Sheet "Peminjaman"
+ */
+function syncPeminjamanFromSupabase(forceReset) {
+  const props = PropertiesService.getScriptProperties();
+  let lastSyncedId = forceReset ? "0" : (props.getProperty("LAST_SYNCED_PEMINJAMAN_ID") || "0");
+
+  const url = SUPABASE_URL + "/rest/v1/peminjaman?id=gt." + lastSyncedId + "&order=id.asc&limit=500";
+  const options = {
+    method: "get",
+    headers: {
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+      "Content-Type": "application/json"
+    },
+    muteHttpExceptions: true
+  };
+
+  try {
+    const res = UrlFetchApp.fetch(url, options);
+    if (res.getResponseCode() !== 200) return;
+
+    const newRows = JSON.parse(res.getContentText());
+    if (!newRows || newRows.length === 0) return;
+
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName("Peminjaman");
+    if (!sheet) return;
+
+    const startRow = typeof findNextRow === "function" ? findNextRow(sheet) : (sheet.getLastRow() + 1);
+    let noUrut = typeof getNextNoPeminjaman === "function" ? getNextNoPeminjaman(sheet, startRow) : (startRow - 1);
+
+    const rowsToAppend = [];
+    let highestId = parseInt(lastSyncedId, 10) || 0;
+
+    for (let i = 0; i < newRows.length; i++) {
+      const item = newRows[i];
+      let waktuInputStr = item.created_at;
+      try {
+        waktuInputStr = Utilities.formatDate(new Date(item.created_at), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
+      } catch (e) {}
+
+      // Susunan Kolom Sheet "Peminjaman" (14 Kolom):
+      // [A:No, B:Timestamp, C:PIC, D:Keperluan, E:Tgl Pinjam, F:-, G:Produk, H:SKU, I:Size, J:Qty, K:No Pjm, L:Status, M:User, N:Lokasi]
+      const row = [
+        noUrut++,
+        waktuInputStr,
+        item.pic || "",
+        item.keperluan || "",
+        item.tanggal_pinjam || "",
+        "",
+        item.nama_produk || "",
+        item.sku || "",
+        item.size || "-",
+        item.qty || 1,
+        item.no_peminjaman || "",
+        item.status || "Dipinjam",
+        item.operator || "",
+        item.lokasi || "STUDIO"
+      ];
+
+      rowsToAppend.push(row);
+      if (item.id > highestId) highestId = item.id;
+    }
+
+    if (rowsToAppend.length > 0) {
+      sheet.getRange(startRow, 1, rowsToAppend.length, 14).setValues(rowsToAppend);
+      props.setProperty("LAST_SYNCED_PEMINJAMAN_ID", highestId.toString());
+      Logger.log("Berhasil sync " + rowsToAppend.length + " baris Peminjaman ke Sheet.");
+    }
+  } catch (err) {
+    Logger.log("syncPeminjamanFromSupabase error: " + err.message);
+  }
+}
+
+/**
+ * Master Sync Berkala: Log Produk + Penerimaan Produksi + Peminjaman
+ */
+function syncAllSupabaseToSheets() {
+  try {
+    syncLogProdukFromSupabase();
+  } catch (e1) {
+    Logger.log("Error syncLogProduk: " + e1.message);
+  }
+
+  try {
+    syncPenerimaanProduksiFromSupabase();
+  } catch (e2) {
+    Logger.log("Error syncPenerimaanProduksi: " + e2.message);
+  }
+
+  try {
+    syncPeminjamanFromSupabase();
+  } catch (e3) {
+    Logger.log("Error syncPeminjaman: " + e3.message);
+  }
+}
+
 function setupSyncTrigger() {
   // Bersihkan trigger lama jika ada agar tidak double
   const triggers = ScriptApp.getProjectTriggers();
   for (let i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === "syncLogProdukFromSupabase") {
+    const fn = triggers[i].getHandlerFunction();
+    if (fn === "syncLogProdukFromSupabase" || fn === "syncAllSupabaseToSheets") {
       ScriptApp.deleteTrigger(triggers[i]);
     }
   }
   
-  // Buat trigger baru setiap 1 menit
-  ScriptApp.newTrigger("syncLogProdukFromSupabase")
+  // Buat trigger baru setiap 1 menit untuk sinkronisasi semua modul
+  ScriptApp.newTrigger("syncAllSupabaseToSheets")
     .timeBased()
     .everyMinutes(1)
     .create();
     
-  Logger.log("Trigger time-driven (1 menit) berhasil dibuat.");
+  Logger.log("Trigger time-driven syncAllSupabaseToSheets (1 menit) berhasil dibuat.");
 }
