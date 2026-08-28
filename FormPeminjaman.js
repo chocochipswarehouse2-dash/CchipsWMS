@@ -8,7 +8,7 @@ const PREFIX_PEMINJAMAN = "PJM";
 const PROP_PEMINJAMAN_COUNTER = "PEMINJAMAN_COUNTER";
 
 /************************************************
- * DATA AWAL FORM: daftar produk dari sheet "Data"
+ * DATA AWAL FORM: daftar produk & stok dari Supabase & Sheet
  ************************************************/
 function getPeminjamanInitData() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -17,10 +17,10 @@ function getPeminjamanInitData() {
   const skuMetaMap = {};
   const produkList = [];
 
+  // 1. Ambil meta nama & size dari Sheet "Data"
   if (sheet && sheet.getLastRow() >= 2) {
     const lastRow = sheet.getLastRow();
     const values = sheet.getRange(2, 1, lastRow - 1, 5).getValues(); 
-    const stokMap = getStokWarehouseMap();
 
     values.forEach(function (row) {
       const kategori = String(row[0] || "").trim().toUpperCase(); 
@@ -33,15 +33,102 @@ function getPeminjamanInitData() {
       if (nama && sku) {
         const skuUpper = sku.toUpperCase();
         skuMetaMap[skuUpper] = { nama: nama, size: size };
-        const info = stokMap[skuUpper]; 
-        const stok = info ? info.qty : 0;
-        const lokasi = info ? info.lokasi : "";
-        produkList.push({ produk: nama, size: size, sku: sku, stok: stok, lokasi: lokasi });
       }
     });
   }
 
-  const liveStockList = getLiveChannelsStockList(skuMetaMap);
+  // 2. Ambil Stok Realtime (Utamakan Supabase view_stok_realtime)
+  let stokMap = {};
+  let liveStockList = [];
+  let realtimeStocks = [];
+
+  try {
+    if (typeof fetchAllSupabaseStokRealtime === "function") {
+      realtimeStocks = fetchAllSupabaseStokRealtime();
+    }
+  } catch (errSup) {
+    Logger.log("getPeminjamanInitData Supabase fetch error: " + errSup.message);
+  }
+
+  if (realtimeStocks && realtimeStocks.length > 0) {
+    const channelMap = {};
+
+    realtimeStocks.forEach(function(sRow) {
+      const sku = String(sRow.sku || "").trim().toUpperCase();
+      const lokasi = String(sRow.lokasi || "").trim();
+      const area = String(sRow.area || "").trim().toUpperCase();
+      const qty = Number(sRow.sisa_stok) || 0;
+      const namaStock = String(sRow.nama_produk || "").trim();
+      const sizeStock = String(sRow.size || "").trim();
+
+      if (!sku || qty === 0) return;
+
+      const meta = skuMetaMap[sku] || { nama: namaStock || sku, size: sizeStock || "-" };
+      if (!skuMetaMap[sku]) {
+        skuMetaMap[sku] = meta;
+      }
+
+      // Stok Gudang Utama (MAP / Warehouse)
+      if (area === "WAREHOUSE") {
+        if (!stokMap[sku]) stokMap[sku] = { qty: 0, lokasiList: [] };
+        stokMap[sku].qty += qty;
+        if (lokasi && stokMap[sku].lokasiList.indexOf(lokasi) === -1) {
+          stokMap[sku].lokasiList.push(lokasi);
+        }
+      }
+
+      // Stok Channel Live (Blok F)
+      const lUpper = lokasi.toUpperCase();
+      let isStudio = lUpper.includes("STUDIO") || lUpper === "SAMPLE" || lUpper === "LIVE";
+      let isShopee = lUpper.includes("SHOPEE") || lUpper === "SHP" || lUpper.includes("LIVE SHOPEE");
+      let isTiktok = lUpper.includes("TIKTOK") || lUpper === "TTK" || lUpper === "TT" || lUpper.includes("LIVE TIKTOK");
+
+      if (area === "BLOK F") {
+        if (!isShopee && !isTiktok) isStudio = true;
+      }
+
+      if (isStudio || isShopee || isTiktok) {
+        if (!channelMap[sku]) {
+          channelMap[sku] = {
+            sku: sku,
+            produk: meta.nama || sku,
+            size: meta.size || "-",
+            studioQty: 0,
+            shpQty: 0,
+            ttkQty: 0,
+            totalQty: 0,
+            lokasi: lokasi
+          };
+        }
+        if (isStudio) channelMap[sku].studioQty += qty;
+        if (isShopee) channelMap[sku].shpQty += qty;
+        if (isTiktok) channelMap[sku].ttkQty += qty;
+        channelMap[sku].totalQty = channelMap[sku].studioQty + channelMap[sku].shpQty + channelMap[sku].ttkQty;
+      }
+    });
+
+    Object.keys(stokMap).forEach(function (sku) {
+      stokMap[sku].lokasi = stokMap[sku].lokasiList.join(", ");
+      delete stokMap[sku].lokasiList;
+    });
+
+    liveStockList = Object.values(channelMap);
+    liveStockList.sort((a, b) => a.produk.localeCompare(b.produk));
+
+  } else {
+    // Fallback ke Sheet STOCK
+    stokMap = getStokWarehouseMap();
+    liveStockList = getLiveChannelsStockList(skuMetaMap);
+  }
+
+  // Susun produkList
+  Object.keys(skuMetaMap).forEach(function (sku) {
+    const meta = skuMetaMap[sku];
+    const info = stokMap[sku];
+    const stok = info ? info.qty : 0;
+    const lokasi = info ? info.lokasi : "";
+    produkList.push({ produk: meta.nama, size: meta.size, sku: sku, stok: stok, lokasi: lokasi });
+  });
 
   return { 
     produkList: produkList,
@@ -189,7 +276,7 @@ function getNextNoPeminjaman(sheet, startRow) {
 }
 
 /************************************************
- * SUBMIT FORM PEMINJAMAN
+ * SUBMIT FORM PEMINJAMAN (SIMPAN KE SUPABASE & SHEET)
  ************************************************/
 function submitPeminjaman(data) {
   const session = getWmsSessionFromToken(data && data.token);
@@ -222,9 +309,6 @@ function submitPeminjaman(data) {
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName(SHEET_PEMINJAMAN);
-  if (!sheet) {
-    return { success: false, message: "Sheet '" + SHEET_PEMINJAMAN + "' tidak ditemukan. Buat dulu sheet-nya." };
-  }
 
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -233,31 +317,62 @@ function submitPeminjaman(data) {
     const timestamp = new Date();
     const noPeminjaman = getPeminjamanID();
     const emailPengisi = session.username; 
+    const tglPinjamVal = data.tglPinjam;
 
-    // Asumsi fungsi findNextRow() berada di modul/file utilitas Anda yang lain
-    const startRow = findNextRow(sheet); 
-    let noUrut = getNextNoPeminjaman(sheet, startRow);
-
-    const rows = itemsValid.map(function (it) {
-      return [
-        noUrut++,                           // A - No
-        timestamp,                          // B - Timestamp submit
-        String(data.namaPeminjam).trim(),   // C - Nama/PIC Peminjam
-        String(data.keperluan).trim(),      // D - Keperluan
-        data.tglPinjam,                     // E - Tanggal Peminjaman
-        "",                                 // F - Kosong
-        String(it.produk).trim(),           // G - Nama Produk
-        it.sku || "",                       // H - SKU
-        it.size || "",                      // I - Size
-        Number(it.qty),                     // J - Qty
-        noPeminjaman,                       // K - No Peminjaman
-        "Dipinjam",                         // L - Status
-        emailPengisi,                       // M - Username pengisi
-        it.lokasi || ""                     // N - Lokasi
-      ];
+    // 1. Simpan ke Database Supabase (Table: peminjaman)
+    const rowsSupabase = itemsValid.map(function (it) {
+      return {
+        no_peminjaman: noPeminjaman,
+        pic: String(data.namaPeminjam).trim(),
+        keperluan: String(data.keperluan).trim(),
+        tanggal_pinjam: tglPinjamVal,
+        sku: String(it.sku || "").trim().toUpperCase(),
+        nama_produk: String(it.produk || "").trim(),
+        size: String(it.size || "-").trim(),
+        qty: Number(it.qty) || 1,
+        lokasi: it.lokasi || "STUDIO",
+        status: "Dipinjam",
+        operator: emailPengisi,
+        created_at: timestamp.toISOString()
+      };
     });
 
-    sheet.getRange(startRow, 1, rows.length, 14).setValues(rows);
+    let isSupabaseSaved = false;
+    try {
+      if (typeof supabaseFetch === "function") {
+        const resSup = supabaseFetch("peminjaman", "post", rowsSupabase, "", true);
+        if (resSup && resSup.success) isSupabaseSaved = true;
+      }
+    } catch (errSup) {
+      Logger.log("Supabase insert error peminjaman: " + errSup.message);
+    }
+
+    // 2. Simpan Backup ke Google Sheet "Peminjaman"
+    if (sheet) {
+      const startRow = findNextRow(sheet); 
+      let noUrut = getNextNoPeminjaman(sheet, startRow);
+
+      const rows = itemsValid.map(function (it) {
+        return [
+          noUrut++,                           // A - No
+          timestamp,                          // B - Timestamp submit
+          String(data.namaPeminjam).trim(),   // C - Nama/PIC Peminjam
+          String(data.keperluan).trim(),      // D - Keperluan
+          tglPinjamVal,                       // E - Tanggal Peminjaman
+          "",                                 // F - Kosong
+          String(it.produk).trim(),           // G - Nama Produk
+          it.sku || "",                       // H - SKU
+          it.size || "",                      // I - Size
+          Number(it.qty),                     // J - Qty
+          noPeminjaman,                       // K - No Peminjaman
+          "Dipinjam",                         // L - Status
+          emailPengisi,                       // M - Username pengisi
+          it.lokasi || ""                     // N - Lokasi
+        ];
+      });
+
+      sheet.getRange(startRow, 1, rows.length, 14).setValues(rows);
+    }
 
     try {
       if (typeof kirimWaPeminjamanBaru === "function") {
@@ -270,7 +385,8 @@ function submitPeminjaman(data) {
     return {
       success: true,
       noPeminjaman: noPeminjaman,
-      message: "Peminjaman berhasil diajukan (" + rows.length + " item). No Peminjaman: " + noPeminjaman
+      isSupabaseSaved: isSupabaseSaved,
+      message: "Peminjaman berhasil diajukan (" + itemsValid.length + " item). No Peminjaman: " + noPeminjaman
     };
 
   } catch (err) {
@@ -278,6 +394,42 @@ function submitPeminjaman(data) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/************************************************
+ * AMBIL RIWAYAT PEMINJAMAN DARI SUPABASE
+ ************************************************/
+function getPeminjamanList(token, filters) {
+  const session = getWmsSessionFromToken(token);
+  if (!session) return { success: false, message: "Sesi tidak valid." };
+
+  filters = filters || {};
+  const status = filters.status || "";
+  const keyword = (filters.keyword || "").trim().toLowerCase();
+  const limit = parseInt(filters.limit, 10) || 200;
+
+  try {
+    let queryParams = `order=created_at.desc&limit=${limit}`;
+    if (status) queryParams += `&status=eq.${encodeURIComponent(status)}`;
+
+    if (typeof supabaseFetch === "function") {
+      const res = supabaseFetch("peminjaman", "get", null, queryParams, true);
+      if (res && res.success && Array.isArray(res.data)) {
+        let list = res.data;
+        if (keyword) {
+          list = list.filter(item => {
+            const combined = `${item.no_peminjaman} ${item.pic} ${item.sku} ${item.nama_produk}`.toLowerCase();
+            return combined.includes(keyword);
+          });
+        }
+        return { success: true, data: list, count: list.length, source: "supabase" };
+      }
+    }
+  } catch (e) {
+    Logger.log("getPeminjamanList error: " + e.message);
+  }
+
+  return { success: true, data: [], count: 0 };
 }
 
 /************************************************
