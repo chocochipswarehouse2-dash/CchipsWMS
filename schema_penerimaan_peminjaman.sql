@@ -3,8 +3,12 @@
 -- Jalankan skrip ini di Supabase SQL Editor
 -- =========================================================================
 
+-- Hapus tabel lama jika ada agar skema kolom ter-update bersih
+DROP TABLE IF EXISTS public.penerimaan_produksi CASCADE;
+DROP TABLE IF EXISTS public.peminjaman CASCADE;
+
 -- 1. TABEL PENERIMAAN PRODUKSI & KEDATANGAN BARANG
-CREATE TABLE IF NOT EXISTS public.penerimaan_produksi (
+CREATE TABLE public.penerimaan_produksi (
     id BIGSERIAL PRIMARY KEY,
     tanggal_penerimaan DATE NOT NULL DEFAULT CURRENT_DATE,
     kategori VARCHAR(50) NOT NULL DEFAULT 'Lokal CMT', -- 'Lokal CMT', 'Kargo', dll
@@ -20,12 +24,12 @@ CREATE TABLE IF NOT EXISTS public.penerimaan_produksi (
 );
 
 -- Index untuk pencarian cepat penerimaan produksi
-CREATE INDEX IF NOT EXISTS idx_penerimaan_no_sj ON public.penerimaan_produksi (no_surat_jalan);
-CREATE INDEX IF NOT EXISTS idx_penerimaan_kode_produksi ON public.penerimaan_produksi (kode_produksi);
-CREATE INDEX IF NOT EXISTS idx_penerimaan_tanggal ON public.penerimaan_produksi (tanggal_penerimaan DESC);
+CREATE INDEX idx_penerimaan_no_sj ON public.penerimaan_produksi (no_surat_jalan);
+CREATE INDEX idx_penerimaan_kode_produksi ON public.penerimaan_produksi (kode_produksi);
+CREATE INDEX idx_penerimaan_tanggal ON public.penerimaan_produksi (tanggal_penerimaan DESC);
 
 -- 2. TABEL PEMINJAMAN SEMENTARA (SPS)
-CREATE TABLE IF NOT EXISTS public.peminjaman (
+CREATE TABLE public.peminjaman (
     id BIGSERIAL PRIMARY KEY,
     no_peminjaman VARCHAR(50) NOT NULL,
     pic VARCHAR(150) NOT NULL,
