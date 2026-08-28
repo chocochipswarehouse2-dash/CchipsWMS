@@ -342,7 +342,7 @@
     }
 
     try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/picking_list?order=created_at.desc`, {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/picking_list?order=created_at.desc&limit=10000`, {
             headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
         });
         if (!res.ok) throw new Error("Gagal mengambil data picking list");
@@ -451,7 +451,33 @@
     setTimeout(function () { el.style.display = 'none'; }, 6000);
   }
 
-  // ============ PROSES UPLOAD CSV MULTI-FILE ============
+  async function fetchAllWarehouseStocksFromSupabase() {
+    let allStocks = [];
+    let offset = 0;
+    const chunkSize = 1000;
+
+    try {
+      while (true) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/view_stok_realtime?select=sku,lokasi,sisa_stok&sisa_stok=gt.0&area=ilike.Warehouse&offset=${offset}&limit=${chunkSize}&order=sku.asc,lokasi.asc`, {
+          headers: { 
+            'apikey': SUPABASE_ANON_KEY, 
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY 
+          }
+        });
+        if (!res.ok) break;
+        const chunk = await res.json();
+        if (!Array.isArray(chunk) || chunk.length === 0) break;
+        allStocks.push(...chunk);
+        if (chunk.length < chunkSize) break;
+        offset += chunkSize;
+      }
+    } catch (e) {
+      console.warn("fetchAllWarehouseStocksFromSupabase error:", e);
+    }
+    return allStocks;
+  }
+
+  // ============ PROSES BATCH CSV (FULFILLMENT UPLOAD) ============
   async function handleProcessFulfillment(force = false) {
     const fileInput = document.getElementById('csvFileInput');
     const files = fileInput ? fileInput.files : null;
@@ -473,16 +499,14 @@
     if (label) label.textContent = "MEMPROSES CSV...";
 
     try {
-        // Load Realtime Stock for Location Allocation
-        const stockRes = await fetch(`${SUPABASE_URL}/rest/v1/view_stok_realtime?select=sku,lokasi,sisa_stok&sisa_stok=gt.0&area=eq.Warehouse`, {
-            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-        });
-        const stockData = stockRes.ok ? await stockRes.json() : [];
+        // Load Seluruh Realtime Stock Warehouse dari Supabase (dengan pagination)
+        const stockData = await fetchAllWarehouseStocksFromSupabase();
         let stockMap = {};
         stockData.forEach(st => {
-            const s = st.sku.toUpperCase();
+            const s = (st.sku || '').toUpperCase();
+            if (!s || !st.lokasi) return;
             if(!stockMap[s]) stockMap[s] = [];
-            stockMap[s].push({lokasi: st.lokasi, qty: st.sisa_stok});
+            stockMap[s].push({lokasi: st.lokasi, qty: Number(st.sisa_stok) || 0});
         });
         
         let allRowsToInsert = [];
