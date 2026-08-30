@@ -259,4 +259,5 @@ Seluruh antarmuka web WMS kini menggunakan desain seragam standar Antigravity:
      - `initPeminjamanView()` langsung menyiapkan baris item pertama (`tambahItemPeminjaman()`).
      - `syncLiveChannelStockFromSupabase()` otomatis membuat daftar fallback `PEMINJAMAN_PRODUK_LIST` instan dari Supabase realtime.
      - Combobox dropdown menampilkan status *"⏳ Memuat daftar produk..."* saat data sedang disinkronkan, dan menampilkan daftar opsi produk secara lengkap & responsif begitu data siap.
+- **Deployment**: Live di versi `@859` (`AKfycbyFxfqoqJhrPJOioPxnmbGJTjTTAwli6b87lgOQCPFDOoCVt5EJg3NHZT56zI52rM63`).
 
