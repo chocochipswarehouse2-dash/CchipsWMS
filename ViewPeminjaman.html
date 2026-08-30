@@ -305,15 +305,15 @@
     const tglEl = document.getElementById('tglPinjam');
     if (tglEl && !tglEl.value) tglEl.value = new Date().toISOString().slice(0, 10);
     
-    if (peminjamanItemCounter === 0) {
+    // Pastikan baris form input pertama selalu ada di DOM
+    const container = document.getElementById('itemContainer');
+    if (container && container.querySelectorAll('.prod-card').length === 0) {
       tambahItemPeminjaman();
     }
 
-    if (!isPeminjamanInitialized) {
-      isPeminjamanInitialized = true;
-      syncPeminjamanWithMasterStore();
-      loadPeminjamanInitData(false);
-    }
+    syncPeminjamanWithMasterStore();
+    syncLiveChannelStockFromSupabase();
+    loadPeminjamanInitData(false);
   }
 
   function extractExactLocationStocks(p) {
@@ -333,7 +333,7 @@
       if (p.singles.TTK) ttkQty = Math.max(ttkQty, Number(p.singles.TTK || 0));
     }
 
-    // Scan murni berdasarkan kriteria LOKASI fisik di sheet STOCK
+    // Scan murni berdasarkan kriteria LOKASI fisik
     if (Array.isArray(p.locList)) {
       p.locList.forEach(function (l) {
         let locName = '';
@@ -360,6 +360,10 @@
         // 3. Lokasi Khusus TIKTOK (TTK)
         else if (locName.includes('TIKTOK') || locName === 'TTK' || locName === 'TT' || locName.includes('LIVE TIKTOK')) {
           ttkQty = Math.max(ttkQty, qtyVal);
+        }
+        // 4. Lokasi MAP / WAREHOUSE
+        else if (locName.includes('MAP') || locName.includes('WH') || locName.includes('WAREHOUSE')) {
+          mapQty = Math.max(mapQty, qtyVal);
         }
       });
     }
@@ -392,7 +396,10 @@
       });
 
       PEMINJAMAN_PRODUK_LIST.sort(sortPeminjamanAlphabetical);
-      if (peminjamanItemCounter === 0) tambahItemPeminjaman();
+      const container = document.getElementById('itemContainer');
+      if (container && container.querySelectorAll('.prod-card').length === 0) {
+        tambahItemPeminjaman();
+      }
       buildChannelStockList(ACTIVE_STOCK_CHANNEL);
     }
   }
@@ -443,36 +450,10 @@
   }
 
   function buildChannelStockList(channel) {
-    const master = window.WMS_MASTER_DATA || ALL_PRODUK_DATA || [];
     let list = [];
 
-    if (master.length > 0) {
-      master.forEach(function (p) {
-        const stocks = extractExactLocationStocks(p);
-        const studioQty = stocks.studio;
-        const shpQty = stocks.shp;
-        const ttkQty = stocks.ttk;
-
-        let include = false;
-        if (channel === 'STUDIO' && studioQty > 0) include = true;
-        else if (channel === 'SHOPEE' && shpQty > 0) include = true;
-        else if (channel === 'TIKTOK' && ttkQty > 0) include = true;
-        else if (channel === 'ALL' && (studioQty > 0 || shpQty > 0 || ttkQty > 0)) include = true;
-
-        if (include) {
-          list.push({
-            produk: p.produk,
-            size: p.size,
-            sku: p.sku,
-            locStr: getProductLocationStringPeminjaman(p.locList),
-            studioQty: studioQty,
-            shpQty: shpQty,
-            ttkQty: ttkQty,
-            totalQty: studioQty + shpQty + ttkQty
-          });
-        }
-      });
-    } else if (LIVE_CHANNEL_STOCK_CACHE && LIVE_CHANNEL_STOCK_CACHE.length > 0) {
+    // Prioritaskan data real-time langsung dari Supabase
+    if (LIVE_CHANNEL_STOCK_CACHE && LIVE_CHANNEL_STOCK_CACHE.length > 0) {
       LIVE_CHANNEL_STOCK_CACHE.forEach(function (p) {
         let include = false;
         if (channel === 'STUDIO' && p.studioQty > 0) include = true;
@@ -485,7 +466,7 @@
             produk: p.produk,
             size: p.size,
             sku: p.sku,
-            locStr: getProductLocationStringPeminjaman(p.locList),
+            locStr: p.lokasi || '-',
             studioQty: p.studioQty || 0,
             shpQty: p.shpQty || 0,
             ttkQty: p.ttkQty || 0,
@@ -493,6 +474,38 @@
           });
         }
       });
+    }
+
+    // Fallback ke master store jika LIVE_CHANNEL_STOCK_CACHE kosong
+    if (list.length === 0) {
+      const master = window.WMS_MASTER_DATA || ALL_PRODUK_DATA || [];
+      if (master.length > 0) {
+        master.forEach(function (p) {
+          const stocks = extractExactLocationStocks(p);
+          const studioQty = stocks.studio;
+          const shpQty = stocks.shp;
+          const ttkQty = stocks.ttk;
+
+          let include = false;
+          if (channel === 'STUDIO' && studioQty > 0) include = true;
+          else if (channel === 'SHOPEE' && shpQty > 0) include = true;
+          else if (channel === 'TIKTOK' && ttkQty > 0) include = true;
+          else if (channel === 'ALL' && (studioQty > 0 || shpQty > 0 || ttkQty > 0)) include = true;
+
+          if (include) {
+            list.push({
+              produk: p.produk,
+              size: p.size,
+              sku: p.sku,
+              locStr: getProductLocationStringPeminjaman(p.locList),
+              studioQty: studioQty,
+              shpQty: shpQty,
+              ttkQty: ttkQty,
+              totalQty: studioQty + shpQty + ttkQty
+            });
+          }
+        });
+      }
     }
 
     list.sort(sortPeminjamanAlphabetical);
@@ -1071,6 +1084,17 @@
       items: items,
       token: TOKEN
     });
+  }
+
+  // Auto-init saat View Peminjaman pertama kali dimuat ke browser
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      initPeminjamanView();
+    });
+  } else {
+    setTimeout(function () {
+      initPeminjamanView();
+    }, 50);
   }
 
 </script>
