@@ -894,10 +894,11 @@
         div.style.transition = 'all 0.15s ease';
 
         const displaySize = opt.size && opt.size.toUpperCase() !== 'DEFAULT' ? opt.size : 'ALL';
+        const displayTitle = opt.label || opt.value || opt.produk || '-';
 
         div.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-            <div style="font-weight:700; font-size:12.5px; line-height:1.3; color:var(--text);">${opt.value || opt.label}</div>
+            <div style="font-weight:700; font-size:12.5px; line-height:1.3; color:var(--text);">${displayTitle}</div>
             <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
               <span class="badge-size" style="font-size:10px; padding:2px 6px;">${displaySize}</span>
               <span class="badge-sku" style="font-size:10.5px; font-family:'JetBrains Mono',monospace; padding:2px 6px;">${opt.sku}</span>
@@ -1030,8 +1031,10 @@
     });
   }
 
-  document.getElementById('btnTambahItemAtas').addEventListener('click', tambahItemPeminjaman);
-  document.getElementById('btnTambahItemBawah').addEventListener('click', tambahItemPeminjaman);
+  const _btnTambahAtas = document.getElementById('btnTambahItemAtas');
+  if (_btnTambahAtas) _btnTambahAtas.addEventListener('click', tambahItemPeminjaman);
+  const _btnTambahBawah = document.getElementById('btnTambahItemBawah');
+  if (_btnTambahBawah) _btnTambahBawah.addEventListener('click', tambahItemPeminjaman);
 
   function submitFormPeminjamanSpa() {
     const namaPeminjam = document.getElementById('namaPeminjam').value.trim();
@@ -1060,6 +1063,8 @@
     const btn = document.getElementById('btnSubmitPeminjaman');
     if (window.setButtonLoading) window.setButtonLoading(btn, true, 'MEMPROSES PENGAJUAN...');
 
+    const tokenVal = typeof TOKEN !== 'undefined' ? TOKEN : '';
+
     google.script.run.withSuccessHandler(function (res) {
       if (window.setButtonLoading) window.setButtonLoading(btn, false);
       if (res.success) {
@@ -1082,19 +1087,15 @@
       keperluan: keperluan,
       tglPinjam: tglPinjam,
       items: items,
-      token: TOKEN
+      token: tokenVal
     });
   }
 
-  // Auto-init saat View Peminjaman pertama kali dimuat ke browser
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () {
-      initPeminjamanView();
-    });
-  } else {
-    setTimeout(function () {
-      initPeminjamanView();
-    }, 50);
+  // Auto-init langsung seketika
+  try {
+    initPeminjamanView();
+  } catch (e) {
+    console.error("Auto init peminjaman view error:", e);
   }
 
 </script>
