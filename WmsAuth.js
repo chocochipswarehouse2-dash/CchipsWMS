@@ -496,7 +496,14 @@ function invalidateWmsDashboardCache() {
 function getWmsProdukCompact(token, forceRefresh) {
   const session = getWmsSessionFromToken(token);
   if (!session) return { success: false, message: "Sesi tidak valid, silakan login ulang." };
-  if (!wmsBisaAksesProduk(session.akses)) return { success: false, message: "Akun kamu tidak punya akses ke menu Produk." };
+  
+  const canAccess = wmsBisaAksesProduk(session.akses) ||
+                    wmsBisaAksesPeminjaman(session.akses) ||
+                    wmsBisaAksesFulfillment(session.akses) ||
+                    cekHakAksesWms(session.akses, "Stock Opname") ||
+                    cekHakAksesWms(session.akses, "Klasifikasi") ||
+                    wmsBisaAksesAdmin(session.akses);
+  if (!canAccess) return { success: false, message: "Akun kamu tidak punya akses ke data Produk." };
 
   try {
     if (forceRefresh) {
@@ -528,7 +535,14 @@ function syncWmsDataInventory(token) {
 function getWmsProdukSearch(token, keyword, areaFilter, limit) {
   const session = getWmsSessionFromToken(token);
   if (!session) return { success: false, message: "Sesi tidak valid, silakan login ulang." };
-  if (!wmsBisaAksesProduk(session.akses)) return { success: false, message: "Akun kamu tidak punya akses ke menu Produk." };
+  
+  const canAccess = wmsBisaAksesProduk(session.akses) ||
+                    wmsBisaAksesPeminjaman(session.akses) ||
+                    wmsBisaAksesFulfillment(session.akses) ||
+                    cekHakAksesWms(session.akses, "Stock Opname") ||
+                    cekHakAksesWms(session.akses, "Klasifikasi") ||
+                    wmsBisaAksesAdmin(session.akses);
+  if (!canAccess) return { success: false, message: "Akun kamu tidak punya akses ke data Produk." };
 
   try {
     const kw = String(keyword || "").trim().toLowerCase();

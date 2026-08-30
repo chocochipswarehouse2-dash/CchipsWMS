@@ -242,3 +242,21 @@ Seluruh antarmuka web WMS kini menggunakan desain seragam standar Antigravity:
   - Fungsi approval dan reject memperbarui status di `stock_opname_queue` dan otomatis menginput mutasi `ADJ_IN` / `ADJ_OUT` ke `log_produk` (Supabase).
   - Merapikan collision variabel global antar modul tab SPA dashboard untuk memastikan runtime browser bebas error.
 - **Deployment**: Live di versi `@836`.
+
+---
+
+## [2026-08-30] - Perbaikan Daftar Produk & Combobox Form Peminjaman (SPS)
+- **Problem**:
+  - Pada halaman Peminjaman SPS (`ViewPeminjaman.html`), list item / combobox pilihan produk tidak mau muncul ("Produk tidak ditemukan" / kosong).
+- **Penyebab**:
+  1. **Restriksi Akses Role di `getWmsProdukCompact` & `getWmsProdukSearch` (`WmsAuth.js`)**: Backend membatasi `getWmsProdukCompact` hanya untuk user dengan role `"Produk"`. User dengan role `"Peminjaman"` atau multi-role lainnya ditolak sehingga `WMS_MASTER_DATA` dan `ALL_PRODUK_DATA` kosong `[]`.
+  2. **Filter Hardcoded di `getPeminjamanInitData` (`FormPeminjaman.js`)**: Fungsi backend membaca Sheet Data dengan filter `kategori.indexOf("CLOTHING") !== 0`, mengabaikan produk kategori lain atau format kategori baru.
+  3. **Inisialisasi & Fallback Realtime di Frontend (`ViewPeminjaman.html`)**: `initPeminjamanView` tidak langsung menambahkan baris form pertama jika data belum selesai dimuat, dan `syncLiveChannelStockFromSupabase` belum memetakan fallback produk instan ke `PEMINJAMAN_PRODUK_LIST`.
+- **Solusi & Perubahan**:
+  1. **`WmsAuth.js`**: Memperluas permission `getWmsProdukCompact` dan `getWmsProdukSearch` agar user terautentikasi dengan hak akses `Peminjaman`, `Fulfillment`, `Stock Opname`, `Klasifikasi`, maupun `Admin` dapat memuat master inventori produk.
+  2. **`FormPeminjaman.js`**: `getPeminjamanInitData` kini memanfaatkan cache inventori WMS kilat (0.05s) dan membaca Sheet Data secara dinamis tanpa restriksi filter `"CLOTHING"`.
+  3. **`ViewPeminjaman.html`**:
+     - `initPeminjamanView()` langsung menyiapkan baris item pertama (`tambahItemPeminjaman()`).
+     - `syncLiveChannelStockFromSupabase()` otomatis membuat daftar fallback `PEMINJAMAN_PRODUK_LIST` instan dari Supabase realtime.
+     - Combobox dropdown menampilkan status *"⏳ Memuat daftar produk..."* saat data sedang disinkronkan, dan menampilkan daftar opsi produk secara lengkap & responsif begitu data siap.
+

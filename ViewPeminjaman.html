@@ -302,11 +302,15 @@
   }
 
   function initPeminjamanView() {
+    const tglEl = document.getElementById('tglPinjam');
+    if (tglEl && !tglEl.value) tglEl.value = new Date().toISOString().slice(0, 10);
+    
+    if (peminjamanItemCounter === 0) {
+      tambahItemPeminjaman();
+    }
+
     if (!isPeminjamanInitialized) {
       isPeminjamanInitialized = true;
-      const tglEl = document.getElementById('tglPinjam');
-      if (tglEl && !tglEl.value) tglEl.value = new Date().toISOString().slice(0, 10);
-      
       syncPeminjamanWithMasterStore();
       loadPeminjamanInitData(false);
     }
@@ -387,6 +391,7 @@
         };
       });
 
+      PEMINJAMAN_PRODUK_LIST.sort(sortPeminjamanAlphabetical);
       if (peminjamanItemCounter === 0) tambahItemPeminjaman();
       buildChannelStockList(ACTIVE_STOCK_CHANNEL);
     }
@@ -688,6 +693,8 @@
         const rows = await res.json();
         if (Array.isArray(rows) && rows.length > 0) {
           const channelMap = {};
+          const fallbackProductMap = {};
+
           rows.forEach(sRow => {
             const sku = String(sRow.sku || '').trim().toUpperCase();
             const lokasi = String(sRow.lokasi || '').trim();
@@ -695,12 +702,35 @@
             const qty = Number(sRow.sisa_stok) || 0;
             if (!sku || qty <= 0) return;
 
+            // Kumpulkan untuk fallback PEMINJAMAN_PRODUK_LIST jika master data belum selesai memuat
+            if (!fallbackProductMap[sku]) {
+              fallbackProductMap[sku] = {
+                sku: sku,
+                produk: sRow.nama_produk || sku,
+                size: sRow.size || "-",
+                stok: 0,
+                stokMap: 0,
+                stokStudio: 0,
+                stokShp: 0,
+                stokTtk: 0,
+                lokasi: 'MAP'
+              };
+            }
+            if (area === "WAREHOUSE" || area === "MAP") {
+              fallbackProductMap[sku].stok += qty;
+              fallbackProductMap[sku].stokMap += qty;
+            }
+
             const lUpper = lokasi.toUpperCase();
             let isStudio = lUpper.includes("STUDIO") || lUpper === "SAMPLE" || lUpper === "LIVE";
             let isShopee = lUpper.includes("SHOPEE") || lUpper === "SHP" || lUpper.includes("LIVE SHOPEE");
             let isTiktok = lUpper.includes("TIKTOK") || lUpper === "TTK" || lUpper === "TT" || lUpper.includes("LIVE TIKTOK");
 
             if (area === "BLOK F" && !isShopee && !isTiktok) isStudio = true;
+
+            if (isStudio) fallbackProductMap[sku].stokStudio += qty;
+            if (isShopee) fallbackProductMap[sku].stokShp += qty;
+            if (isTiktok) fallbackProductMap[sku].stokTtk += qty;
 
             if (isStudio || isShopee || isTiktok) {
               if (!channelMap[sku]) {
@@ -721,6 +751,12 @@
               channelMap[sku].totalQty = channelMap[sku].studioQty + channelMap[sku].shpQty + channelMap[sku].ttkQty;
             }
           });
+
+          if (PEMINJAMAN_PRODUK_LIST.length === 0) {
+            PEMINJAMAN_PRODUK_LIST = Object.values(fallbackProductMap);
+            PEMINJAMAN_PRODUK_LIST.sort((a, b) => (a.produk || '').localeCompare(b.produk || ''));
+            if (peminjamanItemCounter === 0) tambahItemPeminjaman();
+          }
 
           const list = Object.values(channelMap);
           list.sort((a, b) => (a.produk || '').localeCompare(b.produk || ''));
@@ -823,8 +859,12 @@
 
     function renderCombo(filteredList) {
       panelEl.innerHTML = '';
+      if (!PEMINJAMAN_PRODUK_LIST || PEMINJAMAN_PRODUK_LIST.length === 0) {
+        panelEl.innerHTML = '<div style="padding:16px; font-size:12px; color:var(--text-muted); text-align:center; font-style:italic;">⏳ Memuat daftar produk...</div>';
+        return;
+      }
       if (filteredList.length === 0) {
-        panelEl.innerHTML = '<div style="padding:16px; font-size:12px; color:var(--text-muted); text-align:center; font-style:italic;">Produk tidak ditemukan</div>';
+        panelEl.innerHTML = '<div style="padding:16px; font-size:12px; color:var(--text-muted); text-align:center; font-style:italic;">❌ Produk tidak ditemukan</div>';
         return;
       }
       filteredList.slice(0, 35).forEach(function (opt, idx) {

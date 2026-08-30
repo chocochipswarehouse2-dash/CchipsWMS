@@ -11,37 +11,66 @@ const PROP_PEMINJAMAN_COUNTER = "PEMINJAMAN_COUNTER";
  * DATA AWAL FORM: daftar produk & stok dari Supabase & Sheet
  ************************************************/
 function getPeminjamanInitData() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_DATA_PRODUK);
-  
   const skuMetaMap = {};
   const produkList = [];
-
-  // 1. Ambil meta nama & size dari Sheet "Data"
-  if (sheet && sheet.getLastRow() >= 2) {
-    const lastRow = sheet.getLastRow();
-    const values = sheet.getRange(2, 1, lastRow - 1, 5).getValues(); 
-
-    values.forEach(function (row) {
-      const kategori = String(row[0] || "").trim().toUpperCase(); 
-      if (kategori.indexOf("CLOTHING") !== 0) return; 
-
-      const nama = String(row[1] || "").trim();   
-      const size = String(row[3] || "").trim();   
-      const sku = String(row[4] || "").trim();    
-
-      if (nama && sku) {
-        const skuUpper = sku.toUpperCase();
-        skuMetaMap[skuUpper] = { nama: nama, size: size };
-      }
-    });
-  }
-
-  // 2. Ambil Stok Realtime (Utamakan Supabase view_stok_realtime)
   let stokMap = {};
   let liveStockList = [];
   let realtimeStocks = [];
 
+  // 1. Coba ambil produk dari cache WMS terlebih dahulu (cepat 0.05s)
+  let compactData = null;
+  try {
+    if (typeof ambilProdukListDariCache === "function" && typeof CACHE_WMS_DASH_COUNT_KEY !== "undefined" && typeof CACHE_WMS_DASH_PREFIX !== "undefined") {
+      compactData = ambilProdukListDariCache(CACHE_WMS_DASH_COUNT_KEY, CACHE_WMS_DASH_PREFIX);
+    }
+  } catch (e) {}
+
+  if (compactData && Array.isArray(compactData) && compactData.length > 0) {
+    compactData.forEach(function (item) {
+      if (!item || !item.k) return;
+      const sku = String(item.k).trim().toUpperCase();
+      const nama = String(item.p || sku).trim();
+      const size = String(item.s || "-").trim();
+      skuMetaMap[sku] = { nama: nama, size: size };
+    });
+  } else {
+    // 2. Fallback baca langsung dari Sheet "Data"
+    try {
+      if (typeof SPREADSHEET_ID !== "undefined" && SPREADSHEET_ID) {
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const sheet = (typeof getSheetByNameCI_WMS === "function") 
+          ? getSheetByNameCI_WMS(ss, "Data") 
+          : ss.getSheetByName(SHEET_DATA_PRODUK || "Data");
+          
+        if (sheet && sheet.getLastRow() >= 2) {
+          const values = sheet.getDataRange().getValues();
+          if (values.length > 1) {
+            const headers = values[0].map(h => String(h || "").trim().toLowerCase());
+            let namaIdx = headers.findIndex(h => h === "product" || h === "nama produk" || h === "produk");
+            let sizeIdx = headers.findIndex(h => h === "variant" || h === "size" || h === "ukuran");
+            let skuIdx  = headers.findIndex(h => h === "code" || h === "sku" || h === "item code" || h === "barcode");
+            if (namaIdx === -1) namaIdx = 1;
+            if (sizeIdx === -1) sizeIdx = 3;
+            if (skuIdx === -1)  skuIdx  = 4;
+
+            for (let r = 1; r < values.length; r++) {
+              const row = values[r];
+              const sku = String(row[skuIdx] || "").trim().toUpperCase();
+              const nama = String(row[namaIdx] || "").trim();
+              const size = String(row[sizeIdx] || "").trim();
+              if (sku && nama) {
+                skuMetaMap[sku] = { nama: nama, size: size || "-" };
+              }
+            }
+          }
+        }
+      }
+    } catch (errSheet) {
+      Logger.log("getPeminjamanInitData Sheet read error: " + errSheet.message);
+    }
+  }
+
+  // 3. Ambil Stok Realtime Supabase (view_stok_realtime)
   try {
     if (typeof fetchAllSupabaseStokRealtime === "function") {
       realtimeStocks = fetchAllSupabaseStokRealtime();
@@ -53,7 +82,7 @@ function getPeminjamanInitData() {
   if (realtimeStocks && realtimeStocks.length > 0) {
     const channelMap = {};
 
-    realtimeStocks.forEach(function(sRow) {
+    realtimeStocks.forEach(function (sRow) {
       const sku = String(sRow.sku || "").trim().toUpperCase();
       const lokasi = String(sRow.lokasi || "").trim();
       const area = String(sRow.area || "").trim().toUpperCase();
@@ -63,13 +92,13 @@ function getPeminjamanInitData() {
 
       if (!sku || qty === 0) return;
 
-      const meta = skuMetaMap[sku] || { nama: namaStock || sku, size: sizeStock || "-" };
       if (!skuMetaMap[sku]) {
-        skuMetaMap[sku] = meta;
+        skuMetaMap[sku] = { nama: namaStock || sku, size: sizeStock || "-" };
       }
+      const meta = skuMetaMap[sku];
 
       // Stok Gudang Utama (MAP / Warehouse)
-      if (area === "WAREHOUSE") {
+      if (area === "WAREHOUSE" || area === "MAP") {
         if (!stokMap[sku]) stokMap[sku] = { qty: 0, lokasiList: [] };
         stokMap[sku].qty += qty;
         if (lokasi && stokMap[sku].lokasiList.indexOf(lokasi) === -1) {
@@ -113,7 +142,7 @@ function getPeminjamanInitData() {
     });
 
     liveStockList = Object.values(channelMap);
-    liveStockList.sort((a, b) => a.produk.localeCompare(b.produk));
+    liveStockList.sort((a, b) => (a.produk || '').localeCompare(b.produk || ''));
 
   } else {
     // Fallback ke Sheet STOCK
@@ -128,6 +157,12 @@ function getPeminjamanInitData() {
     const stok = info ? info.qty : 0;
     const lokasi = info ? info.lokasi : "";
     produkList.push({ produk: meta.nama, size: meta.size, sku: sku, stok: stok, lokasi: lokasi });
+  });
+
+  produkList.sort(function (a, b) {
+    const c = String(a.produk || '').localeCompare(String(b.produk || ''));
+    if (c !== 0) return c;
+    return String(a.sku || '').localeCompare(String(b.sku || ''));
   });
 
   return { 
