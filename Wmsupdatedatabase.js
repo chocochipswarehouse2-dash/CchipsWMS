@@ -19,8 +19,8 @@ function renderWmsUpdateDatabasePage(session, token) {
   template.username = session.username;
   template.akses = session.akses;
   template.execUrl = ScriptApp.getService().getUrl();
-  template.supabaseUrl = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : "https://filgijcfhgqlirzhvwho.supabase.co";
-  template.supabaseAnonKey = typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : "sb_publishable_L4FEkugwRKqcwFzLXfpZag_aByUy5mD";
+  template.supabaseUrl = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : "https://vxongwtxmhjixhzeoidp.supabase.co";
+  template.supabaseAnonKey = typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : "sb_publishable_XFvjJipUzyi0EuM_tDTTsg_ll7TJ7rA";
 
   return template.evaluate()
     .setTitle("Update Database - WMS Chocochips")

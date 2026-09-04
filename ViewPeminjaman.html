@@ -61,13 +61,13 @@
             <span style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px;">
               2. DAFTAR BARANG YANG DIPINJAM
             </span>
-            <button type="button" id="btnTambahItemAtas" class="btn btn-secondary" style="height: 28px; font-size: 11px; padding: 0 10px;">+ TAMBAH ITEM</button>
+            <button type="button" id="btnTambahItemAtas" class="btn btn-secondary" onclick="tambahItemPeminjaman()" style="height: 28px; font-size: 11px; padding: 0 10px;">+ TAMBAH ITEM</button>
           </div>
 
           <div id="itemContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
 
           <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
-            <button type="button" id="btnTambahItemBawah" class="btn btn-secondary" style="flex: 1; min-width: 130px; height: 38px; font-size: 11.5px;">+ TAMBAH ITEM LAIN</button>
+            <button type="button" id="btnTambahItemBawah" class="btn btn-secondary" onclick="tambahItemPeminjaman()" style="flex: 1; min-width: 130px; height: 38px; font-size: 11.5px;">+ TAMBAH ITEM LAIN</button>
             <button type="submit" id="btnSubmitPeminjaman" class="btn btn-primary" style="flex: 2; min-width: 160px; height: 38px; font-size: 12.5px; font-weight: 800;">
               <span id="submitPeminjamanLabel">📨 AJUKAN PEMINJAMAN</span>
             </button>
@@ -274,53 +274,69 @@
 </style>
 
 <script>
-  let PEMINJAMAN_PRODUK_LIST = [];
-  let LIVE_CHANNEL_STOCK_CACHE = [];
-  let ACTIVE_STOCK_CHANNEL = 'STUDIO'; // 'STUDIO' | 'SHOPEE' | 'TIKTOK' | 'ALL'
-  let CURRENT_CHANNEL_STOCK_LIST = [];
-  let FILTERED_CHANNEL_STOCK_LIST = [];
-  let peminjamanItemCounter = 0;
-  let isPeminjamanInitialized = false;
+  var PEMINJAMAN_PRODUK_LIST = [];
+  var LIVE_CHANNEL_STOCK_CACHE = [];
+  var ACTIVE_STOCK_CHANNEL = 'STUDIO'; // 'STUDIO' | 'SHOPEE' | 'TIKTOK' | 'ALL'
+  var CURRENT_CHANNEL_STOCK_LIST = [];
+  var FILTERED_CHANNEL_STOCK_LIST = [];
+  var peminjamanItemCounter = 0;
 
   function switchPeminjamanMobileTab(tab) {
-    const container = document.querySelector('.peminjaman-split-container');
-    const btnForm = document.getElementById('mobileTabForm');
-    const btnStok = document.getElementById('mobileTabStok');
-    if (!container) return;
+    try {
+      var container = document.querySelector('.peminjaman-split-container');
+      var btnForm = document.getElementById('mobileTabForm');
+      var btnStok = document.getElementById('mobileTabStok');
+      if (!container) return;
 
-    if (tab === 'stok') {
-      container.classList.remove('tab-form-active');
-      container.classList.add('tab-stok-active');
-      if (btnForm) btnForm.classList.remove('active');
-      if (btnStok) btnStok.classList.add('active');
-    } else {
-      container.classList.remove('tab-stok-active');
-      container.classList.add('tab-form-active');
-      if (btnForm) btnForm.classList.add('active');
-      if (btnStok) btnStok.classList.remove('active');
+      if (tab === 'stok') {
+        container.classList.remove('tab-form-active');
+        container.classList.add('tab-stok-active');
+        if (btnForm) btnForm.classList.remove('active');
+        if (btnStok) btnStok.classList.add('active');
+      } else {
+        container.classList.remove('tab-stok-active');
+        container.classList.add('tab-form-active');
+        if (btnForm) btnForm.classList.add('active');
+        if (btnStok) btnStok.classList.remove('active');
+      }
+    } catch(e) {
+      console.warn("switchPeminjamanMobileTab error:", e);
     }
   }
 
   function initPeminjamanView() {
-    const tglEl = document.getElementById('tglPinjam');
-    if (tglEl && !tglEl.value) tglEl.value = new Date().toISOString().slice(0, 10);
-    
-    // Pastikan baris form input pertama selalu ada di DOM
-    const container = document.getElementById('itemContainer');
-    if (container && container.querySelectorAll('.prod-card').length === 0) {
-      tambahItemPeminjaman();
-    }
+    try {
+      var tglEl = document.getElementById('tglPinjam');
+      if (tglEl && !tglEl.value) {
+        var today = new Date();
+        var yyyy = today.getFullYear();
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
+        var dd = String(today.getDate()).padStart(2, '0');
+        tglEl.value = yyyy + '-' + mm + '-' + dd;
+      }
+      
+      var container = document.getElementById('itemContainer');
+      if (container && container.querySelectorAll('.prod-card').length === 0) {
+        tambahItemPeminjaman();
+      }
 
-    syncPeminjamanWithMasterStore();
-    syncLiveChannelStockFromSupabase();
-    loadPeminjamanInitData(false);
+      syncPeminjamanWithMasterStore();
+      syncLiveChannelStockFromSupabase();
+      loadPeminjamanInitData(false);
+    } catch(e) {
+      console.warn("initPeminjamanView error:", e);
+    }
   }
 
   function extractExactLocationStocks(p) {
-    let studioQty = 0;
-    let shpQty = 0;
-    let ttkQty = 0;
-    let mapQty = 0;
+    var studioQty = 0;
+    var shpQty = 0;
+    var ttkQty = 0;
+    var mapQty = 0;
+
+    if (!p || typeof p !== 'object') {
+      return { map: 0, studio: 0, shp: 0, ttk: 0 };
+    }
 
     if (p.komparasi) {
       if (p.komparasi.MAP) mapQty = Number(p.komparasi.MAP.fisik || 0);
@@ -333,36 +349,28 @@
       if (p.singles.TTK) ttkQty = Math.max(ttkQty, Number(p.singles.TTK || 0));
     }
 
-    // Scan murni berdasarkan kriteria LOKASI fisik
     if (Array.isArray(p.locList)) {
       p.locList.forEach(function (l) {
-        let locName = '';
-        let qtyVal = 0;
+        var locName = '';
+        var qtyVal = 0;
         if (typeof l === 'object' && l !== null) {
           locName = String(l.lokasi || '').toUpperCase().trim();
           qtyVal = Number(l.qty || 0);
         } else if (typeof l === 'string') {
-          const parts = l.split(':');
+          var parts = l.split(':');
           locName = String(parts[0] || '').toUpperCase().trim();
           qtyVal = Number(parts[1] || 0);
         }
 
         if (qtyVal <= 0) return;
 
-        // 1. Lokasi Khusus STUDIO / SAMPLE
         if (locName.includes('STUDIO') || locName === 'SAMPLE STUDIO' || locName === 'SAMPLE' || locName === 'LIVE') {
           studioQty = Math.max(studioQty, qtyVal);
-        }
-        // 2. Lokasi Khusus SHOPEE (SHP)
-        else if (locName.includes('SHOPEE') || locName === 'SHP' || locName.includes('LIVE SHOPEE')) {
+        } else if (locName.includes('SHOPEE') || locName === 'SHP' || locName.includes('LIVE SHOPEE')) {
           shpQty = Math.max(shpQty, qtyVal);
-        }
-        // 3. Lokasi Khusus TIKTOK (TTK)
-        else if (locName.includes('TIKTOK') || locName === 'TTK' || locName === 'TT' || locName.includes('LIVE TIKTOK')) {
+        } else if (locName.includes('TIKTOK') || locName === 'TTK' || locName === 'TT' || locName.includes('LIVE TIKTOK')) {
           ttkQty = Math.max(ttkQty, qtyVal);
-        }
-        // 4. Lokasi MAP / WAREHOUSE
-        else if (locName.includes('MAP') || locName.includes('WH') || locName.includes('WAREHOUSE')) {
+        } else if (locName.includes('MAP') || locName.includes('WH') || locName.includes('WAREHOUSE')) {
           mapQty = Math.max(mapQty, qtyVal);
         }
       });
@@ -376,31 +384,67 @@
     };
   }
 
-  function syncPeminjamanWithMasterStore() {
-    const master = window.WMS_MASTER_DATA || ALL_PRODUK_DATA || [];
-    if (master.length > 0) {
-      PEMINJAMAN_PRODUK_LIST = master.map(function (p) {
-        const stocks = extractExactLocationStocks(p);
-
-        return {
-          produk: p.produk,
-          size: p.size,
-          sku: p.sku,
-          stok: stocks.map,
-          stokMap: stocks.map,
-          stokStudio: stocks.studio,
-          stokShp: stocks.shp,
-          stokTtk: stocks.ttk,
-          lokasi: 'MAP'
-        };
-      });
-
-      PEMINJAMAN_PRODUK_LIST.sort(sortPeminjamanAlphabetical);
-      const container = document.getElementById('itemContainer');
-      if (container && container.querySelectorAll('.prod-card').length === 0) {
-        tambahItemPeminjaman();
+  function getMasterProdukDataSafe() {
+    try {
+      if (typeof window !== 'undefined') {
+        if (Array.isArray(window.WMS_MASTER_DATA) && window.WMS_MASTER_DATA.length > 0) return window.WMS_MASTER_DATA;
+        if (Array.isArray(window.ALL_PRODUK_DATA) && window.ALL_PRODUK_DATA.length > 0) return window.ALL_PRODUK_DATA;
       }
-      buildChannelStockList(ACTIVE_STOCK_CHANNEL);
+      if (typeof ALL_PRODUK_DATA !== 'undefined' && Array.isArray(ALL_PRODUK_DATA) && ALL_PRODUK_DATA.length > 0) {
+        return ALL_PRODUK_DATA;
+      }
+      var raw = localStorage.getItem('wms_cache_inventory_v38');
+      if (raw) {
+        var cached = JSON.parse(raw);
+        if (Array.isArray(cached) && cached.length > 0) {
+          return cached.map(function(r) {
+            return {
+              sku: String(r.k || r.sku || ''),
+              produk: String(r.p || r.produk || r.k || ''),
+              size: String(r.s || r.size || '-'),
+              locList: Array.isArray(r.l) ? r.l : [],
+              komparasi: {
+                MAP: { fisik: Number((r.f && (r.f['MAP'] || r.f['Gudang Utama'] || r.f['Warehouse'])) || 0) },
+                STUDIO: { fisik: Number((r.f && (r.f['STUDIO'] || r.f['Sample Studio'])) || 0) },
+                LIVE: { fisik: Number((r.f && (r.f['LIVE'] || r.f['Barang Live'])) || 0) }
+              },
+              singles: r.b || {}
+            };
+          });
+        }
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  function syncPeminjamanWithMasterStore() {
+    try {
+      var master = getMasterProdukDataSafe();
+      if (Array.isArray(master) && master.length > 0) {
+        PEMINJAMAN_PRODUK_LIST = master.map(function (p) {
+          var stocks = extractExactLocationStocks(p);
+          return {
+            produk: p.produk || p.sku || '',
+            size: p.size || '-',
+            sku: p.sku || '',
+            stok: stocks.map,
+            stokMap: stocks.map,
+            stokStudio: stocks.studio,
+            stokShp: stocks.shp,
+            stokTtk: stocks.ttk,
+            lokasi: 'MAP'
+          };
+        });
+
+        PEMINJAMAN_PRODUK_LIST.sort(sortPeminjamanAlphabetical);
+        var container = document.getElementById('itemContainer');
+        if (container && container.querySelectorAll('.prod-card').length === 0) {
+          tambahItemPeminjaman();
+        }
+        buildChannelStockList(ACTIVE_STOCK_CHANNEL);
+      }
+    } catch(e) {
+      console.warn("syncPeminjamanWithMasterStore error:", e);
     }
   }
 
@@ -409,268 +453,297 @@
   });
 
   function switchStockChannel(channel, btn) {
-    ACTIVE_STOCK_CHANNEL = channel;
-    document.querySelectorAll('.stock-ch-btn').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+    try {
+      ACTIVE_STOCK_CHANNEL = channel || 'STUDIO';
+      document.querySelectorAll('.stock-ch-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
 
-    const headingEl = document.getElementById('stokChannelHeading');
-    if (headingEl) {
-      if (channel === 'STUDIO') headingEl.textContent = '📍 STOK TERSEDIA DI STUDIO (BLOK F)';
-      else if (channel === 'SHOPEE') headingEl.textContent = '🧡 STOK TERSEDIA DI SHOPEE (SHP)';
-      else if (channel === 'TIKTOK') headingEl.textContent = '🖤 STOK TERSEDIA DI TIKTOK (TTK)';
-      else headingEl.textContent = '🌐 GABUNGAN STOK (STUDIO / SHP / TTK)';
+      var headingEl = document.getElementById('stokChannelHeading');
+      if (headingEl) {
+        if (channel === 'STUDIO') headingEl.textContent = '📍 STOK TERSEDIA DI STUDIO (BLOK F)';
+        else if (channel === 'SHOPEE') headingEl.textContent = '🧡 STOK TERSEDIA DI SHOPEE (SHP)';
+        else if (channel === 'TIKTOK') headingEl.textContent = '🖤 STOK TERSEDIA DI TIKTOK (TTK)';
+        else headingEl.textContent = '🌐 GABUNGAN STOK (STUDIO / SHP / TTK)';
+      }
+
+      buildChannelStockList(ACTIVE_STOCK_CHANNEL);
+    } catch(e) {
+      console.warn("switchStockChannel error:", e);
     }
-
-    buildChannelStockList(channel);
   }
 
   function getProductLocationStringPeminjaman(locList) {
     if (!Array.isArray(locList) || locList.length === 0) return '-';
-    const locParts = [];
-    locList.forEach(l => {
+    var locParts = [];
+    locList.forEach(function(l) {
       if (!l) return;
       if (typeof l === 'object' && l !== null) {
-        const name = String(l.lokasi || '').trim();
-        const q = Number(l.qty) || 0;
-        if (name) locParts.push(q > 0 ? `${name} (${q})` : name);
+        var name = String(l.lokasi || '').trim();
+        var q = Number(l.qty) || 0;
+        if (name) locParts.push(q > 0 ? (name + ' (' + q + ')') : name);
       } else if (typeof l === 'string') {
-        const parts = l.split(':');
-        const name = String(parts[0] || '').trim();
-        const q = Number(parts[1]) || 0;
-        if (name) locParts.push(q > 0 ? `${name} (${q})` : name);
+        var parts = l.split(':');
+        var name = String(parts[0] || '').trim();
+        var q = Number(parts[1]) || 0;
+        if (name) locParts.push(q > 0 ? (name + ' (' + q + ')') : name);
       }
     });
     return locParts.length > 0 ? locParts.join(', ') : '-';
   }
 
   function sortPeminjamanAlphabetical(a, b) {
-    const comp = String(a.produk || '').localeCompare(String(b.produk || ''), undefined, { sensitivity: 'base' });
+    if (!a && !b) return 0;
+    if (!a) return -1;
+    if (!b) return 1;
+    var nameA = String(a.produk || a.sku || '');
+    var nameB = String(b.produk || b.sku || '');
+    var comp = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
     if (comp !== 0) return comp;
     return String(a.sku || '').localeCompare(String(b.sku || ''));
   }
 
   function buildChannelStockList(channel) {
-    let list = [];
+    try {
+      if (!channel) channel = ACTIVE_STOCK_CHANNEL || 'STUDIO';
+      var list = [];
 
-    // Prioritaskan data real-time langsung dari Supabase
-    if (LIVE_CHANNEL_STOCK_CACHE && LIVE_CHANNEL_STOCK_CACHE.length > 0) {
-      LIVE_CHANNEL_STOCK_CACHE.forEach(function (p) {
-        let include = false;
-        if (channel === 'STUDIO' && p.studioQty > 0) include = true;
-        else if (channel === 'SHOPEE' && p.shpQty > 0) include = true;
-        else if (channel === 'TIKTOK' && p.ttkQty > 0) include = true;
-        else if (channel === 'ALL' && (p.totalQty > 0 || p.studioQty > 0 || p.shpQty > 0 || p.ttkQty > 0)) include = true;
-
-        if (include) {
-          list.push({
-            produk: p.produk,
-            size: p.size,
-            sku: p.sku,
-            locStr: p.lokasi || '-',
-            studioQty: p.studioQty || 0,
-            shpQty: p.shpQty || 0,
-            ttkQty: p.ttkQty || 0,
-            totalQty: (p.studioQty || 0) + (p.shpQty || 0) + (p.ttkQty || 0)
-          });
-        }
-      });
-    }
-
-    // Fallback ke master store jika LIVE_CHANNEL_STOCK_CACHE kosong
-    if (list.length === 0) {
-      const master = window.WMS_MASTER_DATA || ALL_PRODUK_DATA || [];
-      if (master.length > 0) {
-        master.forEach(function (p) {
-          const stocks = extractExactLocationStocks(p);
-          const studioQty = stocks.studio;
-          const shpQty = stocks.shp;
-          const ttkQty = stocks.ttk;
-
-          let include = false;
-          if (channel === 'STUDIO' && studioQty > 0) include = true;
-          else if (channel === 'SHOPEE' && shpQty > 0) include = true;
-          else if (channel === 'TIKTOK' && ttkQty > 0) include = true;
-          else if (channel === 'ALL' && (studioQty > 0 || shpQty > 0 || ttkQty > 0)) include = true;
+      // 1. Prioritaskan data real-time langsung dari Supabase
+      if (Array.isArray(LIVE_CHANNEL_STOCK_CACHE) && LIVE_CHANNEL_STOCK_CACHE.length > 0) {
+        LIVE_CHANNEL_STOCK_CACHE.forEach(function (p) {
+          if (!p) return;
+          var include = false;
+          if (channel === 'STUDIO' && (p.studioQty > 0 || (p.totalQty > 0 && !p.shpQty && !p.ttkQty))) include = true;
+          else if (channel === 'SHOPEE' && p.shpQty > 0) include = true;
+          else if (channel === 'TIKTOK' && p.ttkQty > 0) include = true;
+          else if (channel === 'ALL' && (p.totalQty > 0 || p.studioQty > 0 || p.shpQty > 0 || p.ttkQty > 0)) include = true;
 
           if (include) {
             list.push({
-              produk: p.produk,
-              size: p.size,
-              sku: p.sku,
-              locStr: getProductLocationStringPeminjaman(p.locList),
-              studioQty: studioQty,
-              shpQty: shpQty,
-              ttkQty: ttkQty,
-              totalQty: studioQty + shpQty + ttkQty
+              produk: p.produk || p.sku || '-',
+              size: p.size || '-',
+              sku: p.sku || '-',
+              locStr: p.lokasi || '-',
+              studioQty: Number(p.studioQty) || 0,
+              shpQty: Number(p.shpQty) || 0,
+              ttkQty: Number(p.ttkQty) || 0,
+              totalQty: (Number(p.studioQty) || 0) + (Number(p.shpQty) || 0) + (Number(p.ttkQty) || 0)
             });
           }
         });
       }
-    }
 
-    list.sort(sortPeminjamanAlphabetical);
-    CURRENT_CHANNEL_STOCK_LIST = list;
-    FILTERED_CHANNEL_STOCK_LIST = list;
-    filterStudioStockSpa();
+      // 2. Fallback ke master store jika LIVE_CHANNEL_STOCK_CACHE kosong
+      if (list.length === 0) {
+        var master = getMasterProdukDataSafe();
+        if (Array.isArray(master) && master.length > 0) {
+          master.forEach(function (p) {
+            if (!p) return;
+            var stocks = extractExactLocationStocks(p);
+            var studioQty = stocks.studio;
+            var shpQty = stocks.shp;
+            var ttkQty = stocks.ttk;
+
+            var include = false;
+            if (channel === 'STUDIO' && studioQty > 0) include = true;
+            else if (channel === 'SHOPEE' && shpQty > 0) include = true;
+            else if (channel === 'TIKTOK' && ttkQty > 0) include = true;
+            else if (channel === 'ALL' && (studioQty > 0 || shpQty > 0 || ttkQty > 0)) include = true;
+
+            if (include) {
+              list.push({
+                produk: p.produk || p.sku || '-',
+                size: p.size || '-',
+                sku: p.sku || '-',
+                locStr: getProductLocationStringPeminjaman(p.locList),
+                studioQty: studioQty,
+                shpQty: shpQty,
+                ttkQty: ttkQty,
+                totalQty: studioQty + shpQty + ttkQty
+              });
+            }
+          });
+        }
+      }
+
+      list.sort(sortPeminjamanAlphabetical);
+      CURRENT_CHANNEL_STOCK_LIST = list;
+      FILTERED_CHANNEL_STOCK_LIST = list;
+      filterStudioStockSpa();
+    } catch(e) {
+      console.warn("buildChannelStockList error:", e);
+    }
   }
 
   function renderStockTableByChannel(list) {
-    const table = document.getElementById('peminjamanStockTable');
-    const colgroup = document.getElementById('peminjamanColgroup');
-    const thead = document.getElementById('peminjamanThead');
-    const tbody = document.getElementById('studioTableBody');
-    const sumEl = document.getElementById('studioSummary');
-    if (!tbody || !thead || !colgroup) return;
+    try {
+      var table = document.getElementById('peminjamanStockTable');
+      var colgroup = document.getElementById('peminjamanColgroup');
+      var thead = document.getElementById('peminjamanThead');
+      var tbody = document.getElementById('studioTableBody');
+      var sumEl = document.getElementById('studioSummary');
+      if (!tbody) return;
 
-    if (ACTIVE_STOCK_CHANNEL === 'ALL') {
-      table.style.minWidth = '520px';
-      colgroup.innerHTML = '<col style="width:auto;"><col style="width:55px;"><col style="width:110px;"><col style="width:60px;"><col style="width:60px;"><col style="width:60px;">';
-      thead.innerHTML = '<tr>' +
-        '<th style="text-align:left; padding-left:12px;">PRODUK</th>' +
-        '<th style="text-align:center;">SIZE</th>' +
-        '<th style="text-align:left; padding-left:8px;">SKU</th>' +
-        '<th style="text-align:center;" title="Studio / Blok F">STUDIO</th>' +
-        '<th style="text-align:center;" title="Shopee">SHP</th>' +
-        '<th style="text-align:center;" title="TikTok">TTK</th>' +
-      '</tr>';
-    } else {
-      table.style.minWidth = '420px';
-      let chLabel = 'QTY';
-      if (ACTIVE_STOCK_CHANNEL === 'STUDIO') chLabel = 'STUDIO';
-      else if (ACTIVE_STOCK_CHANNEL === 'SHOPEE') chLabel = 'SHP';
-      else if (ACTIVE_STOCK_CHANNEL === 'TIKTOK') chLabel = 'TTK';
+      if (colgroup && thead) {
+        if (ACTIVE_STOCK_CHANNEL === 'ALL') {
+          if (table) table.style.minWidth = '520px';
+          colgroup.innerHTML = '<col style="width:auto;"><col style="width:55px;"><col style="width:110px;"><col style="width:60px;"><col style="width:60px;"><col style="width:60px;">';
+          thead.innerHTML = '<tr>' +
+            '<th style="text-align:left; padding-left:12px;">PRODUK</th>' +
+            '<th style="text-align:center;">SIZE</th>' +
+            '<th style="text-align:left; padding-left:8px;">SKU</th>' +
+            '<th style="text-align:center;" title="Studio / Blok F">STUDIO</th>' +
+            '<th style="text-align:center;" title="Shopee">SHP</th>' +
+            '<th style="text-align:center;" title="TikTok">TTK</th>' +
+          '</tr>';
+        } else {
+          if (table) table.style.minWidth = '420px';
+          var chLabel = 'QTY';
+          if (ACTIVE_STOCK_CHANNEL === 'STUDIO') chLabel = 'STUDIO';
+          else if (ACTIVE_STOCK_CHANNEL === 'SHOPEE') chLabel = 'SHP';
+          else if (ACTIVE_STOCK_CHANNEL === 'TIKTOK') chLabel = 'TTK';
 
-      colgroup.innerHTML = '<col style="width:auto;"><col style="width:55px;"><col style="width:110px;"><col style="width:70px;">';
-      thead.innerHTML = '<tr>' +
-        '<th style="text-align:left; padding-left:12px;">PRODUK</th>' +
-        '<th style="text-align:center;">SIZE</th>' +
-        '<th style="text-align:left; padding-left:8px;">SKU</th>' +
-        '<th style="text-align:center;">' + chLabel + '</th>' +
-      '</tr>';
-    }
-
-    if (!list || list.length === 0) {
-      const colSpan = ACTIVE_STOCK_CHANNEL === 'ALL' ? 6 : 4;
-      tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center; padding:30px 0; color:var(--text-muted); font-style:italic;">TIDAK ADA STOK TERSEDIA PADA PILIHAN INI</td></tr>';
-      if (sumEl) sumEl.textContent = 'Total: 0 Item';
-      return;
-    }
-
-    let totalPcs = 0;
-    let rowsHtml = '';
-
-    list.forEach(function (item) {
-      let displaySize = item.size || '-';
-      if (displaySize.toLowerCase() === 'default') displaySize = 'ALL';
-
-      if (ACTIVE_STOCK_CHANNEL === 'ALL') {
-        totalPcs += item.totalQty;
-        rowsHtml += '<tr>' +
-          '<td style="font-weight:600; color:var(--text); font-size:11.5px; padding-left:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + item.produk + '">' + item.produk + '</td>' +
-          '<td style="text-align:center;"><span class="badge-size">' + displaySize + '</span></td>' +
-          '<td style="padding-left:8px;"><span class="badge-sku">' + item.sku + '</span></td>' +
-          '<td style="text-align:center; font-weight:700; color:var(--primary);">' + (item.studioQty || 0) + '</td>' +
-          '<td style="text-align:center; font-weight:700; color:#e05638;">' + (item.shpQty || 0) + '</td>' +
-          '<td style="text-align:center; font-weight:700; color:var(--text);">' + (item.ttkQty || 0) + '</td>' +
-        '</tr>';
-      } else {
-        let qVal = item.studioQty;
-        let qColor = 'var(--primary)';
-        if (ACTIVE_STOCK_CHANNEL === 'SHOPEE') { qVal = item.shpQty; qColor = '#e05638'; }
-        else if (ACTIVE_STOCK_CHANNEL === 'TIKTOK') { qVal = item.ttkQty; qColor = 'var(--text)'; }
-
-        totalPcs += (Number(qVal) || 0);
-
-        rowsHtml += '<tr>' +
-          '<td style="font-weight:600; color:var(--text); font-size:11.5px; padding-left:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + item.produk + '">' + item.produk + '</td>' +
-          '<td style="text-align:center;"><span class="badge-size">' + displaySize + '</span></td>' +
-          '<td style="padding-left:8px;"><span class="badge-sku">' + item.sku + '</span></td>' +
-          '<td style="text-align:center; font-weight:800; color:' + qColor + ';">' + qVal + '</td>' +
-        '</tr>';
+          colgroup.innerHTML = '<col style="width:auto;"><col style="width:55px;"><col style="width:110px;"><col style="width:70px;">';
+          thead.innerHTML = '<tr>' +
+            '<th style="text-align:left; padding-left:12px;">PRODUK</th>' +
+            '<th style="text-align:center;">SIZE</th>' +
+            '<th style="text-align:left; padding-left:8px;">SKU</th>' +
+            '<th style="text-align:center;">' + chLabel + '</th>' +
+          '</tr>';
+        }
       }
-    });
 
-    if (!rowsHtml) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px 0; color:var(--text-muted); font-style:italic;">TIDAK ADA STOK PADA CHANNEL INI</td></tr>';
-      if (sumEl) sumEl.innerHTML = `Total: <b style="color:var(--text);">0 SKU</b> &bull; <b style="color:var(--primary);">0 Pcs</b> Tersedia`;
-      return;
+      if (!list || list.length === 0) {
+        var colSpan = ACTIVE_STOCK_CHANNEL === 'ALL' ? 6 : 4;
+        tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center; padding:30px 0; color:var(--text-muted); font-style:italic;">TIDAK ADA STOK TERSEDIA PADA PILIHAN INI</td></tr>';
+        if (sumEl) sumEl.innerHTML = 'Total: <b style="color:var(--text);">0 SKU</b> &bull; <b style="color:var(--primary);">0 Pcs</b> Tersedia';
+        return;
+      }
+
+      var totalPcs = 0;
+      var rowsHtml = '';
+
+      list.forEach(function (item) {
+        if (!item) return;
+        var displaySize = item.size || '-';
+        if (String(displaySize).toLowerCase() === 'default') displaySize = 'ALL';
+
+        if (ACTIVE_STOCK_CHANNEL === 'ALL') {
+          totalPcs += Number(item.totalQty) || 0;
+          rowsHtml += '<tr>' +
+            '<td style="font-weight:600; color:var(--text); font-size:11.5px; padding-left:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + (item.produk || '') + '">' + (item.produk || '-') + '</td>' +
+            '<td style="text-align:center;"><span class="badge-size">' + displaySize + '</span></td>' +
+            '<td style="padding-left:8px;"><span class="badge-sku">' + (item.sku || '-') + '</span></td>' +
+            '<td style="text-align:center; font-weight:700; color:var(--primary);">' + (item.studioQty || 0) + '</td>' +
+            '<td style="text-align:center; font-weight:700; color:#e05638;">' + (item.shpQty || 0) + '</td>' +
+            '<td style="text-align:center; font-weight:700; color:var(--text);">' + (item.ttkQty || 0) + '</td>' +
+          '</tr>';
+        } else {
+          var qVal = item.studioQty;
+          var qColor = 'var(--primary)';
+          if (ACTIVE_STOCK_CHANNEL === 'SHOPEE') { qVal = item.shpQty; qColor = '#e05638'; }
+          else if (ACTIVE_STOCK_CHANNEL === 'TIKTOK') { qVal = item.ttkQty; qColor = 'var(--text)'; }
+
+          totalPcs += (Number(qVal) || 0);
+
+          rowsHtml += '<tr>' +
+            '<td style="font-weight:600; color:var(--text); font-size:11.5px; padding-left:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + (item.produk || '') + '">' + (item.produk || '-') + '</td>' +
+            '<td style="text-align:center;"><span class="badge-size">' + displaySize + '</span></td>' +
+            '<td style="padding-left:8px;"><span class="badge-sku">' + (item.sku || '-') + '</span></td>' +
+            '<td style="text-align:center; font-weight:800; color:' + qColor + ';">' + (qVal || 0) + '</td>' +
+          '</tr>';
+        }
+      });
+
+      tbody.innerHTML = rowsHtml;
+      if (sumEl) sumEl.innerHTML = 'Total: <b style="color:var(--text);">' + list.length + ' SKU</b> &bull; <b style="color:var(--primary);">' + totalPcs + ' Pcs</b> Tersedia';
+    } catch(e) {
+      console.warn("renderStockTableByChannel error:", e);
     }
-
-    tbody.innerHTML = rowsHtml;
-    if (sumEl) sumEl.innerHTML = `Total: <b style="color:var(--text);">${list.length} SKU</b> &bull; <b style="color:var(--primary);">${totalPcs} Pcs</b> Tersedia`;
   }
 
   function filterStudioStockSpa() {
-    const q = (document.getElementById('searchStudio').value || '').trim().toLowerCase();
-    if (!q) {
-      FILTERED_CHANNEL_STOCK_LIST = CURRENT_CHANNEL_STOCK_LIST;
-      renderStockTableByChannel(CURRENT_CHANNEL_STOCK_LIST);
-      return;
+    try {
+      var searchEl = document.getElementById('searchStudio');
+      var q = (searchEl && searchEl.value ? searchEl.value : '').trim().toLowerCase();
+      if (!q) {
+        FILTERED_CHANNEL_STOCK_LIST = CURRENT_CHANNEL_STOCK_LIST;
+        renderStockTableByChannel(CURRENT_CHANNEL_STOCK_LIST);
+        return;
+      }
+      var keywords = q.split(/\s+/).filter(Boolean);
+      var filtered = (CURRENT_CHANNEL_STOCK_LIST || []).filter(function (item) {
+        if (!item) return false;
+        var text = ((item.produk || '') + ' ' + (item.sku || '') + ' ' + (item.size || '') + ' ' + (item.locStr || '')).toLowerCase();
+        return keywords.every(function(kw) { return text.includes(kw); });
+      });
+      FILTERED_CHANNEL_STOCK_LIST = filtered;
+      renderStockTableByChannel(filtered);
+    } catch(e) {
+      console.warn("filterStudioStockSpa error:", e);
     }
-    const keywords = q.split(/\s+/).filter(Boolean);
-    const filtered = CURRENT_CHANNEL_STOCK_LIST.filter(function (item) {
-      const text = (item.produk + ' ' + item.sku + ' ' + (item.size || '') + ' ' + (item.locStr || '')).toLowerCase();
-      return keywords.every(kw => text.includes(kw));
-    });
-    FILTERED_CHANNEL_STOCK_LIST = filtered;
-    renderStockTableByChannel(filtered);
   }
 
   function exportPeminjamanStockData() {
-    const dataToExport = FILTERED_CHANNEL_STOCK_LIST || CURRENT_CHANNEL_STOCK_LIST || [];
-    if (!dataToExport || dataToExport.length === 0) {
-      if (window.showWmsToast) showWmsToast('Tidak ada data untuk diexport', 'warning');
-      else alert('Tidak ada data untuk diexport');
-      return;
-    }
+    try {
+      var dataToExport = FILTERED_CHANNEL_STOCK_LIST || CURRENT_CHANNEL_STOCK_LIST || [];
+      if (!dataToExport || dataToExport.length === 0) {
+        if (window.showWmsToast) showWmsToast('Tidak ada data untuk diexport', 'warning');
+        else alert('Tidak ada data untuk diexport');
+        return;
+      }
 
-    let headers = [];
-    let rows = [];
+      var headers = [];
+      var rows = [];
 
-    if (ACTIVE_STOCK_CHANNEL === 'ALL') {
-      headers = ['PRODUK', 'SIZE', 'SKU', 'LOKASI / RAK', 'STUDIO', 'SHOPEE', 'TIKTOK', 'TOTAL QTY'];
-      rows = dataToExport.map(item => [
-        item.produk,
-        item.size,
-        item.sku,
-        item.locStr || '-',
-        item.studioQty || 0,
-        item.shpQty || 0,
-        item.ttkQty || 0,
-        item.totalQty || 0
-      ]);
-    } else {
-      headers = ['PRODUK', 'SIZE', 'SKU', 'LOKASI / RAK', `QTY ${ACTIVE_STOCK_CHANNEL}`];
-      rows = dataToExport.map(item => {
-        let q = item.studioQty || 0;
-        if (ACTIVE_STOCK_CHANNEL === 'SHOPEE') q = item.shpQty || 0;
-        else if (ACTIVE_STOCK_CHANNEL === 'TIKTOK') q = item.ttkQty || 0;
-        return [
-          item.produk,
-          item.size,
-          item.sku,
-          item.locStr || '-',
-          q
-        ];
+      if (ACTIVE_STOCK_CHANNEL === 'ALL') {
+        headers = ['PRODUK', 'SIZE', 'SKU', 'LOKASI / RAK', 'STUDIO', 'SHOPEE', 'TIKTOK', 'TOTAL QTY'];
+        rows = dataToExport.map(function(item) {
+          return [
+            item.produk,
+            item.size,
+            item.sku,
+            item.locStr || '-',
+            item.studioQty || 0,
+            item.shpQty || 0,
+            item.ttkQty || 0,
+            item.totalQty || 0
+          ];
+        });
+      } else {
+        headers = ['PRODUK', 'SIZE', 'SKU', 'LOKASI / RAK', 'QTY ' + ACTIVE_STOCK_CHANNEL];
+        rows = dataToExport.map(function(item) {
+          var q = item.studioQty || 0;
+          if (ACTIVE_STOCK_CHANNEL === 'SHOPEE') q = item.shpQty || 0;
+          else if (ACTIVE_STOCK_CHANNEL === 'TIKTOK') q = item.ttkQty || 0;
+          return [
+            item.produk,
+            item.size,
+            item.sku,
+            item.locStr || '-',
+            q
+          ];
+        });
+      }
+
+      var csvContent = "\uFEFF"; // UTF-8 BOM for Excel
+      csvContent += headers.map(function(h) { return '"' + String(h).replace(/"/g, '""') + '"'; }).join(',') + "\r\n";
+      rows.forEach(function(row) {
+        csvContent += row.map(function(val) { return '"' + String(val !== undefined && val !== null ? val : '').replace(/"/g, '""') + '"'; }).join(',') + "\r\n";
       });
+
+      var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.setAttribute('href', url);
+      var cleanName = 'stok_peminjaman_' + ACTIVE_STOCK_CHANNEL.toLowerCase();
+      link.setAttribute('download', cleanName + '_' + new Date().toISOString().slice(0,10) + '.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      if (window.showWmsToast) showWmsToast('Data stok peminjaman (' + ACTIVE_STOCK_CHANNEL + ') berhasil diexport!', 'success');
+    } catch(e) {
+      console.warn("exportPeminjamanStockData error:", e);
     }
-
-    let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
-    csvContent += headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + "\r\n";
-    rows.forEach(row => {
-      csvContent += row.map(val => `"${String(val !== undefined && val !== null ? val : '').replace(/"/g, '""')}"`).join(',') + "\r\n";
-    });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    const cleanName = `stok_peminjaman_${ACTIVE_STOCK_CHANNEL.toLowerCase()}`;
-    link.setAttribute('download', `${cleanName}_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    if (window.showWmsToast) showWmsToast(`Data stok peminjaman (${ACTIVE_STOCK_CHANNEL}) berhasil diexport!`, 'success');
   }
 
   function refreshStockPeminjaman(btn) {
@@ -692,410 +765,499 @@
   }
 
   async function syncLiveChannelStockFromSupabase() {
-    const supaUrl = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : "https://filgijcfhgqlirzhvwho.supabase.co";
-    const supaKey = typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : "sb_publishable_L4FEkugwRKqcwFzLXfpZag_aByUy5mD";
+    var supaUrl = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : "https://vxongwtxmhjixhzeoidp.supabase.co";
+    var supaKey = typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : "sb_publishable_XFvjJipUzyi0EuM_tDTTsg_ll7TJ7rA";
 
     try {
-      const res = await fetch(`${supaUrl}/rest/v1/view_stok_realtime?sisa_stok=neq.0&select=sku,nama_produk,size,area,lokasi,sisa_stok&order=sku.asc,lokasi.asc`, {
+      var resBlokF = await fetch(supaUrl + '/rest/v1/view_stok_realtime?area=eq.Blok%20F&sisa_stok=gt.0&select=sku,nama_produk,size,lokasi,sisa_stok&order=nama_produk.asc', {
         headers: {
           'apikey': supaKey,
           'Authorization': 'Bearer ' + supaKey
         }
       });
-      if (res.ok) {
-        const rows = await res.json();
-        if (Array.isArray(rows) && rows.length > 0) {
-          const channelMap = {};
-          const fallbackProductMap = {};
+      
+      var rowsBlokF = [];
+      if (resBlokF && resBlokF.ok) {
+        rowsBlokF = await resBlokF.json();
+      }
 
-          rows.forEach(sRow => {
-            const sku = String(sRow.sku || '').trim().toUpperCase();
-            const lokasi = String(sRow.lokasi || '').trim();
-            const area = String(sRow.area || '').trim().toUpperCase();
-            const qty = Number(sRow.sisa_stok) || 0;
-            if (!sku || qty <= 0) return;
+      var resWh = await fetch(supaUrl + '/rest/v1/view_stok_realtime?area=eq.Warehouse&sisa_stok=gt.0&select=sku,nama_produk,size,lokasi,sisa_stok&order=nama_produk.asc&limit=1500', {
+        headers: {
+          'apikey': supaKey,
+          'Authorization': 'Bearer ' + supaKey
+        }
+      });
 
-            // Kumpulkan untuk fallback PEMINJAMAN_PRODUK_LIST jika master data belum selesai memuat
-            if (!fallbackProductMap[sku]) {
-              fallbackProductMap[sku] = {
+      var rowsWh = [];
+      if (resWh && resWh.ok) {
+        rowsWh = await resWh.json();
+      }
+
+      var allRows = [].concat(Array.isArray(rowsBlokF) ? rowsBlokF : [], Array.isArray(rowsWh) ? rowsWh : []);
+      if (allRows.length > 0) {
+        var channelMap = {};
+        var productMap = {};
+
+        if (Array.isArray(PEMINJAMAN_PRODUK_LIST)) {
+          PEMINJAMAN_PRODUK_LIST.forEach(function(p) {
+            if (p && p.sku) productMap[String(p.sku).toUpperCase()] = p;
+          });
+        }
+
+        allRows.forEach(function(sRow) {
+          if (!sRow) return;
+          var sku = String(sRow.sku || '').trim().toUpperCase();
+          var lokasi = String(sRow.lokasi || '').trim();
+          var area = String(sRow.area || '').trim();
+          var qty = Number(sRow.sisa_stok) || 0;
+          if (!sku || qty <= 0) return;
+
+          if (!productMap[sku]) {
+            productMap[sku] = {
+              sku: sku,
+              produk: sRow.nama_produk || sku,
+              size: sRow.size || "-",
+              stok: 0,
+              stokMap: 0,
+              stokStudio: 0,
+              stokShp: 0,
+              stokTtk: 0,
+              lokasi: 'MAP'
+            };
+          }
+
+          var lUpper = lokasi.toUpperCase();
+          var isShopee = lUpper.includes("SHOPEE") || lUpper === "SHP" || lUpper.includes("LIVE SHOPEE");
+          var isTiktok = lUpper.includes("TIKTOK") || lUpper === "TTK" || lUpper === "TT" || lUpper.includes("LIVE TIKTOK");
+          var isStudio = lUpper.includes("STUDIO") || lUpper === "SAMPLE" || lUpper === "LIVE" || (!isShopee && !isTiktok && area.toUpperCase() === "BLOK F");
+          var isMap = lUpper.includes("MAP") || lUpper.includes("WH") || lUpper.includes("WAREHOUSE") || area.toUpperCase() === "WAREHOUSE";
+
+          if (isMap) {
+            productMap[sku].stok += qty;
+            productMap[sku].stokMap += qty;
+          }
+          if (isStudio) productMap[sku].stokStudio += qty;
+          if (isShopee) productMap[sku].stokShp += qty;
+          if (isTiktok) productMap[sku].stokTtk += qty;
+
+          if (isStudio || isShopee || isTiktok) {
+            if (!channelMap[sku]) {
+              channelMap[sku] = {
                 sku: sku,
                 produk: sRow.nama_produk || sku,
                 size: sRow.size || "-",
-                stok: 0,
-                stokMap: 0,
-                stokStudio: 0,
-                stokShp: 0,
-                stokTtk: 0,
-                lokasi: 'MAP'
+                studioQty: 0,
+                shpQty: 0,
+                ttkQty: 0,
+                totalQty: 0,
+                lokasi: lokasi
               };
             }
-            if (area === "WAREHOUSE" || area === "MAP") {
-              fallbackProductMap[sku].stok += qty;
-              fallbackProductMap[sku].stokMap += qty;
-            }
-
-            const lUpper = lokasi.toUpperCase();
-            let isStudio = lUpper.includes("STUDIO") || lUpper === "SAMPLE" || lUpper === "LIVE";
-            let isShopee = lUpper.includes("SHOPEE") || lUpper === "SHP" || lUpper.includes("LIVE SHOPEE");
-            let isTiktok = lUpper.includes("TIKTOK") || lUpper === "TTK" || lUpper === "TT" || lUpper.includes("LIVE TIKTOK");
-
-            if (area === "BLOK F" && !isShopee && !isTiktok) isStudio = true;
-
-            if (isStudio) fallbackProductMap[sku].stokStudio += qty;
-            if (isShopee) fallbackProductMap[sku].stokShp += qty;
-            if (isTiktok) fallbackProductMap[sku].stokTtk += qty;
-
-            if (isStudio || isShopee || isTiktok) {
-              if (!channelMap[sku]) {
-                channelMap[sku] = {
-                  sku: sku,
-                  produk: sRow.nama_produk || sku,
-                  size: sRow.size || "-",
-                  studioQty: 0,
-                  shpQty: 0,
-                  ttkQty: 0,
-                  totalQty: 0,
-                  lokasi: lokasi
-                };
-              }
-              if (isStudio) channelMap[sku].studioQty += qty;
-              if (isShopee) channelMap[sku].shpQty += qty;
-              if (isTiktok) channelMap[sku].ttkQty += qty;
-              channelMap[sku].totalQty = channelMap[sku].studioQty + channelMap[sku].shpQty + channelMap[sku].ttkQty;
-            }
-          });
-
-          if (PEMINJAMAN_PRODUK_LIST.length === 0) {
-            PEMINJAMAN_PRODUK_LIST = Object.values(fallbackProductMap);
-            PEMINJAMAN_PRODUK_LIST.sort((a, b) => (a.produk || '').localeCompare(b.produk || ''));
-            if (peminjamanItemCounter === 0) tambahItemPeminjaman();
+            if (isStudio) channelMap[sku].studioQty += qty;
+            if (isShopee) channelMap[sku].shpQty += qty;
+            if (isTiktok) channelMap[sku].ttkQty += qty;
+            channelMap[sku].totalQty = channelMap[sku].studioQty + channelMap[sku].shpQty + channelMap[sku].ttkQty;
           }
+        });
 
-          const list = Object.values(channelMap);
-          list.sort((a, b) => (a.produk || '').localeCompare(b.produk || ''));
-          if (list.length > 0) {
-            LIVE_CHANNEL_STOCK_CACHE = list;
-            buildChannelStockList(ACTIVE_STOCK_CHANNEL);
-          }
-        }
+        PEMINJAMAN_PRODUK_LIST = Object.values(productMap);
+        PEMINJAMAN_PRODUK_LIST.sort(function(a, b) { return String(a.produk || '').localeCompare(String(b.produk || '')); });
+
+        var list = Object.values(channelMap);
+        list.sort(function(a, b) { return String(a.produk || '').localeCompare(String(b.produk || '')); });
+        LIVE_CHANNEL_STOCK_CACHE = list;
       }
     } catch (e) {
       console.warn("syncLiveChannelStockFromSupabase error:", e);
+    } finally {
+      buildChannelStockList(ACTIVE_STOCK_CHANNEL);
     }
   }
 
   function loadPeminjamanInitData(isRefresh) {
     syncLiveChannelStockFromSupabase();
 
-    google.script.run.withSuccessHandler(function (data) {
-      if (data) {
-        if (data.produkList && data.produkList.length > 0) {
-          PEMINJAMAN_PRODUK_LIST = data.produkList;
-          if (peminjamanItemCounter === 0) tambahItemPeminjaman();
-        }
-        if (data.liveStockList && data.liveStockList.length > 0 && LIVE_CHANNEL_STOCK_CACHE.length === 0) {
-          LIVE_CHANNEL_STOCK_CACHE = data.liveStockList;
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(function (data) {
+        if (data) {
+          if (data.produkList && data.produkList.length > 0) {
+            PEMINJAMAN_PRODUK_LIST = data.produkList;
+          }
+          if (data.liveStockList && data.liveStockList.length > 0) {
+            LIVE_CHANNEL_STOCK_CACHE = data.liveStockList;
+          }
           buildChannelStockList(ACTIVE_STOCK_CHANNEL);
         }
-      }
-    }).withFailureHandler(function (err) {
-      if (PEMINJAMAN_PRODUK_LIST.length === 0) {
-        if (window.showWmsToast) window.showWmsToast('Gagal memuat data awal: ' + err.message, 'error');
-      }
-    }).getPeminjamanInitData();
+      }).withFailureHandler(function (err) {
+        console.warn("getPeminjamanInitData error:", err);
+        buildChannelStockList(ACTIVE_STOCK_CHANNEL);
+      }).getPeminjamanInitData();
+    }
   }
 
   // ============ FORM ITEM COMBOBOX & MULTI-ROW ============
   function tambahItemPeminjaman() {
-    peminjamanItemCounter++;
-    const id = 'p_item_' + peminjamanItemCounter;
+    try {
+      peminjamanItemCounter++;
+      var id = 'p_item_' + peminjamanItemCounter;
 
-    const card = document.createElement('div');
-    card.className = 'prod-card';
-    card.id = id;
-    card.style.padding = '12px 14px';
-    card.style.background = 'var(--card-alt)';
-    card.style.border = '1px solid var(--border)';
-    card.style.borderRadius = 'var(--radius-md)';
-    card.innerHTML =
-      '<div class="peminjaman-item-grid">' +
-        '<div style="position:relative;">' +
-          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">' +
-            '<label style="font-size:10.5px; font-weight:700; color:var(--text-muted);">PILIH PRODUK &amp; SIZE <span style="color:var(--danger);">*</span></label>' +
-            '<span class="stokInfo" style="font-size:10.5px; font-weight:700; display:none;"></span>' +
+      var container = document.getElementById('itemContainer');
+      if (!container) return;
+
+      var card = document.createElement('div');
+      card.className = 'prod-card';
+      card.id = id;
+      card.style.padding = '12px 14px';
+      card.style.background = 'var(--card-alt)';
+      card.style.border = '1px solid var(--border)';
+      card.style.borderRadius = 'var(--radius-md)';
+      card.innerHTML =
+        '<div class="peminjaman-item-grid">' +
+          '<div style="position:relative;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">' +
+              '<label style="font-size:10.5px; font-weight:700; color:var(--text-muted);">PILIH PRODUK &amp; SIZE <span style="color:var(--danger);">*</span></label>' +
+              '<span class="stokInfo" style="font-size:10.5px; font-weight:700; display:none;"></span>' +
+            '</div>' +
+            '<input type="text" class="search-input produkInput" placeholder="Ketik nama produk / SKU..." autocomplete="off" style="height:38px; font-size:12px; width:100%;">' +
+            '<div class="combo-panel" id="' + id + '_panel" style="position:absolute; top:calc(100% + 2px); left:0; right:0; max-height:240px; overflow-y:auto; background:var(--card); border:1px solid var(--border); border-radius:6px; box-shadow:var(--shadow); z-index:1000; display:none;"></div>' +
           '</div>' +
-          '<input type="text" class="search-input produkInput" placeholder="Ketik nama produk / SKU..." autocomplete="off" style="height:38px; font-size:12px; width:100%;">' +
-          '<div class="combo-panel" id="' + id + '_panel" style="position:absolute; top:calc(100% + 2px); left:0; right:0; max-height:240px; overflow-y:auto; background:var(--card); border:1px solid var(--border); border-radius:6px; box-shadow:var(--shadow); z-index:1000; display:none;"></div>' +
-        '</div>' +
-        '<div class="peminjaman-item-actions">' +
-          '<div>' +
-            '<label style="display:block; font-size:10.5px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">QTY <span style="color:var(--danger);">*</span></label>' +
-            '<div style="display:flex; border:1px solid var(--border); border-radius:6px; background:var(--input-bg); overflow:hidden; height:38px;">' +
-              '<button type="button" class="qtyMin" style="width:34px; border:none; background:transparent; color:var(--primary); font-weight:700; font-size:14px; cursor:pointer;">−</button>' +
-              '<input type="number" class="qtyInput" value="1" min="1" style="width:100%; border:none; background:transparent; text-align:center; font-weight:700; font-size:13px; color:var(--text);">' +
-              '<button type="button" class="qtyPlus" style="width:34px; border:none; background:transparent; color:var(--primary); font-weight:700; font-size:14px; cursor:pointer;">+</button>' +
+          '<div class="peminjaman-item-actions">' +
+            '<div>' +
+              '<label style="display:block; font-size:10.5px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">QTY <span style="color:var(--danger);">*</span></label>' +
+              '<div style="display:flex; border:1px solid var(--border); border-radius:6px; background:var(--input-bg); overflow:hidden; height:38px;">' +
+                '<button type="button" class="qtyMin" style="width:34px; border:none; background:transparent; color:var(--primary); font-weight:700; font-size:14px; cursor:pointer;">−</button>' +
+                '<input type="number" class="qtyInput" value="1" min="1" style="width:100%; border:none; background:transparent; text-align:center; font-weight:700; font-size:13px; color:var(--text);">' +
+                '<button type="button" class="qtyPlus" style="width:34px; border:none; background:transparent; color:var(--primary); font-weight:700; font-size:14px; cursor:pointer;">+</button>' +
+              '</div>' +
+            '</div>' +
+            '<div>' +
+              '<label style="display:block; font-size:10.5px; font-weight:700; color:transparent; margin-bottom:4px;">AKSI</label>' +
+              '<button type="button" class="btn btn-danger btn-hapus" style="height:38px; padding:0 8px; font-size:11px; width:100%;">HAPUS</button>' +
             '</div>' +
           '</div>' +
-          '<div>' +
-            '<label style="display:block; font-size:10.5px; font-weight:700; color:transparent; margin-bottom:4px;">AKSI</label>' +
-            '<button type="button" class="btn btn-danger btn-hapus" style="height:38px; padding:0 8px; font-size:11px; width:100%;">HAPUS</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
+        '</div>';
 
-    document.getElementById('itemContainer').appendChild(card);
+      container.appendChild(card);
 
-    const inputEl = card.querySelector('.produkInput');
-    const panelEl = card.querySelector('.combo-panel');
-    const stokInfoEl = card.querySelector('.stokInfo');
-    const qtyInputEl = card.querySelector('.qtyInput');
+      var inputEl = card.querySelector('.produkInput');
+      var panelEl = card.querySelector('.combo-panel');
+      var stokInfoEl = card.querySelector('.stokInfo');
+      var qtyInputEl = card.querySelector('.qtyInput');
 
-    function updateStokInfo() {
-      const stok = Number(inputEl.dataset.stok);
-      if (inputEl.dataset.stok === undefined || isNaN(stok)) {
-        stokInfoEl.style.display = 'none';
-        return;
-      }
-      const diminta = parseInt(qtyInputEl.value, 10) || 0;
-      stokInfoEl.style.display = 'inline';
-      if (stok <= 0) {
-        stokInfoEl.style.color = 'var(--danger)';
-        stokInfoEl.textContent = '❌ MAP KOSONG';
-      } else if (diminta > stok) {
-        stokInfoEl.style.color = 'var(--warning)';
-        stokInfoEl.textContent = '⚠️ SISA MAP: ' + stok;
-      } else {
-        stokInfoEl.style.color = 'var(--success)';
-        stokInfoEl.textContent = '✅ STOK MAP: ' + stok;
-      }
-    }
-
-    function renderCombo(filteredList) {
-      panelEl.innerHTML = '';
-      if (!PEMINJAMAN_PRODUK_LIST || PEMINJAMAN_PRODUK_LIST.length === 0) {
-        panelEl.innerHTML = '<div style="padding:16px; font-size:12px; color:var(--text-muted); text-align:center; font-style:italic;">⏳ Memuat daftar produk...</div>';
-        return;
-      }
-      if (filteredList.length === 0) {
-        panelEl.innerHTML = '<div style="padding:16px; font-size:12px; color:var(--text-muted); text-align:center; font-style:italic;">❌ Produk tidak ditemukan</div>';
-        return;
-      }
-      filteredList.slice(0, 35).forEach(function (opt, idx) {
-        const div = document.createElement('div');
-        div.className = 'combo-option-item';
-        div.dataset.index = idx;
-        div.style.padding = '10px 14px';
-        div.style.cursor = 'pointer';
-        div.style.borderBottom = '1px solid var(--border-subtle)';
-        div.style.display = 'flex';
-        div.style.flexDirection = 'column';
-        div.style.gap = '6px';
-        div.style.color = 'var(--text)';
-        div.style.transition = 'all 0.15s ease';
-
-        const displaySize = opt.size && opt.size.toUpperCase() !== 'DEFAULT' ? opt.size : 'ALL';
-        const displayTitle = opt.label || opt.value || opt.produk || '-';
-
-        div.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-            <div style="font-weight:700; font-size:12.5px; line-height:1.3; color:var(--text);">${displayTitle}</div>
-            <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
-              <span class="badge-size" style="font-size:10px; padding:2px 6px;">${displaySize}</span>
-              <span class="badge-sku" style="font-size:10.5px; font-family:'JetBrains Mono',monospace; padding:2px 6px;">${opt.sku}</span>
-            </div>
-          </div>
-          <div style="display:flex; gap:5px; font-size:10px; font-weight:700; flex-wrap:wrap;">
-            <span style="background:var(--primary-light); color:var(--primary); padding:2px 7px; border-radius:4px;">🏢 MAP: ${opt.stokMap !== undefined ? opt.stokMap : opt.stok}</span>
-            <span style="background:var(--card-alt); color:var(--text); padding:2px 7px; border:1px solid var(--border); border-radius:4px;">📍 Studio: ${opt.stokStudio || 0}</span>
-            <span style="background:rgba(224,86,56,0.12); color:#e05638; padding:2px 7px; border-radius:4px;">🧡 SHP: ${opt.stokShp || 0}</span>
-            <span style="background:rgba(0,0,0,0.06); color:var(--text); padding:2px 7px; border-radius:4px;">🖤 TTK: ${opt.stokTtk || 0}</span>
-          </div>
-        `;
-
-        function selectItem(e) {
-          if (e) { e.preventDefault(); e.stopPropagation(); }
-          inputEl.value = opt.label;
-          inputEl.dataset.value = opt.value;
-          inputEl.dataset.stok = opt.stokMap !== undefined ? opt.stokMap : opt.stok;
-          inputEl.dataset.size = opt.size;
-          inputEl.dataset.sku = opt.sku;
-          inputEl.dataset.lokasi = opt.lokasi;
-          panelEl.style.display = 'none';
-          updateStokInfo();
+      function updateStokInfo() {
+        var stok = Number(inputEl.dataset.stok);
+        if (inputEl.dataset.stok === undefined || isNaN(stok)) {
+          stokInfoEl.style.display = 'none';
+          return;
         }
-
-        div.addEventListener('pointerdown', selectItem);
-        div.addEventListener('mousedown', selectItem);
-
-        panelEl.appendChild(div);
-      });
-    }
-
-    let activeComboIndex = -1;
-
-    function getFilteredOpts() {
-      const q = inputEl.value.trim().toLowerCase();
-      const kw = q.split(/\s+/).filter(Boolean);
-      const opts = PEMINJAMAN_PRODUK_LIST.map(p => {
-        const label = p.size && p.size.toUpperCase() !== 'DEFAULT' ? (p.produk + ' - ' + p.size) : p.produk;
-        return {
-          label: label,
-          value: p.produk,
-          size: p.size,
-          sku: p.sku,
-          stok: p.stok,
-          stokMap: p.stokMap,
-          stokStudio: p.stokStudio,
-          stokShp: p.stokShp,
-          stokTtk: p.stokTtk,
-          lokasi: p.lokasi
-        };
-      });
-      return kw.length === 0 ? opts : opts.filter(o => {
-        const teks = (o.label + ' ' + (o.sku || '')).toLowerCase();
-        return kw.every(k => teks.includes(k));
-      });
-    }
-
-    inputEl.addEventListener('input', function () {
-      activeComboIndex = -1;
-      const filtered = getFilteredOpts();
-      renderCombo(filtered);
-      panelEl.style.display = 'block';
-    });
-
-    inputEl.addEventListener('focus', function () {
-      activeComboIndex = -1;
-      const filtered = getFilteredOpts();
-      renderCombo(filtered);
-      panelEl.style.display = 'block';
-    });
-
-    // Desktop Keyboard Arrow Navigation (Up, Down, Enter, Escape)
-    inputEl.addEventListener('keydown', function (e) {
-      const items = panelEl.querySelectorAll('.combo-option-item');
-      if (items.length === 0 || panelEl.style.display === 'none') return;
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        activeComboIndex = (activeComboIndex + 1) % items.length;
-        updateActiveItem();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        activeComboIndex = (activeComboIndex - 1 + items.length) % items.length;
-        updateActiveItem();
-      } else if (e.key === 'Enter') {
-        if (activeComboIndex >= 0 && activeComboIndex < items.length) {
-          e.preventDefault();
-          items[activeComboIndex].dispatchEvent(new Event('mousedown'));
+        var diminta = parseInt(qtyInputEl.value, 10) || 0;
+        stokInfoEl.style.display = 'inline';
+        if (stok <= 0) {
+          stokInfoEl.style.color = 'var(--danger)';
+          stokInfoEl.textContent = '❌ MAP KOSONG';
+        } else if (diminta > stok) {
+          stokInfoEl.style.color = 'var(--warning)';
+          stokInfoEl.textContent = '⚠️ SISA MAP: ' + stok;
+        } else {
+          stokInfoEl.style.color = 'var(--success)';
+          stokInfoEl.textContent = '✅ STOK MAP: ' + stok;
         }
-      } else if (e.key === 'Escape') {
-        panelEl.style.display = 'none';
       }
 
-      function updateActiveItem() {
-        items.forEach((it, idx) => {
-          if (idx === activeComboIndex) {
-            it.style.background = 'var(--card-alt)';
-            it.style.borderLeft = '3px solid var(--primary)';
-            it.style.paddingLeft = '11px';
-            it.scrollIntoView({ block: 'nearest' });
-          } else {
-            it.style.background = 'transparent';
-            it.style.borderLeft = 'none';
-            it.style.paddingLeft = '14px';
+      function renderCombo(filteredList) {
+        panelEl.innerHTML = '';
+        if (!PEMINJAMAN_PRODUK_LIST || PEMINJAMAN_PRODUK_LIST.length === 0) {
+          panelEl.innerHTML = '<div style="padding:16px; font-size:12px; color:var(--text-muted); text-align:center; font-style:italic;">⏳ Memuat daftar produk...</div>';
+          return;
+        }
+        if (filteredList.length === 0) {
+          panelEl.innerHTML = '<div style="padding:16px; font-size:12px; color:var(--text-muted); text-align:center; font-style:italic;">❌ Produk tidak ditemukan</div>';
+          return;
+        }
+        filteredList.slice(0, 35).forEach(function (opt, idx) {
+          var div = document.createElement('div');
+          div.className = 'combo-option-item';
+          div.dataset.index = idx;
+          div.style.padding = '10px 14px';
+          div.style.cursor = 'pointer';
+          div.style.borderBottom = '1px solid var(--border-subtle)';
+          div.style.display = 'flex';
+          div.style.flexDirection = 'column';
+          div.style.gap = '6px';
+          div.style.color = 'var(--text)';
+          div.style.transition = 'all 0.15s ease';
+
+          var displaySize = opt.size && opt.size.toUpperCase() !== 'DEFAULT' ? opt.size : 'ALL';
+          var displayTitle = opt.label || opt.value || opt.produk || '-';
+
+          div.innerHTML =
+            '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">' +
+              '<div style="font-weight:700; font-size:12.5px; line-height:1.3; color:var(--text);">' + displayTitle + '</div>' +
+              '<div style="display:flex; gap:5px; align-items:center; flex-shrink:0;">' +
+                '<span class="badge-size" style="font-size:10px; padding:2px 6px;">' + displaySize + '</span>' +
+                '<span class="badge-sku" style="font-size:10.5px; font-family:\'JetBrains Mono\',monospace; padding:2px 6px;">' + (opt.sku || '') + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex; gap:5px; font-size:10px; font-weight:700; flex-wrap:wrap;">' +
+              '<span style="background:var(--primary-light); color:var(--primary); padding:2px 7px; border-radius:4px;">🏢 MAP: ' + (opt.stokMap !== undefined ? opt.stokMap : opt.stok) + '</span>' +
+              '<span style="background:var(--card-alt); color:var(--text); padding:2px 7px; border:1px solid var(--border); border-radius:4px;">📍 Studio: ' + (opt.stokStudio || 0) + '</span>' +
+              '<span style="background:rgba(224,86,56,0.12); color:#e05638; padding:2px 7px; border-radius:4px;">🧡 SHP: ' + (opt.stokShp || 0) + '</span>' +
+              '<span style="background:rgba(0,0,0,0.06); color:var(--text); padding:2px 7px; border-radius:4px;">🖤 TTK: ' + (opt.stokTtk || 0) + '</span>' +
+            '</div>';
+
+          function selectItem(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            inputEl.value = opt.label;
+            inputEl.dataset.value = opt.value;
+            inputEl.dataset.stok = opt.stokMap !== undefined ? opt.stokMap : opt.stok;
+            inputEl.dataset.size = opt.size;
+            inputEl.dataset.sku = opt.sku;
+            inputEl.dataset.lokasi = opt.lokasi;
+            panelEl.style.display = 'none';
+            updateStokInfo();
           }
+
+          div.addEventListener('pointerdown', selectItem);
+          div.addEventListener('mousedown', selectItem);
+
+          panelEl.appendChild(div);
         });
       }
-    });
 
-    document.addEventListener('click', function (e) {
-      if (!card.contains(e.target)) panelEl.style.display = 'none';
-    });
+      var activeComboIndex = -1;
 
-    qtyInputEl.addEventListener('input', updateStokInfo);
+      function getFilteredOpts() {
+        var q = inputEl.value.trim().toLowerCase();
+        var kw = q.split(/\s+/).filter(Boolean);
+        var opts = (PEMINJAMAN_PRODUK_LIST || []).map(function(p) {
+          var label = p.size && String(p.size).toUpperCase() !== 'DEFAULT' ? (p.produk + ' - ' + p.size) : p.produk;
+          return {
+            label: label,
+            value: p.produk,
+            size: p.size,
+            sku: p.sku,
+            stok: p.stok,
+            stokMap: p.stokMap,
+            stokStudio: p.stokStudio,
+            stokShp: p.stokShp,
+            stokTtk: p.stokTtk,
+            lokasi: p.lokasi
+          };
+        });
+        return kw.length === 0 ? opts : opts.filter(function(o) {
+          var teks = (o.label + ' ' + (o.sku || '')).toLowerCase();
+          return kw.every(function(k) { return teks.includes(k); });
+        });
+      }
 
-    card.querySelector('.qtyMin').addEventListener('click', function () {
-      qtyInputEl.value = Math.max(1, (parseInt(qtyInputEl.value, 10) || 1) - 1);
-      updateStokInfo();
-    });
+      var searchDebounceTimer = null;
+      async function searchSupabaseMasterProduk(query) {
+        if (!query || query.length < 2) return;
+        var supaUrl = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : "https://vxongwtxmhjixhzeoidp.supabase.co";
+        var supaKey = typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : "sb_publishable_XFvjJipUzyi0EuM_tDTTsg_ll7TJ7rA";
 
-    card.querySelector('.qtyPlus').addEventListener('click', function () {
-      qtyInputEl.value = (parseInt(qtyInputEl.value, 10) || 1) + 1;
-      updateStokInfo();
-    });
+        try {
+          var qClean = encodeURIComponent(query.trim());
+          var res = await fetch(supaUrl + '/rest/v1/master_produk?or=(sku.ilike.*' + qClean + '*,nama_produk.ilike.*' + qClean + '*)&select=sku,nama_produk,size&limit=25', {
+            headers: {
+              'apikey': supaKey,
+              'Authorization': 'Bearer ' + supaKey
+            }
+          });
+          if (res.ok) {
+            var rows = await res.json();
+            if (Array.isArray(rows) && rows.length > 0) {
+              var existingSku = new Set((PEMINJAMAN_PRODUK_LIST || []).map(function(x) { return (x.sku || '').toUpperCase(); }));
+              var addedNew = false;
+              rows.forEach(function(r) {
+                var sku = String(r.sku || '').trim().toUpperCase();
+                if (sku && !existingSku.has(sku)) {
+                  PEMINJAMAN_PRODUK_LIST.push({
+                    produk: r.nama_produk || sku,
+                    size: r.size || '-',
+                    sku: sku,
+                    stok: 0,
+                    stokMap: 0,
+                    stokStudio: 0,
+                    stokShp: 0,
+                    stokTtk: 0,
+                    lokasi: 'MAP'
+                  });
+                  addedNew = true;
+                }
+              });
+              if (addedNew) {
+                var filtered = getFilteredOpts();
+                renderCombo(filtered);
+              }
+            }
+          }
+        } catch(e) {}
+      }
 
-    card.querySelector('.btn-hapus').addEventListener('click', function () {
-      if (document.querySelectorAll('#itemContainer .prod-card').length <= 1) return;
-      card.remove();
-    });
+      inputEl.addEventListener('input', function () {
+        activeComboIndex = -1;
+        var filtered = getFilteredOpts();
+        renderCombo(filtered);
+        panelEl.style.display = 'block';
+
+        clearTimeout(searchDebounceTimer);
+        var q = inputEl.value.trim();
+        if (q.length >= 2) {
+          searchDebounceTimer = setTimeout(function() {
+            searchSupabaseMasterProduk(q);
+          }, 250);
+        }
+      });
+
+      inputEl.addEventListener('focus', function () {
+        activeComboIndex = -1;
+        var filtered = getFilteredOpts();
+        renderCombo(filtered);
+        panelEl.style.display = 'block';
+      });
+
+      // Keyboard navigation (ArrowDown, ArrowUp, Enter, Escape)
+      inputEl.addEventListener('keydown', function (e) {
+        var items = panelEl.querySelectorAll('.combo-option-item');
+        if (items.length === 0 || panelEl.style.display === 'none') return;
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeComboIndex = (activeComboIndex + 1) % items.length;
+          updateActiveItem();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeComboIndex = (activeComboIndex - 1 + items.length) % items.length;
+          updateActiveItem();
+        } else if (e.key === 'Enter') {
+          if (activeComboIndex >= 0 && activeComboIndex < items.length) {
+            e.preventDefault();
+            items[activeComboIndex].dispatchEvent(new Event('mousedown'));
+          }
+        } else if (e.key === 'Escape') {
+          panelEl.style.display = 'none';
+        }
+
+        function updateActiveItem() {
+          items.forEach(function(it, idx) {
+            if (idx === activeComboIndex) {
+              it.style.background = 'var(--card-alt)';
+              it.style.borderLeft = '3px solid var(--primary)';
+              it.style.paddingLeft = '11px';
+              it.scrollIntoView({ block: 'nearest' });
+            } else {
+              it.style.background = 'transparent';
+              it.style.borderLeft = 'none';
+              it.style.paddingLeft = '14px';
+            }
+          });
+        }
+      });
+
+      document.addEventListener('click', function (e) {
+        if (!card.contains(e.target)) panelEl.style.display = 'none';
+      });
+
+      qtyInputEl.addEventListener('input', updateStokInfo);
+
+      card.querySelector('.qtyMin').addEventListener('click', function () {
+        qtyInputEl.value = Math.max(1, (parseInt(qtyInputEl.value, 10) || 1) - 1);
+        updateStokInfo();
+      });
+
+      card.querySelector('.qtyPlus').addEventListener('click', function () {
+        qtyInputEl.value = (parseInt(qtyInputEl.value, 10) || 1) + 1;
+        updateStokInfo();
+      });
+
+      card.querySelector('.btn-hapus').addEventListener('click', function () {
+        if (document.querySelectorAll('#itemContainer .prod-card').length <= 1) return;
+        card.remove();
+      });
+    } catch(e) {
+      console.warn("tambahItemPeminjaman error:", e);
+    }
   }
-
-  const _btnTambahAtas = document.getElementById('btnTambahItemAtas');
-  if (_btnTambahAtas) _btnTambahAtas.addEventListener('click', tambahItemPeminjaman);
-  const _btnTambahBawah = document.getElementById('btnTambahItemBawah');
-  if (_btnTambahBawah) _btnTambahBawah.addEventListener('click', tambahItemPeminjaman);
 
   function submitFormPeminjamanSpa() {
-    const namaPeminjam = document.getElementById('namaPeminjam').value.trim();
-    const keperluan = document.getElementById('keperluan').value.trim();
-    const tglPinjam = document.getElementById('tglPinjam').value;
+    try {
+      var namaPeminjam = (document.getElementById('namaPeminjam').value || '').trim();
+      var keperluan = (document.getElementById('keperluan').value || '').trim();
+      var tglPinjam = (document.getElementById('tglPinjam').value || '');
 
-    const items = [];
-    document.querySelectorAll('#itemContainer .prod-card').forEach(function (card) {
-      const produkInput = card.querySelector('.produkInput');
-      const produk = produkInput.value.trim();
-      const size = produkInput.dataset.size || '';
-      const sku = produkInput.dataset.sku || '';
-      const lokasi = produkInput.dataset.lokasi || '';
-      const qty = parseInt(card.querySelector('.qtyInput').value, 10) || 0;
+      var items = [];
+      document.querySelectorAll('#itemContainer .prod-card').forEach(function (card) {
+        var produkInput = card.querySelector('.produkInput');
+        if (!produkInput) return;
+        var produk = produkInput.value.trim();
+        var size = produkInput.dataset.size || '';
+        var sku = produkInput.dataset.sku || '';
+        var lokasi = produkInput.dataset.lokasi || '';
+        var qty = parseInt(card.querySelector('.qtyInput').value, 10) || 0;
 
-      if (produk) {
-        items.push({ produk: produk, size: size, sku: sku, lokasi: lokasi, qty: qty });
-      }
-    });
+        if (produk) {
+          items.push({ produk: produk, size: size, sku: sku, lokasi: lokasi, qty: qty });
+        }
+      });
 
-    if (!namaPeminjam) { if (window.showWmsToast) window.showWmsToast('NAMA / PIC PEMINJAM WAJIB DIISI.', 'error'); return; }
-    if (!keperluan) { if (window.showWmsToast) window.showWmsToast('KEPERLUAN WAJIB DIISI.', 'error'); return; }
-    if (!tglPinjam) { if (window.showWmsToast) window.showWmsToast('TANGGAL PINJAM WAJIB DIISI.', 'error'); return; }
-    if (items.length === 0) { if (window.showWmsToast) window.showWmsToast('MINIMAL 1 ITEM DENGAN PRODUK TERPILIH.', 'error'); return; }
+      if (!namaPeminjam) { if (window.showWmsToast) window.showWmsToast('NAMA / PIC PEMINJAM WAJIB DIISI.', 'error'); return; }
+      if (!keperluan) { if (window.showWmsToast) window.showWmsToast('KEPERLUAN WAJIB DIISI.', 'error'); return; }
+      if (!tglPinjam) { if (window.showWmsToast) window.showWmsToast('TANGGAL PINJAM WAJIB DIISI.', 'error'); return; }
+      if (items.length === 0) { if (window.showWmsToast) window.showWmsToast('MINIMAL 1 ITEM DENGAN PRODUK TERPILIH.', 'error'); return; }
 
-    const btn = document.getElementById('btnSubmitPeminjaman');
-    if (window.setButtonLoading) window.setButtonLoading(btn, true, 'MEMPROSES PENGAJUAN...');
+      var btn = document.getElementById('btnSubmitPeminjaman');
+      if (window.setButtonLoading) window.setButtonLoading(btn, true, 'MEMPROSES PENGAJUAN...');
 
-    const tokenVal = typeof TOKEN !== 'undefined' ? TOKEN : '';
+      var tokenVal = typeof TOKEN !== 'undefined' ? TOKEN : '';
 
-    google.script.run.withSuccessHandler(function (res) {
-      if (window.setButtonLoading) window.setButtonLoading(btn, false);
-      if (res.success) {
-        if (window.showWmsToast) window.showWmsToast(res.message || 'Peminjaman berhasil diajukan!', 'success');
-        document.getElementById('namaPeminjam').value = '';
-        document.getElementById('keperluan').value = '';
-        document.getElementById('itemContainer').innerHTML = '';
-        peminjamanItemCounter = 0;
-        tambahItemPeminjaman();
-        // Otomatis refresh stok lokal dan master
-        if (typeof muatDataProduk === 'function') muatDataProduk();
-      } else {
-        if (window.showWmsToast) window.showWmsToast(res.message || 'Gagal mengajukan peminjaman', 'error');
-      }
-    }).withFailureHandler(function (err) {
-      if (window.setButtonLoading) window.setButtonLoading(btn, false);
-      if (window.showWmsToast) window.showWmsToast('GAGAL MENGIRIM: ' + err.message, 'error');
-    }).submitPeminjaman({
-      namaPeminjam: namaPeminjam,
-      keperluan: keperluan,
-      tglPinjam: tglPinjam,
-      items: items,
-      token: tokenVal
-    });
+      google.script.run.withSuccessHandler(function (res) {
+        if (window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (res.success) {
+          if (window.showWmsToast) window.showWmsToast(res.message || 'Peminjaman berhasil diajukan!', 'success');
+          document.getElementById('namaPeminjam').value = '';
+          document.getElementById('keperluan').value = '';
+          document.getElementById('itemContainer').innerHTML = '';
+          peminjamanItemCounter = 0;
+          tambahItemPeminjaman();
+          if (typeof muatDataProduk === 'function') muatDataProduk();
+        } else {
+          if (window.showWmsToast) window.showWmsToast(res.message || 'Gagal mengajukan peminjaman', 'error');
+        }
+      }).withFailureHandler(function (err) {
+        if (window.setButtonLoading) window.setButtonLoading(btn, false);
+        if (window.showWmsToast) window.showWmsToast('GAGAL MENGIRIM: ' + err.message, 'error');
+      }).submitPeminjaman({
+        namaPeminjam: namaPeminjam,
+        keperluan: keperluan,
+        tglPinjam: tglPinjam,
+        items: items,
+        token: tokenVal
+      });
+    } catch(e) {
+      console.warn("submitFormPeminjamanSpa error:", e);
+    }
   }
 
-  // Auto-init langsung seketika
-  try {
-    initPeminjamanView();
-  } catch (e) {
-    console.error("Auto init peminjaman view error:", e);
-  }
+  // EXPOSE ALL FUNCTIONS EXPLICITLY TO WINDOW (Agar onclick di HTML selalu jalan)
+  window.switchPeminjamanMobileTab = switchPeminjamanMobileTab;
+  window.initPeminjamanView = initPeminjamanView;
+  window.switchStockChannel = switchStockChannel;
+  window.filterStudioStockSpa = filterStudioStockSpa;
+  window.exportPeminjamanStockData = exportPeminjamanStockData;
+  window.refreshStockPeminjaman = refreshStockPeminjaman;
+  window.tambahItemPeminjaman = tambahItemPeminjaman;
+  window.submitFormPeminjamanSpa = submitFormPeminjamanSpa;
+  window.loadPeminjamanInitData = loadPeminjamanInitData;
 
+  // Auto-init saat dimuat atau saat DOM siap
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      try { initPeminjamanView(); } catch(e) { console.warn("Init peminjaman error:", e); }
+    });
+  } else {
+    setTimeout(function() {
+      try { initPeminjamanView(); } catch(e) { console.warn("Init peminjaman error:", e); }
+    }, 50);
+  }
 </script>
